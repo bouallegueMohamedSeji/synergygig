@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="tn.esprit.synergygig.controllers.SidebarController"
+      spacing="12"
+      prefWidth="220"
+      style="-fx-background-color: #121826;
+       -fx-padding: 15;">
+
+
+<Label text="SynergyGig"
+           style="-fx-text-fill: white;
+                  -fx-font-size: 20;
+                  -fx-font-weight: bold;" />
+
+    <Separator/>
+
+    <Button text="📊 Dashboard" onAction="#showDashboard"/>
+    <Button text="💼 Offers" onAction="#showOffers"/>
+    <Button text="📨 Applications" onAction="#showApplications"/>
+    <Button text="🧑‍💻 Gig Offers" onAction="#goGigOffers"/>
+    <Button text="📬 Applications Admin (TEST)"
+            onAction="#showApplicationsAdmin"
+            styleClass="sidebar-btn"/>
+
+
+
+</VBox>

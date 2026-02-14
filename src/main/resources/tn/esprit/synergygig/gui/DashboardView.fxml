@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="tn.esprit.synergygig.controllers.DashboardController"
+      spacing="30"
+      styleClass="dashboard-root"
+      stylesheets="@dashboard.css">
+
+    <!-- TITLE -->
+    <Label text="📊 Dashboard Overview" styleClass="dashboard-title"/>
+
+    <!-- CARDS -->
+    <HBox spacing="25">
+
+        <!-- TOTAL -->
+        <VBox fx:id="cardTotal" styleClass="stat-card stat-total">
+            <Label text="Total Offers" styleClass="stat-title"/>
+            <Label fx:id="totalOffers" text="0" styleClass="stat-value"/>
+        </VBox>
+
+        <!-- PUBLISHED -->
+        <VBox fx:id="cardPublished" styleClass="stat-card stat-published">
+            <Label text="Published" styleClass="stat-title"/>
+            <Label fx:id="publishedOffers" text="0" styleClass="stat-value"/>
+        </VBox>
+
+        <!-- IN PROGRESS -->
+        <VBox fx:id="cardProgress" styleClass="stat-card stat-progress">
+            <Label text="In Progress" styleClass="stat-title"/>
+            <Label fx:id="inProgressOffers" text="0" styleClass="stat-value"/>
+        </VBox>
+
+        <!-- COMPLETED -->
+        <VBox fx:id="cardCompleted" styleClass="stat-card stat-completed">
+            <Label text="Completed" styleClass="stat-title"/>
+            <Label fx:id="completedOffers" text="0" styleClass="stat-value"/>
+        </VBox>
+
+        <!-- CANCELLED -->
+        <VBox fx:id="cardCancelled" styleClass="stat-card stat-cancelled">
+            <Label text="Cancelled" styleClass="stat-title"/>
+            <Label fx:id="cancelledOffers" text="0" styleClass="stat-value"/>
+        </VBox>
+
+    </HBox>
+
+
+    <!-- CHARTS -->
+    <HBox spacing="30">
+
+        <VBox spacing="10">
+            <Label text="Offers by Status" styleClass="chart-title"/>
+            <PieChart fx:id="offerPieChart" prefHeight="280"/>
+        </VBox>
+
+        <VBox spacing="10">
+            <Label text="Offers Statistics" styleClass="chart-title"/>
+            <BarChart fx:id="offerBarChart">
+                <xAxis><CategoryAxis/></xAxis>
+                <yAxis><NumberAxis/></yAxis>
+            </BarChart>
+        </VBox>
+
+    </HBox>
+
+</VBox>

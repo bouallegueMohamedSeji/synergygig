@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<HBox spacing="15"
+      alignment="CENTER_RIGHT"
+      style="-fx-background-color: #121826;
+             -fx-padding: 12;
+             -fx-border-color: #ddd;
+             -fx-border-width: 0 0 1 0;">
+
+    <Label text="SynergyGig Dashboard"
+           style="-fx-font-size: 16;
+              -fx-font-weight: bold;
+              -fx-text-fill: white;"
+           HBox.hgrow="ALWAYS"/>
+
+    <Button text="🔔"/>
+    <Label text="Admin"
+           style="-fx-font-size: 16;
+              -fx-font-weight: bold;
+              -fx-text-fill: white;"
+           HBox.hgrow="ALWAYS"/>
+</HBox>

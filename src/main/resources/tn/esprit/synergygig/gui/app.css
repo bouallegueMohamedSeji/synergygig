@@ -1,0 +1,301 @@
+/* ===== GLOBAL ===== */
+.root {
+    -fx-font-family: "Segoe UI", "Inter", sans-serif;
+    -fx-background-color: #121826;
+}
+
+/* ===== TITLES ===== */
+.title {
+    -fx-text-fill: white;
+    -fx-font-size: 22;
+    -fx-font-weight: bold;
+}
+
+/* ===== BADGES ===== */
+.badge {
+    -fx-padding: 4 12;
+    -fx-background-radius: 999;
+    -fx-font-size: 11;
+    -fx-font-weight: bold;
+}
+
+.badge-published {
+    -fx-background-color: #00f260;
+    -fx-text-fill: #0b0f14;
+}
+
+.badge-draft {
+    -fx-background-color: #2a2f3a;
+    -fx-text-fill: #9aa4b2;
+}
+
+.badge-progress {
+    -fx-background-color: #396afc;
+    -fx-text-fill: white;
+}
+.badge-cancelled {
+    -fx-background-color: #ef4444; /* rouge */
+    -fx-text-fill: white;
+}
+
+/* ===== BUTTONS ===== */
+.action-btn {
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+}
+
+.action-btn:hover {
+    -fx-scale-x: 1.15;
+    -fx-scale-y: 1.15;
+}
+/* =====================================================
+   🌑 ROOT
+   ===================================================== */
+.dashboard-root {
+    -fx-background-color: #0b0f14;
+    -fx-padding: 30;
+}
+
+/* =====================================================
+   🏷️ TITLE
+   ===================================================== */
+.dashboard-title {
+    -fx-text-fill: white;
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+}
+
+/* =====================================================
+   🧱 CARD BASE
+   ===================================================== */
+.stat-card {
+    -fx-background-radius: 16;
+    -fx-padding: 18;
+    -fx-pref-width: 160;
+    -fx-alignment: CENTER;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0.2, 0, 4);
+}
+
+.stat-title {
+    -fx-text-fill: #9aa4b2;
+    -fx-font-size: 12;
+}
+
+.stat-value {
+    -fx-text-fill: white;
+    -fx-font-size: 26;
+    -fx-font-weight: bold;
+}
+
+/* ===== COLORS ===== */
+
+.stat-total {
+    -fx-background-color: linear-gradient(to right, #1e293b, #0f172a);
+}
+
+.stat-published {
+    -fx-background-color: linear-gradient(to right, #00f260, #057a45);
+}
+
+.stat-progress {
+    -fx-background-color: linear-gradient(to right, #2196f3, #1e3a8a);
+}
+
+.stat-completed {
+    -fx-background-color: linear-gradient(to right, #8b5cf6, #4c1d95);
+}
+
+.stat-cancelled {
+    -fx-background-color: linear-gradient(to right, #ef4444, #7f1d1d);
+}
+
+/* =====================================================
+   ✏️ TEXT
+   ===================================================== */
+.stat-title {
+    -fx-text-fill: #cfd8dc;
+    -fx-font-size: 13px;
+}
+
+.stat-value {
+    -fx-text-fill: white;
+    -fx-font-size: 38px;
+    -fx-font-weight: bold;
+}
+
+/* =====================================================
+   ✨ HOVER
+   ===================================================== */
+.stat-card:hover {
+    -fx-translate-y: -6;
+    -fx-effect: dropshadow(gaussian, rgba(0,255,200,0.7), 35, 0.4, 0, 0);
+}
+
+/* =====================================================
+   📊 CHARTS
+   ===================================================== */
+.chart-title {
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.chart {
+    -fx-background-color: transparent;
+}
+
+.chart-plot-background {
+    -fx-background-color: transparent;
+}
+/* ===== BOUTONS ACTIONS ===== */
+
+.button {
+    -fx-background-radius: 8;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-text-fill: black;
+}
+
+/* ✏ EDIT – BLEU NÉON */
+.btn-edit {
+    -fx-background-color: #00bfff;
+}
+.btn-edit:hover {
+    -fx-background-color: #33ccff;
+}
+
+/* 🚀 PUBLISH – VERT NÉON */
+.btn-publish {
+    -fx-background-color: #00f260;
+}
+.btn-publish:hover {
+    -fx-background-color: #33ff88;
+}
+
+/* 🗑 DELETE – JAUNE NÉON */
+.btn-delete {
+    -fx-background-color: #ffee58;
+}
+.btn-delete:hover {
+    -fx-background-color: #fff176;
+}
+
+/* ❌ CANCEL – ROUGE */
+.btn-cancel {
+    -fx-background-color: #ff5252;
+    -fx-text-fill: white;
+}
+.btn-cancel:hover {
+    -fx-background-color: #ff1744;
+}
+
+/* désactivé */
+.button:disabled {
+    -fx-opacity: 0.4;
+}
+/* ===============================
+   🧾 TABLEVIEW GLOBAL
+   =============================== */
+
+.table-view {
+    -fx-background-color: #0b0f14;
+    -fx-border-color: transparent;
+}
+
+/* Fond interne */
+.table-view .virtual-flow {
+    -fx-background-color: transparent;
+}
+
+/* ===============================
+   🧱 HEADER (NOMS DES COLONNES)
+   =============================== */
+
+.table-view .column-header-background {
+    -fx-background-color: #121826;
+}
+
+.table-view .column-header,
+.table-view .filler {
+    -fx-background-color: #121826;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+/* ===============================
+   📄 CELLULES
+   =============================== */
+
+.table-row-cell {
+    -fx-background-color: #0f172a;
+    -fx-border-color: transparent;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #111827;
+}
+
+/* TEXTE DES CELLULES */
+.table-cell {
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+}
+
+/* ===============================
+   🔵 SELECTION
+   =============================== */
+
+.table-row-cell:selected {
+    -fx-background-color: #1e40af;
+}
+
+.table-row-cell:selected .table-cell {
+    -fx-text-fill: white;
+}
+.badge-completed {
+    -fx-background-color: #22c55e; /* vert foncé */
+    -fx-text-fill: white;
+}
+.btn-apply-neon {
+    -fx-background-color: #ffee58; /* jaune néon */
+    -fx-text-fill: #0b0f14;
+    -fx-font-weight: bold;
+    -fx-background-radius: 999;
+    -fx-padding: 6 18;
+    -fx-cursor: hand;
+}
+
+.btn-apply-neon:hover {
+    -fx-background-color: #fff176;
+}
+
+.btn-apply-neon:disabled {
+    -fx-background-color: #555;
+    -fx-text-fill: #aaa;
+}
+.offer-card {
+    -fx-background-color: rgba(10,15,30,0.9);
+    -fx-background-radius: 20;
+    -fx-padding: 20;
+    -fx-effect: dropshadow(gaussian, #00f26055, 20, 0.5, 0, 0);
+}
+
+.offer-card:hover {
+    -fx-effect: dropshadow(gaussian, #00f260, 30, 0.7, 0, 0);
+}
+
+.btn-apply-neon {
+    -fx-background-color: #ffee58;
+    -fx-text-fill: black;
+    -fx-font-weight: bold;
+    -fx-background-radius: 15;
+}
+
+.btn-apply-neon:hover {
+    -fx-background-color: #fff176;
+}
+
