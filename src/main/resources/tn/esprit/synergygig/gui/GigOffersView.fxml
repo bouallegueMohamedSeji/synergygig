@@ -8,28 +8,25 @@
         xmlns:fx="http://javafx.com/fxml"
         fx:controller="tn.esprit.synergygig.controllers.GigOffersController">
 
-    <!-- 🌌 BACKGROUND ANIMÉ -->
-    <Pane fx:id="animatedBackground"
-          prefWidth="1200"
-          prefHeight="800" />
+    <!-- 🌌 Animated Galaxy Background -->
+    <Pane fx:id="animatedBackground"/>
 
     <!-- CONTENU -->
-    <VBox spacing="15"
-          style="-fx-padding: 20;"
-          StackPane.alignment="CENTER">
+    <VBox spacing="20" style="-fx-padding: 30;">
 
-        <Label text="🧑‍💻 Offres disponibles"
-               style="-fx-text-fill: white; -fx-font-size:18; -fx-font-weight:bold;" />
+        <Label text="🧑‍💻 Explore Premium Gigs"
+               style="-fx-text-fill: white;
+                      -fx-font-size:24;
+                      -fx-font-weight:bold;" />
 
         <ScrollPane fitToWidth="true"
-                    style="-fx-background-color: transparent;">
+                    style="-fx-background-color:transparent;">
 
             <FlowPane fx:id="offersContainer"
-                      hgap="25"
-                      vgap="25"
-                      prefWrapLength="1200"
+                      hgap="30"
+                      vgap="30"
+                      prefWrapLength="1300"
                       style="-fx-padding: 20;" />
-
         </ScrollPane>
 
     </VBox>

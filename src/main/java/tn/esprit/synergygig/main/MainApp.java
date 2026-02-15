@@ -36,6 +36,7 @@ public class MainApp extends Application {
                         getClass().getResource("/tn/esprit/synergygig/gui/dashboard.css")
                 ).toExternalForm()
         );
+        scene.setCamera(new javafx.scene.PerspectiveCamera());
 
         stage.setTitle("SynergyGig — Offers");
         stage.setScene(scene);

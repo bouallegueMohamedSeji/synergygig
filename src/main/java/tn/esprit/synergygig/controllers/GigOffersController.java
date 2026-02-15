@@ -23,6 +23,13 @@ import javafx.animation.Animation;
 
 import javafx.util.Duration;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.shape.Circle;
+import javafx.animation.FadeTransition;
+import javafx.animation.Timeline;
+import javafx.animation.KeyFrame;
+import javafx.animation.Animation;
+import javafx.util.Duration;
+
 
 public class GigOffersController {
 
@@ -46,6 +53,8 @@ public class GigOffersController {
 
         startBackgroundAnimation();
         loadPublishedOffers();
+        startGalaxyBackground();
+
     }
     private void loadPublishedOffers() {
         try {
@@ -130,9 +139,11 @@ public class GigOffersController {
 
         VBox card = new VBox(10, image, title, description, badge, applyBtn);
         card.setPrefWidth(260);
-        card.getStyleClass().add("offer-card");
+        card.setStyle(card.getStyle() + "; -fx-background-insets: 0;");
+
 
         addHoverEffect(card);
+
 
         return card;
     }
@@ -141,19 +152,38 @@ public class GigOffersController {
     private void addHoverEffect(VBox card) {
 
         card.setOnMouseEntered(e -> {
-            ScaleTransition scale = new ScaleTransition(Duration.millis(200), card);
-            scale.setToX(1.05);
-            scale.setToY(1.05);
+
+            ScaleTransition scale = new ScaleTransition(Duration.millis(250), card);
+            scale.setToX(1.06);
+            scale.setToY(1.06);
             scale.play();
+
+            card.setStyle("""
+            -fx-background-color: rgba(255,255,255,0.12);
+            -fx-background-radius: 20;
+            -fx-border-radius: 20;
+            -fx-border-color: #00f260;
+            -fx-border-width: 1.5;
+            -fx-effect: dropshadow(gaussian,
+                    #00f260,
+                    40,
+                    0.6,
+                    0,
+                    0);
+        """);
         });
 
         card.setOnMouseExited(e -> {
-            ScaleTransition scale = new ScaleTransition(Duration.millis(200), card);
+
+            ScaleTransition scale = new ScaleTransition(Duration.millis(250), card);
             scale.setToX(1);
             scale.setToY(1);
             scale.play();
+
+            card.getStyleClass().add("offer-card");
         });
     }
+
     private void startBackgroundAnimation() {
 
         animatedBackground.setStyle("""
@@ -195,6 +225,65 @@ public class GigOffersController {
 
         timeline.setCycleCount(Animation.INDEFINITE);
         timeline.play();
+    }
+    private void startGalaxyBackground() {
+
+        animatedBackground.setStyle("""
+        -fx-background-color:
+            radial-gradient(center 50% 50%, radius 100%,
+                #0f2027 0%,
+                #203a43 40%,
+                #2c5364 70%,
+                #000000 100%);
+    """);
+
+        Timeline gradientShift = new Timeline(
+                new KeyFrame(Duration.seconds(0), e ->
+                        animatedBackground.setStyle("""
+                -fx-background-color:
+                    radial-gradient(center 30% 30%, radius 120%,
+                        #0f2027,
+                        #141e30,
+                        #000000);
+            """)),
+
+                new KeyFrame(Duration.seconds(8), e ->
+                        animatedBackground.setStyle("""
+                -fx-background-color:
+                    radial-gradient(center 70% 70%, radius 120%,
+                        #1e3c72,
+                        #2a5298,
+                        #000000);
+            """))
+        );
+
+        gradientShift.setCycleCount(Animation.INDEFINITE);
+        gradientShift.setAutoReverse(true);
+        gradientShift.play();
+
+        createStars();
+    }
+    private void createStars() {
+
+        for (int i = 0; i < 120; i++) {
+
+            Circle star = new Circle(Math.random() * 2);
+            star.setTranslateX(Math.random() * 1600);
+            star.setTranslateY(Math.random() * 900);
+            star.setStyle("-fx-fill: white;");
+
+            FadeTransition fade = new FadeTransition(
+                    Duration.seconds(2 + Math.random() * 3),
+                    star
+            );
+            fade.setFromValue(0.1);
+            fade.setToValue(1);
+            fade.setAutoReverse(true);
+            fade.setCycleCount(Animation.INDEFINITE);
+            fade.play();
+
+            animatedBackground.getChildren().add(star);
+        }
     }
 
 

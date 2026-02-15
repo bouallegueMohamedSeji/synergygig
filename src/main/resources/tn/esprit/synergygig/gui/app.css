@@ -278,12 +278,24 @@
     -fx-text-fill: #aaa;
 }
 .offer-card {
-    -fx-background-color: rgba(10,15,30,0.9);
-    -fx-background-radius: 20;
-    -fx-padding: 20;
-    -fx-effect: dropshadow(gaussian, #00f26055, 20, 0.5, 0, 0);
-}
 
+    -fx-background-color: rgba(255,255,255,0.08);
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+
+    -fx-border-color: rgba(255,255,255,0.15);
+    -fx-border-width: 1;
+
+    -fx-effect: dropshadow(gaussian,
+            rgba(0, 242, 96, 0.4),
+            25,
+            0.4,
+            0,
+            0);
+
+    -fx-padding: 18;
+
+}
 .offer-card:hover {
     -fx-effect: dropshadow(gaussian, #00f260, 30, 0.7, 0, 0);
 }
