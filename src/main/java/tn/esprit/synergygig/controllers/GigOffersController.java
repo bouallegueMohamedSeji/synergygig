@@ -134,7 +134,7 @@ public class GigOffersController {
         Label description = new Label(offer.getDescription());
         description.setWrapText(true);
         description.setMaxWidth(250);
-        description.setStyle("-fx-text-fill: #cfd8dc; -fx-font-size:12;");
+        description.setStyle("-fx-text-fill: white; -fx-font-size:12;");
 
         Label badge = new Label("PUBLISHED");
         badge.getStyleClass().addAll("badge", "badge-published");
@@ -169,10 +169,10 @@ public class GigOffersController {
             -fx-background-color: rgba(255,255,255,0.12);
             -fx-background-radius: 20;
             -fx-border-radius: 20;
-            -fx-border-color: #15f4ee;
+            -fx-border-color: #4c175a;
             -fx-border-width: 1.5;
             -fx-effect: dropshadow(gaussian,
-                    #15f4ee,
+                    #4c175a,
                     40,
                     0.6,
                     0,
@@ -193,47 +193,13 @@ public class GigOffersController {
 
 
     private void startGalaxyBackground() {
-
-        animatedBackground.setStyle("""
-        -fx-background-color:
-            radial-gradient(center 50% 50%, radius 100%,
-                #0f2027 0%,
-                #203a43 40%,
-                #2c5364 70%,
-                #000000 100%);
-    """);
-
-        Timeline gradientShift = new Timeline(
-                new KeyFrame(Duration.seconds(0), e ->
-                        animatedBackground.setStyle("""
-                -fx-background-color:
-                    radial-gradient(center 30% 30%, radius 120%,
-                        #0f2027,
-                        #141e30,
-                        #000000);
-            """)),
-
-                new KeyFrame(Duration.seconds(8), e ->
-                        animatedBackground.setStyle("""
-                -fx-background-color:
-                    radial-gradient(center 70% 70%, radius 120%,
-                        #1e3c72,
-                        #2a5298,
-                        #000000);
-            """))
-        );
-
-        gradientShift.setCycleCount(Animation.INDEFINITE);
-        gradientShift.setAutoReverse(true);
-        gradientShift.play();
-
         createStars();
     }
     private void createStars() {
 
         animatedBackground.getChildren().clear();
 
-        for (int i = 0; i < 250; i++) { // 🔥 plus intense
+        for (int i = 0; i < 700; i++) { // 🔥 plus intense
 
             Circle star = new Circle(Math.random() * 2.2);
 
@@ -271,7 +237,7 @@ public class GigOffersController {
     -fx-background-color: rgba(20,25,40,0.95);
     -fx-background-radius: 20;
     -fx-padding: 30;
-    -fx-effect: dropshadow(gaussian, #15f4ee, 25, 0.3, 0, 0);
+    -fx-effect: dropshadow(gaussian, #4c175a, 25, 0.3, 0, 0);
 """);
 
         modal.setMaxWidth(420);
@@ -283,7 +249,7 @@ public class GigOffersController {
         title.setStyle("-fx-text-fill:white; -fx-font-size:18; -fx-font-weight:bold;");
 
         Label subtitle = new Label(offer.getTitle());
-        subtitle.setStyle("-fx-text-fill:#00f260;");
+        subtitle.setStyle("-fx-text-fill:#4c175a;");
 
         Button confirm = new Button("🚀 Confirmer");
         confirm.getStyleClass().add("btn-apply-neon");

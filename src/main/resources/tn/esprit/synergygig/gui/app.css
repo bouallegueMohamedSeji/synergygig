@@ -69,16 +69,24 @@
    🧱 CARD BASE
    ===================================================== */
 .stat-card {
-    -fx-background-radius: 16;
-    -fx-padding: 18;
-    -fx-pref-width: 160;
-    -fx-alignment: CENTER;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0.2, 0, 4);
+    -fx-background-color:
+        linear-gradient(to bottom right,
+            rgba(95,15,255,0.85),
+            rgba(31,107,255,0.85));
+
+    -fx-background-radius: 20;
+    -fx-padding: 25;
+
+    -fx-border-radius: 20;
+    -fx-border-color: rgba(255,255,255,0.2);
+    -fx-border-width: 1.2;
+
+    -fx-effect: dropshadow(gaussian, #7b2cbf, 40, 0.8, 0, 0);
 }
 
 .stat-title {
-    -fx-text-fill: #9aa4b2;
-    -fx-font-size: 12;
+    -fx-text-fill: white;
+    -fx-font-size: 14;
 }
 
 .stat-value {
@@ -113,7 +121,7 @@
    ✏️ TEXT
    ===================================================== */
 .stat-title {
-    -fx-text-fill: #cfd8dc;
+    -fx-text-fill: white;
     -fx-font-size: 13px;
 }
 
@@ -290,8 +298,8 @@
 }
 
 .btn-apply-neon {
-    -fx-background-color: #ffee58;
-    -fx-text-fill: black;
+   -fx-background-color: linear-gradient(to right, #7f00ff, #00c6ff);
+    -fx-text-fill: white;
     -fx-font-weight: bold;
     -fx-background-radius: 15;
 }
@@ -299,4 +307,83 @@
 .btn-apply-neon:hover {
     -fx-background-color: #fff176;
 }
+/* 🧊 GLASS SIDEBAR */
+.sidebar-glass {
+    -fx-background-color: #121826;
+    -fx-background-radius: 5;
+    -fx-effect: dropshadow(gaussian, #396afc, 25, 0.3, 0, 0);
+}
+
+/* 💎 BUTTON STYLE */
+.sidebar-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 14;
+    -fx-font-weight: bold;
+    -fx-background-radius: 12;
+    -fx-padding: 12 18;
+    -fx-border-color: rgba(255,255,255,0.1);
+    -fx-border-radius: 12;
+}
+
+.sidebar-btn:hover {
+    -fx-background-color: linear-gradient(to right, #7f00ff, #00c6ff);
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, #9d4edd, 20, 0.6, 0, 0);
+}
+/* Texte des labels du PieChart */
+.chart-pie-label {
+    -fx-fill: white;
+}
+
+/* Texte de la légende */
+.chart-legend {
+    -fx-text-fill: white;
+    -fx-background-color: transparent;
+}
+
+.chart-legend-item {
+    -fx-text-fill: white;
+}
+
+/* Axe X et Y */
+.axis-label {
+    -fx-text-fill: white;
+}
+
+.axis {
+    -fx-tick-label-fill: white;
+}
+/* Couleur 1 */
+.default-color0.chart-pie {
+    -fx-pie-color: #1F51FF;
+}
+.default-color0.chart-legend-item-symbol {
+    -fx-background-color: #1F51FF;
+}
+
+/* Couleur 2 */
+.default-color1.chart-pie {
+    -fx-pie-color: #4DA6FF;
+}
+.default-color1.chart-legend-item-symbol {
+    -fx-background-color: #4DA6FF;
+}
+
+/* Couleur 3 */
+.default-color2.chart-pie {
+    -fx-pie-color: #6A0DAD;
+}
+.default-color2.chart-legend-item-symbol {
+    -fx-background-color: #6A0DAD;
+}
+
+/* Couleur 4 */
+.default-color3.chart-pie {
+    -fx-pie-color: #2E1A47;
+}
+.default-color3.chart-legend-item-symbol {
+    -fx-background-color: #2E1A47;
+}
+
 

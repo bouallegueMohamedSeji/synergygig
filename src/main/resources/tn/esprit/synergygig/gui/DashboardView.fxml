@@ -1,70 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.scene.chart.*?>
-<?import javafx.scene.layout.*?>
 <?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
 
-<VBox xmlns:fx="http://javafx.com/fxml"
-      fx:controller="tn.esprit.synergygig.controllers.DashboardController"
-      spacing="30"
-      styleClass="dashboard-root"
-      stylesheets="@dashboard.css">
+<StackPane
+        xmlns="http://javafx.com/javafx/21"
+        xmlns:fx="http://javafx.com/fxml"
+        fx:controller="tn.esprit.synergygig.controllers.DashboardController">
 
-    <!-- TITLE -->
-    <Label text="📊 Dashboard Overview" styleClass="dashboard-title"/>
+    <!-- 🌌 Galaxy Background -->
+    <Pane fx:id="animatedBackground"/>
 
-    <!-- CARDS -->
-    <HBox spacing="25">
+    <!-- CONTENT -->
+    <VBox spacing="30" style="-fx-padding: 40;">
 
-        <!-- TOTAL -->
-        <VBox fx:id="cardTotal" styleClass="stat-card stat-total">
-            <Label text="Total Offers" styleClass="stat-title"/>
-            <Label fx:id="totalOffers" text="0" styleClass="stat-value"/>
-        </VBox>
+        <Label text="🚀 SynergyGig Dashboard"
+               style="-fx-text-fill: white;
+                      -fx-font-size:26;
+                      -fx-font-weight:bold;" />
 
-        <!-- PUBLISHED -->
-        <VBox fx:id="cardPublished" styleClass="stat-card stat-published">
-            <Label text="Published" styleClass="stat-title"/>
-            <Label fx:id="publishedOffers" text="0" styleClass="stat-value"/>
-        </VBox>
+        <!-- Stats Cards -->
+        <HBox spacing="25">
 
-        <!-- IN PROGRESS -->
-        <VBox fx:id="cardProgress" styleClass="stat-card stat-progress">
-            <Label text="In Progress" styleClass="stat-title"/>
-            <Label fx:id="inProgressOffers" text="0" styleClass="stat-value"/>
-        </VBox>
+            <!-- TOTAL -->
+            <VBox fx:id="cardTotal" styleClass="stat-card stat-total">
+                <Label text="Total Offers" styleClass="stat-title"/>
+                <Label fx:id="totalOffers" text="0" styleClass="stat-value"/>
+            </VBox>
 
-        <!-- COMPLETED -->
-        <VBox fx:id="cardCompleted" styleClass="stat-card stat-completed">
-            <Label text="Completed" styleClass="stat-title"/>
-            <Label fx:id="completedOffers" text="0" styleClass="stat-value"/>
-        </VBox>
+            <!-- PUBLISHED -->
+            <VBox fx:id="cardPublished" styleClass="stat-card stat-published">
+                <Label text="Published" styleClass="stat-title"/>
+                <Label fx:id="publishedOffers" text="0" styleClass="stat-value"/>
+            </VBox>
 
-        <!-- CANCELLED -->
-        <VBox fx:id="cardCancelled" styleClass="stat-card stat-cancelled">
-            <Label text="Cancelled" styleClass="stat-title"/>
-            <Label fx:id="cancelledOffers" text="0" styleClass="stat-value"/>
-        </VBox>
+            <!-- IN PROGRESS -->
+            <VBox fx:id="cardProgress" styleClass="stat-card stat-progress">
+                <Label text="In Progress" styleClass="stat-title"/>
+                <Label fx:id="inProgressOffers" text="0" styleClass="stat-value"/>
+            </VBox>
 
-    </HBox>
+            <!-- COMPLETED -->
+            <VBox fx:id="cardCompleted" styleClass="stat-card stat-completed">
+                <Label text="Completed" styleClass="stat-title"/>
+                <Label fx:id="completedOffers" text="0" styleClass="stat-value"/>
+            </VBox>
 
+            <!-- CANCELLED -->
+            <VBox fx:id="cardCancelled" styleClass="stat-card stat-cancelled">
+                <Label text="Cancelled" styleClass="stat-title"/>
+                <Label fx:id="cancelledOffers" text="0" styleClass="stat-value"/>
+            </VBox>
 
-    <!-- CHARTS -->
-    <HBox spacing="30">
+        </HBox>
 
-        <VBox spacing="10">
-            <Label text="Offers by Status" styleClass="chart-title"/>
-            <PieChart fx:id="offerPieChart" prefHeight="280"/>
-        </VBox>
+        <!-- Charts -->
+        <HBox spacing="40">
 
-        <VBox spacing="10">
-            <Label text="Offers Statistics" styleClass="chart-title"/>
-            <BarChart fx:id="offerBarChart">
-                <xAxis><CategoryAxis/></xAxis>
-                <yAxis><NumberAxis/></yAxis>
+            <PieChart fx:id="offerPieChart" prefWidth="400"/>
+
+            <BarChart fx:id="offerBarChart"
+                      prefWidth="500"
+                      categoryGap="20"
+                      barGap="5">
+                <xAxis>
+                    <CategoryAxis/>
+                </xAxis>
+                <yAxis>
+                    <NumberAxis/>
+                </yAxis>
             </BarChart>
-        </VBox>
 
-    </HBox>
+        </HBox>
 
-</VBox>
+    </VBox>
+
+</StackPane>
+
+
+

@@ -3,6 +3,7 @@ package tn.esprit.synergygig.controllers;
 import javafx.fxml.FXML;
 import javafx.scene.chart.*;
 import javafx.scene.control.Label;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.animation.*;
 import javafx.util.Duration;
@@ -10,6 +11,11 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import tn.esprit.synergygig.entities.enums.OfferStatus;
 import tn.esprit.synergygig.services.DashboardService;
+import javafx.scene.shape.Circle;
+import javafx.animation.FadeTransition;
+import javafx.animation.Animation;
+import javafx.util.Duration;
+
 
 public class DashboardController {
 
@@ -30,6 +36,9 @@ public class DashboardController {
     // ===== CHARTS =====
     @FXML private PieChart offerPieChart;
     @FXML private BarChart<String, Number> offerBarChart;
+    @FXML
+    private Pane animatedBackground;
+
 
     private final DashboardService service = new DashboardService();
 
@@ -38,6 +47,7 @@ public class DashboardController {
         loadNumbers();
         animateCards();
         loadCharts();
+        createStars();
     }
 
     // ======================
@@ -138,15 +148,15 @@ public class DashboardController {
 
                 switch (d.getName()) {
                     case "Published" ->
-                            d.getNode().setStyle("-fx-pie-color: #00f260;");
+                            d.getNode().setStyle("-fx-pie-color: #0B1E6D;");
                     case "In Progress" ->
-                            d.getNode().setStyle("-fx-pie-color: #2196f3;");
+                            d.getNode().setStyle("-fx-pie-color: #1F51FF;");
                     case "Draft" ->
-                            d.getNode().setStyle("-fx-pie-color: #ffee58;");
+                            d.getNode().setStyle("-fx-pie-color: #4DA6FF;");
                     case "Completed" ->
-                            d.getNode().setStyle("-fx-pie-color: #8b5cf6;");
+                            d.getNode().setStyle("-fx-pie-color: #6A0DAD;");
                     case "Cancelled" ->
-                            d.getNode().setStyle("-fx-pie-color: #ef4444;");
+                            d.getNode().setStyle("-fx-pie-color: #2E1A47;");
                 }
             }
         });
@@ -173,17 +183,49 @@ public class DashboardController {
 
                 switch (d.getXValue()) {
                     case "Published" ->
-                            d.getNode().setStyle("-fx-bar-fill: #00f260;");
+                            d.getNode().setStyle("-fx-bar-fill: #0B1E6D;");
                     case "In Progress" ->
-                            d.getNode().setStyle("-fx-bar-fill: #2196f3;");
+                            d.getNode().setStyle("-fx-bar-fill: #1F51FF;");
                     case "Draft" ->
-                            d.getNode().setStyle("-fx-bar-fill: #ffee58;");
+                            d.getNode().setStyle("-fx-bar-fill: #4DA6FF;");
                     case "Completed" ->
-                            d.getNode().setStyle("-fx-bar-fill: #8b5cf6;");
+                            d.getNode().setStyle("-fx-bar-fill: #6A0DAD;");
                     case "Cancelled" ->
-                            d.getNode().setStyle("-fx-bar-fill: #ef4444;");
+                            d.getNode().setStyle("-fx-bar-fill: #2E1A47;");
                 }
             }
         });
     }
+    private void createStars() {
+
+
+
+        for (int i = 0; i < 700; i++) {
+
+            Circle star = new Circle(Math.random() * 2);
+
+            star.setTranslateX(Math.random() * 1600);
+            star.setTranslateY(Math.random() * 900);
+
+            if (Math.random() > 0.5) {
+                star.setStyle("-fx-fill: #396afc;");
+            } else {
+                star.setStyle("-fx-fill: rgba(255,255,255,0.8);");
+            }
+
+            FadeTransition fade = new FadeTransition(
+                    Duration.seconds(2 + Math.random() * 3),
+                    star
+            );
+
+            fade.setFromValue(0.2);
+            fade.setToValue(1);
+            fade.setAutoReverse(true);
+            fade.setCycleCount(Animation.INDEFINITE);
+            fade.play();
+
+            animatedBackground.getChildren().add(star);
+        }
+    }
+
 }
