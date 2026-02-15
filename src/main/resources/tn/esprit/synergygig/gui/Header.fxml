@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<HBox spacing="15"
+      alignment="CENTER_RIGHT"
+      style="-fx-background-color: #121826;
+             -fx-padding: 12;
+             -fx-border-color: #ddd;
+             -fx-border-width: 0 0 1 0;"
+      xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="tn.esprit.synergygig.controllers.HeaderController">
+
+    <Label text="SynergyGig Dashboard"
+           style="-fx-font-size: 16;
+              -fx-font-weight: bold;
+              -fx-text-fill: white;"
+           HBox.hgrow="ALWAYS"/>
+
+    <Button text="🔔" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 16; -fx-cursor: hand;"/>
+    
+    <HBox fx:id="userBox" alignment="CENTER" spacing="10" onMouseClicked="#handleProfileClick" style="-fx-cursor: hand;">
+        <Label fx:id="userNameLabel" text="User"
+               style="-fx-font-size: 16;
+                  -fx-font-weight: bold;
+                  -fx-text-fill: white;"
+               />
+        <!-- Optional: Add Avatar ImageView here -->
+    </HBox>
+</HBox>

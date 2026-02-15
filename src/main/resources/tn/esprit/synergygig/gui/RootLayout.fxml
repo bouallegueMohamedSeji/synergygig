@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="tn.esprit.synergygig.controllers.RootLayoutController"
+            style="-fx-background-color: transparent;"
+            prefWidth="1200" prefHeight="800">
+
+    <!-- CUSTOM TITLE BAR -->
+    <top>
+        <HBox fx:id="titleBar" alignment="CENTER_LEFT" spacing="10" 
+              style="-fx-background-color: #0b0f14; -fx-padding: 10; -fx-background-radius: 15 15 0 0; -fx-border-color: rgba(255,255,255,0.1); -fx-border-width: 0 0 1 0;">
+            
+            <Label text="SynergyGig" textFill="white">
+                <font>
+                    <Font name="System Bold" size="14.0" />
+                </font>
+            </Label>
+            
+            <Region HBox.hgrow="ALWAYS" />
+            
+            <Button text="_" onAction="#handleMinimize" 
+                    style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;"/>
+            
+            <Button text="X" onAction="#handleClose" 
+                    style="-fx-background-color: transparent; -fx-text-fill: #ff4d4d; -fx-font-weight: bold; -fx-cursor: hand;"/>
+        </HBox>
+    </top>
+
+    <!-- CONTENT AREA -->
+    <center>
+        <BorderPane fx:id="mainContainer" 
+                    style="-fx-background-color: #121826; -fx-background-radius: 0 0 15 15;" />
+    </center>
+    
+    <!-- RESIZE HANDLE (Overlay via bottom property of BorderPane doesn't overlay, but we can put it there and negative margin or just inside mainContainer)
+         Actually, let's wrap center in a StackPane or just add it to bottom and handle layout.
+         Simplest: Put it in transparent bottom area.
+    -->
+    <bottom>
+        <HBox alignment="BOTTOM_RIGHT" style="-fx-background-color: transparent;" pickOnBounds="false">
+            <padding>
+                <Insets bottom="5" right="5" />
+            </padding>
+            <Label text="◢" fx:id="resizeHandle" textFill="gray" style="-fx-cursor: nw-resize; -fx-font-size: 12px;"/>
+        </HBox>
+    </bottom>
+
+</BorderPane>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.BorderPane?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.synergygig.controllers.MainLayoutController"
+            prefWidth="1200" prefHeight="700">
+
+    <top>
+        <fx:include source="Header.fxml" fx:id="header"/>
+    </top>
+
+    <!-- SIDEBAR -->
+    <left>
+        <BorderPane fx:id="sidebarContainer"/>
+    </left>
+
+    <!-- CENTER -->
+    <center>
+        <BorderPane fx:id="centerContainer"/>
+    </center>
+
+</BorderPane>

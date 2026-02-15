@@ -1,0 +1,101 @@
+/* =====================================================
+   🌑 ROOT
+   ===================================================== */
+.dashboard-root {
+    -fx-background-color:#121826;
+    -fx-padding: 30;
+}
+
+/* =====================================================
+   🏷️ TITLE
+   ===================================================== */
+.dashboard-title {
+    -fx-text-fill: white;
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+}
+
+/* =====================================================
+   🧱 CARD BASE
+   ===================================================== */
+.stat-card {
+    -fx-background-radius: 18;
+    -fx-padding: 24;
+    -fx-min-height: 160;
+    -fx-pref-height: 160;
+
+    /* ⚠️ UNE SEULE COULEUR PAR DÉFAUT */
+    -fx-background-color: #2b2f36;
+
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 25, 0.3, 0, 8);
+    -fx-cursor: hand;
+}
+
+/* =====================================================
+   🎨 COULEURS DES CARTES (UNE SEULE COUCHE)
+   ===================================================== */
+
+/* 🟢 PUBLISHED — VERT NÉON */
+.stat-published {
+    -fx-background-color: red;
+}
+
+/* 🔵 IN PROGRESS — BLEU */
+.stat-progress {
+    -fx-background-color: linear-gradient(to right, #2196f3, #64b5f6);
+}
+
+/* ⚪ DRAFT — GRIS */
+.stat-draft {
+    -fx-background-color: linear-gradient(to right, #424242, #757575);
+}
+
+/* 🟠 TOTAL — ORANGE (si tu veux encore l’utiliser) */
+.stat-total {
+    -fx-background-color: linear-gradient(to right, #ff9800, #ffb74d);
+}
+
+/* =====================================================
+   ✏️ TEXT
+   ===================================================== */
+.stat-title {
+    -fx-text-fill: #cfd8dc;
+    -fx-font-size: 13px;
+}
+
+.stat-value {
+    -fx-text-fill: white;
+    -fx-font-size: 38px;
+    -fx-font-weight: bold;
+}
+
+/* =====================================================
+   ✨ HOVER
+   ===================================================== */
+.stat-card:hover {
+    -fx-translate-y: -6;
+    -fx-effect: dropshadow(gaussian, rgba(0,255,200,0.7), 35, 0.4, 0, 0);
+}
+
+/* =====================================================
+   📊 CHARTS
+   ===================================================== */
+.chart-title {
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.chart {
+    -fx-background-color: transparent;
+}
+
+.chart-plot-background {
+    -fx-background-color: transparent;
+}
+/* ============================
+   TEST FORCE
+   ============================ */
+.stat-published {
+    -fx-background-color: red;
+}
