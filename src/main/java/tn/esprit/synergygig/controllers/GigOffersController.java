@@ -5,9 +5,7 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import tn.esprit.synergygig.entities.Offer;
 import tn.esprit.synergygig.entities.enums.OfferStatus;
 import tn.esprit.synergygig.entities.enums.OfferType;
@@ -22,13 +20,17 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Animation;
 
 import javafx.util.Duration;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.shape.Circle;
 import javafx.animation.FadeTransition;
 import javafx.animation.Timeline;
 import javafx.animation.KeyFrame;
 import javafx.animation.Animation;
 import javafx.util.Duration;
+import javafx.animation.TranslateTransition;
+import javafx.animation.*;
+import javafx.util.Duration;
+import javafx.geometry.Pos;
+
 
 
 public class GigOffersController {
@@ -38,6 +40,8 @@ public class GigOffersController {
     private FlowPane offersContainer;
 
     @FXML private Pane animatedBackground;
+    @FXML
+    private StackPane modalOverlay;
 
 
 
@@ -51,9 +55,11 @@ public class GigOffersController {
     @FXML
     public void initialize() {
 
-        startBackgroundAnimation();
+
         loadPublishedOffers();
         startGalaxyBackground();
+        animatedBackground.widthProperty().addListener((obs, oldVal, newVal) -> createStars());
+        animatedBackground.heightProperty().addListener((obs, oldVal, newVal) -> createStars());
 
     }
     private void loadPublishedOffers() {
@@ -135,7 +141,8 @@ public class GigOffersController {
 
         Button applyBtn = new Button("📬 Postuler");
         applyBtn.getStyleClass().add("btn-apply-neon");
-        applyBtn.setOnAction(e -> applyToOffer(offer));
+        applyBtn.setOnAction(e -> showApplyModal(offer));
+
 
         VBox card = new VBox(10, image, title, description, badge, applyBtn);
         card.setPrefWidth(260);
@@ -162,10 +169,10 @@ public class GigOffersController {
             -fx-background-color: rgba(255,255,255,0.12);
             -fx-background-radius: 20;
             -fx-border-radius: 20;
-            -fx-border-color: #00f260;
+            -fx-border-color: #15f4ee;
             -fx-border-width: 1.5;
             -fx-effect: dropshadow(gaussian,
-                    #00f260,
+                    #15f4ee,
                     40,
                     0.6,
                     0,
@@ -184,48 +191,7 @@ public class GigOffersController {
         });
     }
 
-    private void startBackgroundAnimation() {
 
-        animatedBackground.setStyle("""
-        -fx-background-color:
-            linear-gradient(to bottom right,
-                #0f2027,
-                #203a43,
-                #2c5364);
-    """);
-
-        Timeline timeline = new Timeline(
-                new KeyFrame(Duration.seconds(0),
-                        e -> animatedBackground.setStyle("""
-                        -fx-background-color:
-                            linear-gradient(to bottom right,
-                                #0f2027,
-                                #203a43,
-                                #2c5364);
-                    """)),
-
-                new KeyFrame(Duration.seconds(6),
-                        e -> animatedBackground.setStyle("""
-                        -fx-background-color:
-                            linear-gradient(to bottom right,
-                                #141e30,
-                                #243b55,
-                                #00f260);
-                    """)),
-
-                new KeyFrame(Duration.seconds(12),
-                        e -> animatedBackground.setStyle("""
-                        -fx-background-color:
-                            linear-gradient(to bottom right,
-                                #1e3c72,
-                                #2a5298,
-                                #396afc);
-                    """))
-        );
-
-        timeline.setCycleCount(Animation.INDEFINITE);
-        timeline.play();
-    }
     private void startGalaxyBackground() {
 
         animatedBackground.setStyle("""
@@ -265,18 +231,29 @@ public class GigOffersController {
     }
     private void createStars() {
 
-        for (int i = 0; i < 120; i++) {
+        animatedBackground.getChildren().clear();
 
-            Circle star = new Circle(Math.random() * 2);
-            star.setTranslateX(Math.random() * 1600);
-            star.setTranslateY(Math.random() * 900);
-            star.setStyle("-fx-fill: white;");
+        for (int i = 0; i < 250; i++) { // 🔥 plus intense
 
+            Circle star = new Circle(Math.random() * 2.2);
+
+            // position aléatoire dynamique (utilise la taille réelle du pane)
+            star.setTranslateX(Math.random() * animatedBackground.getWidth());
+            star.setTranslateY(Math.random() * animatedBackground.getHeight());
+
+            // 🌌 Couleur aléatoire (blanc ou bleu galaxie)
+            if (Math.random() > 0.5) {
+                star.setStyle("-fx-fill: #396afc;"); // bleu cosmique
+            } else {
+                star.setStyle("-fx-fill: rgba(255,255,255,0.8);"); // blanc doux
+            }
+
+            // ✨ Effet scintillement
             FadeTransition fade = new FadeTransition(
                     Duration.seconds(2 + Math.random() * 3),
                     star
             );
-            fade.setFromValue(0.1);
+            fade.setFromValue(0.15);
             fade.setToValue(1);
             fade.setAutoReverse(true);
             fade.setCycleCount(Animation.INDEFINITE);
@@ -285,6 +262,133 @@ public class GigOffersController {
             animatedBackground.getChildren().add(star);
         }
     }
+
+    private void showApplyModal(Offer offer) {
+
+        VBox modal = new VBox(20);
+        modal.setMaxWidth(350);
+        modal.setStyle("""
+    -fx-background-color: rgba(20,25,40,0.95);
+    -fx-background-radius: 20;
+    -fx-padding: 30;
+    -fx-effect: dropshadow(gaussian, #15f4ee, 25, 0.3, 0, 0);
+""");
+
+        modal.setMaxWidth(420);
+        modal.setPrefWidth(380);
+        modal.setMaxHeight(300);
+        modal.setAlignment(Pos.CENTER);
+
+        Label title = new Label("Confirmer la candidature");
+        title.setStyle("-fx-text-fill:white; -fx-font-size:18; -fx-font-weight:bold;");
+
+        Label subtitle = new Label(offer.getTitle());
+        subtitle.setStyle("-fx-text-fill:#00f260;");
+
+        Button confirm = new Button("🚀 Confirmer");
+        confirm.getStyleClass().add("btn-apply-neon");
+
+        Button cancel = new Button("Annuler");
+        cancel.setStyle("-fx-background-color:transparent; -fx-text-fill:white;");
+
+        confirm.setOnAction(e -> {
+            startLoader(confirm);
+            simulateApply(offer, modal);
+        });
+
+        cancel.setOnAction(e -> closeModal());
+
+        modal.getChildren().addAll(title, subtitle, confirm, cancel);
+
+        modalOverlay.getChildren().setAll(modal);
+        modalOverlay.setVisible(true);
+
+        animateModal(modal);
+        blurBackground(true);
+    }
+    private void animateModal(VBox modal) {
+
+        modal.setOpacity(0);
+        modal.setTranslateY(40);
+
+        FadeTransition fade = new FadeTransition(Duration.millis(300), modal);
+        fade.setFromValue(0);
+        fade.setToValue(1);
+
+        TranslateTransition slide = new TranslateTransition(Duration.millis(300), modal);
+        slide.setFromY(40);
+        slide.setToY(0);
+        Timeline glow = new Timeline(
+                new KeyFrame(Duration.seconds(0),
+                        new KeyValue(modal.scaleXProperty(), 1)),
+                new KeyFrame(Duration.seconds(1),
+                        new KeyValue(modal.scaleXProperty(), 1.02))
+        );
+
+        glow.setAutoReverse(true);
+        glow.setCycleCount(Animation.INDEFINITE);
+        glow.play();
+        fade.play();
+        slide.play();
+
+    }
+    private void closeModal() {
+        modalOverlay.setVisible(false);
+        modalOverlay.getChildren().clear();
+        blurBackground(false);
+    }
+    private void startLoader(Button button) {
+
+        ProgressIndicator loader = new ProgressIndicator();
+        loader.setPrefSize(20, 20);
+
+        button.setGraphic(loader);
+        button.setText(" Envoi...");
+        button.setDisable(true);
+    }
+    private void simulateApply(Offer offer, VBox modal) {
+
+        PauseTransition pause = new PauseTransition(Duration.seconds(1.5));
+
+        pause.setOnFinished(e -> {
+
+            try {
+                applicationService.apply(offer, connectedUserId);
+
+                modal.getChildren().clear();
+
+                Label success = new Label("✔ Candidature envoyée !");
+                success.setStyle("-fx-text-fill:#00f260; -fx-font-size:16;");
+
+                modal.getChildren().add(success);
+
+                PauseTransition close = new PauseTransition(Duration.seconds(1));
+                close.setOnFinished(ev -> closeModal());
+                close.play();
+
+            } catch (Exception ex) {
+                modal.getChildren().clear();
+
+                Label error = new Label("❌ Déjà postulé !");
+                error.setStyle("-fx-text-fill:#ff4b5c;");
+
+                modal.getChildren().add(error);
+            }
+        });
+
+        pause.play();
+    }
+    private void blurBackground(boolean blur) {
+
+        if (blur) {
+            animatedBackground.setEffect(
+                    new javafx.scene.effect.GaussianBlur(20)
+            );
+        } else {
+            animatedBackground.setEffect(null);
+        }
+    }
+
 
 
 }

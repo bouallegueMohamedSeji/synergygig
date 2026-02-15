@@ -30,5 +30,7 @@
         </ScrollPane>
 
     </VBox>
-
+    <StackPane fx:id="modalOverlay"
+               visible="false"
+               style="-fx-background-color: rgba(0,0,0,0.6);"/>
 </StackPane>
