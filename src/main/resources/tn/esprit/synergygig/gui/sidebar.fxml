@@ -29,6 +29,9 @@
         <Button text="📦 Offers" onAction="#showOffers" styleClass="sidebar-btn"/>
         <Button text="📬 Applications" onAction="#showApplicationsAdmin" styleClass="sidebar-btn"/>
         <Button text="🧑‍💻 Gig View" onAction="#goGigOffers" styleClass="sidebar-btn"/>
+        <Button text="🧑‍💻 Gig View" onAction="#goGigOffers" styleClass="sidebar-btn"/>
+        <Button text="👤 My Offers" onAction="#showClientOffers" styleClass="sidebar-btn"/>
+
 
     </VBox>
 

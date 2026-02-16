@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.ImageView?>
+
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:controller="tn.esprit.synergygig.controllers.ClientOfferController">
+
+    <!-- 🌌 Galaxy Background -->
+    <Pane fx:id="animatedBackground"/>
+
+    <!-- Glass Card -->
+    <VBox spacing="25"
+          alignment="TOP_CENTER"
+          maxWidth="950"
+          style="-fx-padding:40;
+                 -fx-background-color: rgba(255,255,255,0.06);
+                 -fx-background-radius:25;
+                 -fx-border-color: rgba(255,255,255,0.1);
+                 -fx-border-radius:25;">
+
+        <!-- LOGO -->
+        <ImageView fx:id="logoImage"
+                   fitWidth="180"
+                   preserveRatio="true"/>
+
+        <!-- TITLE -->
+        <Label text="Manage My Offers"
+               styleClass="title-galaxy"/>
+
+
+        <!-- ===== FORM ===== -->
+        <GridPane hgap="20" vgap="15">
+
+            <Label text="Title" style="-fx-text-fill:white;"/>
+            <TextField fx:id="titleField"
+                       promptText="Enter offer title"
+                       GridPane.columnIndex="1"/>
+
+            <Label text="Description"
+                   GridPane.rowIndex="1"
+                   style="-fx-text-fill:white;"/>
+            <TextArea fx:id="descriptionArea"
+                      prefRowCount="3"
+                      promptText="Enter description"
+                      GridPane.columnIndex="1"
+                      GridPane.rowIndex="1"/>
+
+            <Label text="Type"
+                   GridPane.rowIndex="2"
+                   style="-fx-text-fill:white;"/>
+            <ComboBox fx:id="typeBox"
+                      GridPane.columnIndex="1"
+                      GridPane.rowIndex="2"/>
+
+        </GridPane>
+
+        <!-- ===== BUTTONS ===== -->
+        <HBox spacing="20" alignment="CENTER">
+            <Button text="➕ Add"
+                    onAction="#addOffer"
+                    styleClass="btn-primary"/>
+
+            <Button text="✏ Update"
+                    onAction="#updateOffer"
+                    styleClass="btn-warning"/>
+
+            <Button text="🗑 Delete"
+                    onAction="#deleteOffer"
+                    styleClass="btn-danger"/>
+
+
+        </HBox>
+
+        <!-- ===== TABLE ===== -->
+        <TableView fx:id="offerTable"
+                   prefHeight="350"
+                   VBox.vgrow="ALWAYS"
+                   styleClass="table-glass">
+
+            <columns>
+                <TableColumn fx:id="colTitle" text="Title"/>
+                <TableColumn fx:id="colDescription" text="Description"/>
+                <TableColumn fx:id="colType" text="Type"/>
+                <TableColumn fx:id="colStatus" text="Status"/>
+            </columns>
+
+        </TableView>
+
+    </VBox>
+
+</StackPane>

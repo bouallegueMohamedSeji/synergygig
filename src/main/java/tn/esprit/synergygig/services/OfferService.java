@@ -73,5 +73,9 @@ public class OfferService {
         o.setStatus(OfferStatus.CANCELLED);
         dao.updateOne(o);
     }
+    public List<Offer> getOffersByUser(int userId) throws SQLException {
+        return dao.selectByUser(userId);
+    }
+
 
 }

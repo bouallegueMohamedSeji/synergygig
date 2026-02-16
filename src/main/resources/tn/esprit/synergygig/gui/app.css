@@ -413,4 +413,46 @@
 .table-view .filler {
     -fx-background-color: transparent;
 }
+/* ===== TITRE GALAXY ===== */
+.title-galaxy {
+    -fx-text-fill: linear-gradient(to right, #6a11cb, #2575fc);
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+}
+
+/* ===== BUTTON ADD ===== */
+.btn-primary {
+    -fx-background-color: linear-gradient(to right, #6a11cb, #2575fc);
+    -fx-text-fill: white;
+    -fx-background-radius: 20;
+    -fx-font-weight: bold;
+}
+
+.btn-primary:hover {
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+/* ===== BUTTON UPDATE ===== */
+.btn-warning {
+    -fx-background-color: linear-gradient(to right, #00c6ff, #0072ff);
+    -fx-text-fill: white;
+    -fx-background-radius: 20;
+    -fx-font-weight: bold;
+}
+
+/* ===== BUTTON DELETE ===== */
+.btn-danger {
+    -fx-background-color: linear-gradient(to right, #ff416c, #ff4b2b);
+    -fx-text-fill: white;
+    -fx-background-radius: 20;
+    -fx-font-weight: bold;
+}
+
+/* ===== TABLE GLASS ===== */
+.table-glass {
+    -fx-background-color: rgba(255,255,255,0.05);
+    -fx-background-radius: 15;
+}
+
 

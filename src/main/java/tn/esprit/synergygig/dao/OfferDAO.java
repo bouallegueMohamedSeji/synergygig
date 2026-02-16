@@ -119,6 +119,33 @@ public class OfferDAO implements CRUD<Offer> {
         ps.setInt(2, offerId);
         ps.executeUpdate();
     }
+    public List<Offer> selectByUser(int userId) throws SQLException {
+
+        List<Offer> offers = new ArrayList<>();
+
+        String sql = "SELECT * FROM offers WHERE created_by = ?";
+        PreparedStatement ps = cnx.prepareStatement(sql);
+        ps.setInt(1, userId);
+
+        ResultSet rs = ps.executeQuery();
+
+        while (rs.next()) {
+            Offer o = new Offer(
+                    rs.getInt("id"),
+                    rs.getString("title"),
+                    rs.getString("description"),
+                    OfferType.valueOf(rs.getString("type")),
+                    OfferStatus.valueOf(rs.getString("status")),
+                    rs.getInt("created_by"),
+                    rs.getTimestamp("created_at").toLocalDateTime(),
+                    rs.getString("image_url")
+            );
+
+            offers.add(o);
+        }
+
+        return offers;
+    }
 
 
 }

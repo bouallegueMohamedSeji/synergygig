@@ -20,11 +20,11 @@ public class MainLayoutController {
 
     @FXML
     public void initialize() {
-        loadSidebar();      // 👈 ICI
-        showDashboard();    // vue par défaut
+        loadSidebar();      // Charger la sidebar
+        showDashboard();    // Vue par défaut
     }
 
-    // ===== LOAD SIDEBAR =====
+    // ================= LOAD SIDEBAR =================
     private void loadSidebar() {
         try {
             FXMLLoader loader = new FXMLLoader(
@@ -33,7 +33,7 @@ public class MainLayoutController {
 
             Node sidebar = loader.load();
 
-            // 🔥 Donner accès au MainLayout depuis la Sidebar
+            // Donner accès au MainLayout depuis la Sidebar
             SidebarController controller = loader.getController();
             controller.setMainLayoutController(this);
 
@@ -44,7 +44,8 @@ public class MainLayoutController {
         }
     }
 
-    // ===== NAVIGATION =====
+    // ================= NAVIGATION =================
+
     public void showDashboard() {
         loadCenter("DashboardView.fxml");
     }
@@ -57,6 +58,20 @@ public class MainLayoutController {
         loadCenter("ApplicationView.fxml");
     }
 
+    public void showApplicationsAdmin() {
+        loadCenter("ApplicationsAdminView.fxml");
+    }
+
+    public void showGigOffers() {
+        loadCenter("GigOffersView.fxml");
+    }
+
+    // 🔥 NOUVELLE VUE CLIENT
+    public void showClientOffers() {
+        loadCenter("ClientOfferView.fxml");
+    }
+
+    // ================= LOAD CENTER WITH ANIMATION =================
     private void loadCenter(String fxml) {
         try {
             FXMLLoader loader = new FXMLLoader(
@@ -65,23 +80,17 @@ public class MainLayoutController {
 
             Parent view = loader.load();
 
+            // Animation fade
+            view.setOpacity(0);
             centerContainer.setCenter(view);
+
+            FadeTransition fade = new FadeTransition(Duration.millis(300), view);
+            fade.setFromValue(0);
+            fade.setToValue(1);
+            fade.play();
 
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-    public void showGigOffers() {
-        loadCenter("GigOffersView.fxml");
-    }
-    public void showGigOffersView() {
-        loadCenter("GigOffersView.fxml");
-    }
-    public void showApplicationsAdmin() {
-        loadCenter("ApplicationsAdminView.fxml");
-    }
-
-
-
-
 }

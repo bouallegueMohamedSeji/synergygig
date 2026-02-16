@@ -58,6 +58,13 @@ public class SidebarController {
     private void showApplicationsAdmin() {
         mainLayoutController.showApplicationsAdmin();
     }
+    @FXML
+    private void showClientOffers() {
+        if (mainLayoutController != null) {
+            mainLayoutController.showClientOffers();
+        }
+    }
+
     private void createStars() {
 
         starsPane.setStyle("-fx-background-color: #121826;"); // nouvelle couleur sidebar
@@ -97,6 +104,7 @@ public class SidebarController {
         );
         logoImage.setImage(logo);
     }
+
 
 
 
