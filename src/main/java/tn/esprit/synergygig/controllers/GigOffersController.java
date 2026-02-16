@@ -30,6 +30,9 @@ import javafx.animation.TranslateTransition;
 import javafx.animation.*;
 import javafx.util.Duration;
 import javafx.geometry.Pos;
+import java.io.File;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 
 
 
@@ -105,24 +108,19 @@ public class GigOffersController {
 
     private VBox createOfferCard(Offer offer) {
 
-        Image img = null;
-
-        try {
-            img = new Image(
-                    getClass().getResourceAsStream(
-                            "/tn/esprit/synergygig/gui/images/" + offer.getImageUrl()
-                    )
-            );
-        } catch (Exception e) {
-            System.out.println("Image not found: " + offer.getImageUrl());
-        }
-
         ImageView image = new ImageView();
 
-        if (img != null) {
-            image.setImage(img);
-        }
+        if (offer.getImageUrl() != null && !offer.getImageUrl().isBlank()) {
 
+            File file = new File("uploads/" + offer.getImageUrl());
+
+            if (file.exists()) {
+                Image img = new Image(file.toURI().toString());
+                image.setImage(img);
+            } else {
+                System.out.println("Image not found: " + offer.getImageUrl());
+            }
+        }
 
         image.setFitHeight(150);
         image.setFitWidth(260);

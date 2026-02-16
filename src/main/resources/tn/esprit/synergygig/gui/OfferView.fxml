@@ -14,19 +14,30 @@
         style="-fx-padding: 20;">
 
     <!-- ================= TABLE ================= -->
-    <TableView fx:id="offerTable"
-               VBox.vgrow="ALWAYS"
-               styleClass="table-dark">
+    <StackPane VBox.vgrow="ALWAYS">
 
-        <columns>
-            <TableColumn fx:id="colId" text="ID" prefWidth="60"/>
-            <TableColumn fx:id="colTitle" text="Title" prefWidth="250"/>
-            <TableColumn fx:id="colType" text="Type" prefWidth="120"/>
-            <TableColumn fx:id="colStatus" text="Status" prefWidth="140"/>
-            <TableColumn fx:id="colActions" text="Actions" prefWidth="300"/>
-        </columns>
+        <Pane fx:id="animatedBackground"/>
 
-    </TableView>
+        <VBox style="-fx-padding: 30;">
+
+            <TableView fx:id="offerTable"
+                       VBox.vgrow="ALWAYS"
+                       styleClass="table-dark">
+
+                <columns>
+                    <TableColumn fx:id="colTitle" text="Title"/>
+                    <TableColumn fx:id="colDescription" text="Description" />
+                    <TableColumn fx:id="colType" text="Type" />
+                    <TableColumn fx:id="colStatus" text="Status" />
+                    <TableColumn fx:id="colActions" text="Actions" />
+                </columns>
+
+            </TableView>
+
+        </VBox>
+
+    </StackPane>
+
 
     <!-- ================= ADD OFFER (ONE LINE) ================= -->
     <HBox spacing="10"

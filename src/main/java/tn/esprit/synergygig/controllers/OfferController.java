@@ -11,6 +11,7 @@ import javafx.scene.layout.HBox;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 import javafx.stage.Modality;
 
@@ -32,6 +33,9 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import javafx.scene.image.Image;
 import tn.esprit.synergygig.entities.Offer;
+import javafx.scene.shape.Circle;
+import javafx.animation.FadeTransition;
+import javafx.animation.Animation;
 
 
 
@@ -43,11 +47,13 @@ public class OfferController {
 
     // ===== TABLE =====
     @FXML private TableView<Offer> offerTable;
-    @FXML private TableColumn<Offer, Integer> colId;
     @FXML private TableColumn<Offer, String> colTitle;
     @FXML private TableColumn<Offer, OfferType> colType;
     @FXML private TableColumn<Offer, OfferStatus> colStatus;
     @FXML private TableColumn<Offer, Void> colActions;
+    @FXML
+    private TableColumn<Offer, String> colDescription;
+
     @FXML
     private ImageView bgImage;
     // ===== FORM =====
@@ -55,6 +61,8 @@ public class OfferController {
     @FXML private TextField descriptionField;
     @FXML private ComboBox<OfferType> typeBox;
     @FXML private ImageView previewImage;
+    @FXML
+    private Pane animatedBackground;
 
     private String selectedImageName;
 
@@ -67,12 +75,13 @@ public class OfferController {
     public void initialize() {
 
         // Table columns mapping
-        colId.setCellValueFactory(new PropertyValueFactory<>("id"));
         colTitle.setCellValueFactory(new PropertyValueFactory<>("title"));
         colType.setCellValueFactory(new PropertyValueFactory<>("type"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+        colDescription.setCellValueFactory(new PropertyValueFactory<>("description"));
         colActions.setPrefWidth(300);
         colActions.setMinWidth(300);
+        offerTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         colStatus.setCellFactory(col -> new TableCell<>() {
             @Override
             protected void updateItem(OfferStatus status, boolean empty) {
@@ -97,6 +106,8 @@ public class OfferController {
 
                 setGraphic(badge);
                 setText(null);
+                createStars();
+
             }
         });
         // ComboBox values
@@ -156,25 +167,21 @@ public class OfferController {
     // ===== ACTION BUTTONS COLUMN =====
     private void addActionButtons() {
 
-        colActions.setCellFactory(param -> new TableCell<>() {
+        colActions.setCellFactory(col -> new TableCell<>() {
 
             private final Button btnEdit = new Button("Edit");
             private final Button btnDelete = new Button("Delete");
             private final Button btnPublish = new Button("Publish");
             private final Button btnCancel = new Button("Cancel");
 
-            // 🎨 styles CSS
+            private final HBox box = new HBox(6, btnEdit, btnDelete, btnPublish, btnCancel);
+
             {
                 btnEdit.getStyleClass().add("btn-edit");
                 btnDelete.getStyleClass().add("btn-delete");
                 btnPublish.getStyleClass().add("btn-publish");
                 btnCancel.getStyleClass().add("btn-cancel");
-            }
 
-
-            private final HBox box = new HBox(6, btnEdit, btnDelete, btnPublish, btnCancel);
-
-            {
                 btnEdit.setOnAction(e -> {
                     Offer offer = getTableView().getItems().get(getIndex());
                     editOffer(offer);
@@ -194,8 +201,6 @@ public class OfferController {
                     Offer offer = getTableView().getItems().get(getIndex());
                     cancelOffer(offer);
                 });
-
-
             }
 
             @Override
@@ -204,37 +209,32 @@ public class OfferController {
 
                 if (empty) {
                     setGraphic(null);
-                    return;
+                } else {
+                    Offer offer = getTableView().getItems().get(getIndex());
+                    OfferStatus status = offer.getStatus();
+
+                    btnEdit.setDisable(true);
+                    btnDelete.setDisable(true);
+                    btnPublish.setDisable(true);
+                    btnCancel.setDisable(true);
+
+                    switch (status) {
+                        case DRAFT -> {
+                            btnEdit.setDisable(false);
+                            btnDelete.setDisable(false);
+                            btnPublish.setDisable(false);
+                            btnCancel.setDisable(false);
+                        }
+                        case PUBLISHED, IN_PROGRESS -> btnCancel.setDisable(false);
+                        case COMPLETED, CANCELLED -> {}
+                    }
+
+                    setGraphic(box);
                 }
-
-                Offer offer = getTableView().getItems().get(getIndex());
-                OfferStatus status = offer.getStatus();
-
-                // 🔒 reset : tout désactivé
-                btnEdit.setDisable(true);
-                btnDelete.setDisable(true);
-                btnPublish.setDisable(true);
-                btnCancel.setDisable(true);
-
-                switch (status) {
-                    case DRAFT -> {
-                        btnEdit.setDisable(false);
-                        btnDelete.setDisable(false);
-                        btnPublish.setDisable(false);
-                        btnCancel.setDisable(false);
-                    }
-                    case PUBLISHED, IN_PROGRESS -> {
-                        btnCancel.setDisable(false);
-                    }
-                    case COMPLETED, CANCELLED -> {
-                        // tout bloqué
-                    }
-                }
-
-                setGraphic(box);
             }
         });
     }
+
 
     // ===== ACTION METHODS =====
     private void publishOffer(Offer offer) {
@@ -344,6 +344,38 @@ public class OfferController {
                 showError("Error uploading image");
                 e.printStackTrace();
             }
+        }
+    }
+    private void createStars() {
+
+        animatedBackground.getChildren().clear();
+
+        int starCount = 700; // 🌟 nombre réduit
+
+        for (int i = 0; i < starCount; i++) {
+
+            Circle star = new Circle(0.5 + Math.random() * 1.5);
+
+            star.setTranslateX(Math.random() * animatedBackground.getWidth());
+            star.setTranslateY(Math.random() * animatedBackground.getHeight());
+
+            star.setStyle(Math.random() > 0.7
+                    ? "-fx-fill: #6c8cff;"
+                    : "-fx-fill: rgba(255,255,255,0.6);"
+            );
+
+            FadeTransition fade = new FadeTransition(
+                    Duration.seconds(3 + Math.random() * 4),
+                    star
+            );
+
+            fade.setFromValue(0.2);
+            fade.setToValue(0.9);
+            fade.setAutoReverse(true);
+            fade.setCycleCount(Animation.INDEFINITE);
+            fade.play();
+
+            animatedBackground.getChildren().add(star);
         }
     }
 

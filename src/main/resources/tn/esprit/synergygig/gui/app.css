@@ -166,35 +166,35 @@
 
 /* ✏ EDIT – BLEU NÉON */
 .btn-edit {
-    -fx-background-color: #00bfff;
+    -fx-background-color: #0B1E6D;
 }
 .btn-edit:hover {
-    -fx-background-color: #33ccff;
+    -fx-background-color: #1F51FF;
 }
 
 /* 🚀 PUBLISH – VERT NÉON */
 .btn-publish {
-    -fx-background-color: #00f260;
+    -fx-background-color: #4DA6FF;
 }
 .btn-publish:hover {
-    -fx-background-color: #33ff88;
+    -fx-background-color: #1F51FF;
 }
 
 /* 🗑 DELETE – JAUNE NÉON */
 .btn-delete {
-    -fx-background-color: #ffee58;
+    -fx-background-color: #6A0DAD;
 }
 .btn-delete:hover {
-    -fx-background-color: #fff176;
+    -fx-background-color: #1F51FF;
 }
 
 /* ❌ CANCEL – ROUGE */
 .btn-cancel {
-    -fx-background-color: #ff5252;
+    -fx-background-color: #2E1A47;
     -fx-text-fill: white;
 }
 .btn-cancel:hover {
-    -fx-background-color: #ff1744;
+    -fx-background-color: #1F51FF;
 }
 
 /* désactivé */
@@ -385,5 +385,32 @@
 .default-color3.chart-legend-item-symbol {
     -fx-background-color: #2E1A47;
 }
+.table-view {
+    -fx-background-color: transparent;
+}
 
+.table-view .column-header-background {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+}
+
+.table-row-cell {
+    -fx-background-color: transparent;
+}
+
+.table-row-cell:filled:selected {
+    -fx-background-color: rgba(255, 255, 255, 0.1);
+}
+
+.table-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+}
+
+.table-view .filler {
+    -fx-background-color: transparent;
+}
 

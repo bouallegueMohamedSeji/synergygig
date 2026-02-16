@@ -3,6 +3,7 @@ package tn.esprit.synergygig.controllers;
 import javafx.fxml.FXML;
 import javafx.scene.chart.*;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.animation.*;
@@ -38,6 +39,10 @@ public class DashboardController {
     @FXML private BarChart<String, Number> offerBarChart;
     @FXML
     private Pane animatedBackground;
+    @FXML private ProgressBar healthProgress;
+    @FXML private Label healthPercent;
+    @FXML private Label healthBadge;
+
 
 
     private final DashboardService service = new DashboardService();
@@ -48,6 +53,8 @@ public class DashboardController {
         animateCards();
         loadCharts();
         createStars();
+        loadPlatformHealth();
+
     }
 
     // ======================
@@ -227,5 +234,59 @@ public class DashboardController {
             animatedBackground.getChildren().add(star);
         }
     }
+    private void loadPlatformHealth() {
+
+        try {
+
+            int total = service.countAllOffers();
+            int completed = service.countByStatus(OfferStatus.COMPLETED);
+
+            if (total == 0) {
+                healthProgress.setProgress(0);
+                healthPercent.setText("0%");
+                healthBadge.setText("No Data");
+                return;
+            }
+
+            double score = (double) completed / total;
+            int percent = (int) (score * 100);
+
+            animateHealthBar(score, percent);
+
+            updateHealthBadge(percent);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    private void animateHealthBar(double target, int percent) {
+
+        Timeline timeline = new Timeline(
+                new KeyFrame(Duration.seconds(1),
+                        new KeyValue(healthProgress.progressProperty(), target)
+                )
+        );
+
+        timeline.play();
+
+        animateNumber(healthPercent, percent);
+    }
+    private void updateHealthBadge(int percent) {
+
+        if (percent >= 70) {
+            healthBadge.setText("🔥 Excellent");
+            healthBadge.setStyle("-fx-text-fill: #00f260;");
+        }
+        else if (percent >= 40) {
+            healthBadge.setText("⚠️ Average");
+            healthBadge.setStyle("-fx-text-fill: #ffee58;");
+        }
+        else {
+            healthBadge.setText("❌ Low");
+            healthBadge.setStyle("-fx-text-fill: #ff4d4d;");
+        }
+    }
+
+
 
 }

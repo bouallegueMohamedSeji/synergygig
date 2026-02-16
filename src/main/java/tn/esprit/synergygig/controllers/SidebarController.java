@@ -67,7 +67,7 @@ public class SidebarController {
             Circle star = new Circle(Math.random() * 2 + 0.5);
 
             star.setLayoutX(Math.random() * 250);
-            star.setLayoutY(Math.random() * 800);
+            star.setLayoutY(Math.random() * 1000);
 
             // 🌟 mélange blanc + bleu néon
             if (Math.random() > 0.5) {
