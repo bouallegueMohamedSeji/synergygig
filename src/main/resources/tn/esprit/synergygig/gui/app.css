@@ -1,0 +1,113 @@
+/* Global Dark Theme Base */
+.root {
+    -fx-background-color: #0f172a;
+    -fx-font-family: 'Segoe UI', sans-serif;
+}
+
+/* ListView Styles */
+.list-view {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-padding: 5 0;
+    /* Add vertical spacing between cells if needed, or rely on VBox spacing */
+}
+
+/* Remove default selection blue background */
+.list-cell:filled:selected:focused,
+.list-cell:filled:selected {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+}
+
+.list-cell:odd {
+    -fx-background-color: transparent;
+}
+
+.edge-to-edge .list-cell {
+    -fx-padding: 0;
+}
+
+/* ScrollBar Customization (Optional, for better look) */
+.list-view .scroll-bar:vertical .track,
+.list-view .scroll-bar:horizontal .track {
+    -fx-background-color: #1e293b;
+    -fx-border-color: transparent;
+    -fx-background-radius: 0;
+}
+
+.list-view .scroll-bar:vertical .thumb,
+.list-view .scroll-bar:horizontal .thumb {
+    -fx-background-color: #475569;
+    -fx-background-radius: 5;
+}
+
+/* Form Styles */
+.text-field,
+.text-area,
+.password-field,
+.combo-box {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #94a3b8;
+    -fx-background-radius: 5;
+    -fx-border-color: #334155;
+    -fx-border-radius: 5;
+    -fx-padding: 10;
+}
+
+.text-field:focused,
+.text-area:focused,
+.password-field:focused,
+.combo-box:focused {
+    -fx-border-color: #3b82f6;
+    -fx-effect: dropshadow(three-pass-box, rgba(59, 130, 246, 0.3), 5, 0, 0, 0);
+}
+
+.label {
+    -fx-text-fill: #e2e8f0;
+    -fx-font-size: 14px;
+}
+
+.title {
+    -fx-text-fill: white;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+/* Button Styles */
+.button {
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+    -fx-font-weight: bold;
+    -fx-padding: 10 20;
+}
+
+.btn-primary,
+.action-btn {
+    -fx-background-color: #3b82f6;
+    -fx-text-fill: white;
+}
+
+.btn-primary:hover,
+.action-btn:hover {
+    -fx-background-color: #2563eb;
+}
+
+.button-secondary {
+    -fx-background-color: transparent;
+    -fx-text-fill: #94a3b8;
+    -fx-border-color: #475569;
+    -fx-border-radius: 6;
+}
+
+.button-secondary:hover {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: white;
+}

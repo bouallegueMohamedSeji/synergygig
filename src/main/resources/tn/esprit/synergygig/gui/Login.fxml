@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox alignment="CENTER" spacing="20" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="tn.esprit.synergygig.controllers.LoginController" styleClass="root" stylesheets="@app.css">
+    
+    <Label text="Welcome Back" styleClass="title" />
+    <Label text="Login to your account" style="-fx-text-fill: #94a3b8; -fx-font-size: 14px;" />
+
+    <VBox spacing="10" maxWidth="350" alignment="CENTER_LEFT">
+        <Label text="Email" />
+        <TextField fx:id="emailField" promptText="Enter your email" />
+    </VBox>
+
+    <VBox spacing="10" maxWidth="350" alignment="CENTER_LEFT">
+        <Label text="Password" />
+        <PasswordField fx:id="passwordField" promptText="Enter your password" />
+    </VBox>
+
+    <Label fx:id="errorLabel" textFill="#ef4444" />
+
+    <Button text="Login" onAction="#handleLogin" styleClass="btn-primary" prefWidth="350" />
+    
+    <HBox alignment="CENTER" spacing="5">
+        <Label text="Don't have an account?" style="-fx-text-fill: #94a3b8;" />
+        <Hyperlink text="Sign up" onAction="#handleSignupLink" style="-fx-text-fill: #3b82f6; -fx-font-weight: bold;"/>
+    </HBox>
+</VBox>

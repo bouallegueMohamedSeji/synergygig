@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="15" style="-fx-padding:20"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="tn.esprit.synergygig.controllers.ApplicationsAdminController">
+
+    <Label text="📬 Candidatures reçues"
+           style="-fx-font-size:18; -fx-font-weight:bold; -fx-text-fill:white;" />
+
+    <TableView fx:id="applicationTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="colOffer" text="Offre" prefWidth="200"/>
+            <TableColumn fx:id="colApplicant" text="Candidat" prefWidth="150"/>
+            <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
+            <TableColumn fx:id="colActions" text="Actions" prefWidth="220"/>
+        </columns>
+    </TableView>
+
+</VBox>

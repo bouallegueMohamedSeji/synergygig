@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:controller="tn.esprit.synergygig.controllers.AddForumController"
+           stylesheets="@app.css"
+           styleClass="root">
+
+    <VBox spacing="20" maxWidth="600" alignment="CENTER" style="-fx-padding: 30; -fx-background-color: #1a2236; -fx-background-radius: 10; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 10, 0, 0, 5);">
+        
+        <Label text="Create New Topic" styleClass="title"/>
+
+        <TextField fx:id="titleField" promptText="Topic Title" styleClass="text-field"/>
+        
+        <TextArea fx:id="contentArea" promptText="What keeps your mind busy?" prefRowCount="10" styleClass="text-area" wrapText="true"/>
+
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button text="Cancel" onAction="#cancel" styleClass="button-secondary"/>
+            <Button text="Post Topic" onAction="#saveForum" styleClass="action-btn"/>
+        </HBox>
+
+    </VBox>
+
+</StackPane>

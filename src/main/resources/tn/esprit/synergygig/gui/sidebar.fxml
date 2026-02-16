@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.image.ImageView?>
+
+<StackPane
+        xmlns="http://javafx.com/javafx/21"
+        xmlns:fx="http://javafx.com/fxml"
+        fx:controller="tn.esprit.synergygig.controllers.SidebarController">
+
+    <!-- 🌌 Background Stars -->
+    <Pane fx:id="starsPane"/>
+
+    <!-- Sidebar Content -->
+    <VBox fx:id="sidebarContent"
+          spacing="20"
+          alignment="TOP_CENTER"
+          style="-fx-padding: 30;">
+
+        <!-- 🟣 LOGO -->
+        <ImageView fx:id="logoImage"
+                   fitWidth="190"
+                   preserveRatio="true" />
+
+        <Button text="🏠 Dashboard" onAction="#showDashboard" styleClass="sidebar-btn"/>
+        <Button text="📦 Offers" onAction="#showOffers" styleClass="sidebar-btn"/>
+        <Button text="📬 Applications" onAction="#showApplicationsAdmin" styleClass="sidebar-btn"/>
+        <Button text="🧑‍💻 Gig View" onAction="#goGigOffers" styleClass="sidebar-btn"/>
+        <Button text="💬 Community" onAction="#showForums" styleClass="sidebar-btn"/>
+
+        <!-- SPACER -->
+        <Pane VBox.vgrow="ALWAYS" />
+
+        <!-- LOGOUT -->
+        <Button text="🚪 Logout" onAction="#logout" styleClass="sidebar-btn" style="-fx-text-fill: #ff4d4d; -fx-font-weight: bold;"/>
+
+    </VBox>
+
+</StackPane>
