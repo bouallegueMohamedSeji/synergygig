@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="controllers.DashboardController" styleClass="window-root">
+
+    <!-- TOP BAR (Custom Window Title + App Nav) -->
+    <top>
+        <VBox spacing="0">
+            <!-- 1. Window Controls -->
+            <fx:include source="components/TitleBar.fxml"/>
+            
+            <!-- 2. App Navigation Bar -->
+            <HBox alignment="CENTER_LEFT" spacing="16" styleClass="topbar">
+                <padding><Insets top="12" right="24" bottom="12" left="24"/></padding>
+
+                <!-- Brand -->
+                <ImageView fitWidth="32" preserveRatio="true">
+                    <image>
+                        <Image url="@../images/synergygig_no_background.png"/>
+                    </image>
+                </ImageView>
+                <Label text="SynergyGig" styleClass="topbar-brand"/> 
+                
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="welcomeLabel" text="Welcome" styleClass="topbar-welcome"/>
+                <Label fx:id="roleLabel" text="ROLE" styleClass="topbar-role-badge"/>
+                <Button text="Logout" onAction="#handleLogout" styleClass="btn-logout"/>
+            </HBox>
+        </VBox>
+    </top>
+
+    <!-- SIDEBAR -->
+    <left>
+        <VBox fx:id="sidebar" spacing="4" styleClass="sidebar" prefWidth="240">
+            <padding><Insets top="16" right="8" bottom="16" left="8"/></padding>
+
+            <Label text="NAVIGATION" styleClass="sidebar-section-title"/>
+
+            <!-- Always visible -->
+            <Button fx:id="btnDashboard" text="🏠  Dashboard" onAction="#showDashboardHome"
+                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+
+            <Button fx:id="btnProfile" text="👤  My Profile" onAction="#showProfile"
+                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+
+            <!-- Admin Only -->
+            <Label fx:id="adminSectionLabel" text="ADMINISTRATION" styleClass="sidebar-section-title"
+                   managed="false" visible="false"/>
+
+            <Button fx:id="btnManageUsers" text="🛡️  Manage Users" onAction="#showManageUsers"
+                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
+                    managed="false" visible="false"/>
+
+            <!-- HR Only -->
+            <Label fx:id="hrSectionLabel" text="HR TOOLS" styleClass="sidebar-section-title"
+                   managed="false" visible="false"/>
+
+            <Button fx:id="btnHrDashboard" text="📋  HR Dashboard" onAction="#showHrDashboard"
+                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
+                    managed="false" visible="false"/>
+
+            <!-- Module Placeholders (visible based on role) -->
+            <Label text="MODULES" styleClass="sidebar-section-title"/>
+
+            <Button fx:id="btnMessages" text="💬  Messages" onAction="#showMessages"
+                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+
+            <Button fx:id="btnRecruitment" text="📅  Interviews" onAction="#showRecruitment"
+                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+
+            <Button fx:id="btnHrAdmin" text="📋  HR Admin" onAction="#showPlaceholder"
+                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
+                    managed="false" visible="false"/>
+
+            <Button fx:id="btnProjects" text="📊  Projects" onAction="#showPlaceholder"
+                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
+                    managed="false" visible="false"/>
+
+            <Button fx:id="btnCourses" text="📚  Courses" onAction="#showCourses"
+                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+
+            <Button fx:id="btnResources" text="📂  Resources" onAction="#showResources"
+                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+
+            <Button fx:id="btnCommunity" text="🏛️  Community" onAction="#showPlaceholder"
+                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+        </VBox>
+    </left>
+
+    <!-- MAIN CONTENT AREA -->
+    <center>
+        <StackPane fx:id="contentArea" styleClass="content-area">
+            <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
+
+            <!-- Default: Dashboard Home -->
+            <VBox fx:id="dashboardHome" spacing="20" alignment="TOP_LEFT">
+                <Label fx:id="dashboardTitle" text="Dashboard" styleClass="content-title"/>
+                <Label fx:id="dashboardSubtitle" text="Overview of your workspace" styleClass="content-subtitle"/>
+
+                <!-- Stats Cards Row -->
+                <HBox spacing="16" alignment="CENTER_LEFT">
+                    <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Total Users" styleClass="stat-label"/>
+                        <Label fx:id="statTotalUsers" text="0" styleClass="stat-value"/>
+                    </VBox>
+                    <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Active Employees" styleClass="stat-label"/>
+                        <Label fx:id="statEmployees" text="0" styleClass="stat-value"/>
+                    </VBox>
+                    <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Gig Workers" styleClass="stat-label"/>
+                        <Label fx:id="statGigWorkers" text="0" styleClass="stat-value"/>
+                    </VBox>
+                    <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                        <Label text="Your Role" styleClass="stat-label"/>
+                        <Label fx:id="statRole" text="-" styleClass="stat-value"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+        </StackPane>
+    </center>
+
+</BorderPane>

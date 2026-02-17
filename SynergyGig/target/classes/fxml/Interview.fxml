@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="controllers.InterviewController" spacing="20">
+    <padding><Insets top="10" right="20" bottom="10" left="20"/></padding>
+
+    <HBox alignment="CENTER_LEFT" spacing="16">
+        <VBox>
+            <Label text="Interviews" styleClass="content-title"/>
+            <Label text="Schedule and manage candidate interviews" styleClass="content-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="+ Schedule New" onAction="#showScheduleDialog" styleClass="btn-primary"/>
+    </HBox>
+
+    <TableView fx:id="interviewTable" VBox.vgrow="ALWAYS" styleClass="data-table">
+        <columns>
+            <TableColumn fx:id="colId" text="ID" prefWidth="50"/>
+            <TableColumn fx:id="colDate" text="Date &amp; Time" prefWidth="160"/>
+            <TableColumn fx:id="colStatus" text="Status" prefWidth="100"/>
+            <TableColumn fx:id="colLink" text="Meeting Link" prefWidth="250"/>
+            <TableColumn fx:id="colActions" text="Actions" prefWidth="150"/>
+        </columns>
+    </TableView>
+
+</VBox>

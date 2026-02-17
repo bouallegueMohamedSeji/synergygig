@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<HBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="controllers.ChatController" spacing="0" styleClass="chat-container">
+
+    <!-- Left: Rooms List -->
+    <VBox spacing="10" styleClass="chat-sidebar" prefWidth="250">
+        <padding><Insets top="16" right="12" bottom="16" left="12"/></padding>
+        
+        <Label text="Conversations" styleClass="sidebar-section-title"/>
+        
+        <HBox spacing="8">
+            <TextField fx:id="roomNameField" promptText="New room..." HBox.hgrow="ALWAYS" styleClass="input-field"/>
+            <Button text="+" onAction="#handleCreateRoom" styleClass="btn-small"/>
+        </HBox>
+        
+        <ListView fx:id="roomsList" VBox.vgrow="ALWAYS" styleClass="rooms-list"/>
+    </VBox>
+
+    <!-- Right: Chat Area -->
+    <VBox spacing="12" HBox.hgrow="ALWAYS" styleClass="chat-area">
+        <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+        
+        <!-- Header -->
+        <HBox alignment="CENTER_LEFT" spacing="12" styleClass="chat-header">
+            <Label fx:id="currentRoomLabel" text="Select a conversation" styleClass="content-subtitle"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="Refresh" onAction="#refreshMessages" styleClass="btn-secondary"/>
+        </HBox>
+        
+        <!-- Messages -->
+        <ScrollPane fx:id="messagesScroll" VBox.vgrow="ALWAYS" fitToWidth="true" styleClass="messages-scroll">
+            <content>
+                <VBox fx:id="messagesContainer" spacing="12">
+                    <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+                </VBox>
+            </content>
+        </ScrollPane>
+        
+        <!-- Input -->
+        <HBox spacing="12" alignment="CENTER_LEFT">
+            <TextField fx:id="messageField" promptText="Type a message..." HBox.hgrow="ALWAYS" styleClass="input-field"
+                       onAction="#handleSendMessage"/>
+            <Button text="Send" onAction="#handleSendMessage" styleClass="btn-primary"/>
+        </HBox>
+    </VBox>
+    
+</HBox>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="controllers.ProfileController" spacing="20" alignment="TOP_CENTER">
+    <padding><Insets top="10" right="40" bottom="10" left="40"/></padding>
+
+    <Label text="My Profile" styleClass="content-title"/>
+    <Label text="Update your personal information" styleClass="content-subtitle"/>
+
+    <VBox spacing="16" maxWidth="500" styleClass="profile-card">
+        <padding><Insets top="30" right="30" bottom="30" left="30"/></padding>
+
+        <VBox spacing="6" styleClass="input-group">
+            <Label text="First Name" styleClass="input-label"/>
+            <TextField fx:id="firstNameField" styleClass="input-field"/>
+        </VBox>
+
+        <VBox spacing="6" styleClass="input-group">
+            <Label text="Last Name" styleClass="input-label"/>
+            <TextField fx:id="lastNameField" styleClass="input-field"/>
+        </VBox>
+
+        <VBox spacing="6" styleClass="input-group">
+            <Label text="Email" styleClass="input-label"/>
+            <TextField fx:id="emailField" styleClass="input-field"/>
+        </VBox>
+
+        <VBox spacing="6" styleClass="input-group">
+            <Label text="Password" styleClass="input-label"/>
+            <PasswordField fx:id="passwordField" promptText="Leave empty to keep current" styleClass="input-field"/>
+        </VBox>
+
+        <VBox spacing="6" styleClass="input-group">
+            <Label text="Role" styleClass="input-label"/>
+            <TextField fx:id="roleField" styleClass="input-field" editable="false"/>
+        </VBox>
+
+        <Label fx:id="statusLabel" styleClass="success-label" text="" managed="false" visible="false"/>
+
+        <Button text="Save Changes" onAction="#handleSave" styleClass="btn-primary" maxWidth="Infinity"/>
+    </VBox>
+</VBox>

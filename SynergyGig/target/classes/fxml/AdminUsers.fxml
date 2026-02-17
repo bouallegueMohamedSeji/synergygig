@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="controllers.AdminUsersController" spacing="20">
+    <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+
+    <Label text="User Management" styleClass="content-title"/>
+    <Label text="Manage all platform users — activate, deactivate, and promote roles." styleClass="content-subtitle"/>
+
+    <!-- Action Bar -->
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <TextField fx:id="searchField" promptText="Search by name or email..." styleClass="input-field"
+                   HBox.hgrow="ALWAYS" onKeyReleased="#handleSearch"/>
+        <ComboBox fx:id="filterRoleCombo" promptText="Filter by role" styleClass="input-field"
+                  onAction="#handleFilter"/>
+        <Button text="Refresh" onAction="#refreshTable" styleClass="btn-secondary"/>
+    </HBox>
+
+    <!-- Users Table -->
+    <TableView fx:id="usersTable" VBox.vgrow="ALWAYS" styleClass="data-table">
+        <columns>
+            <TableColumn fx:id="colId" text="ID" prefWidth="50"/>
+            <TableColumn fx:id="colFirstName" text="First Name" prefWidth="120"/>
+            <TableColumn fx:id="colLastName" text="Last Name" prefWidth="120"/>
+            <TableColumn fx:id="colEmail" text="Email" prefWidth="220"/>
+            <TableColumn fx:id="colRole" text="Role" prefWidth="140"/>
+            <TableColumn fx:id="colCreatedAt" text="Created" prefWidth="150"/>
+            <TableColumn fx:id="colActions" text="Actions" prefWidth="180"/>
+        </columns>
+    </TableView>
+
+</VBox>

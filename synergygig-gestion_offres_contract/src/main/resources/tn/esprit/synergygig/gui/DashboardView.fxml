@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<StackPane
+        xmlns="http://javafx.com/javafx/21"
+        xmlns:fx="http://javafx.com/fxml"
+        fx:controller="tn.esprit.synergygig.controllers.DashboardController">
+
+    <!-- 🌌 Galaxy Background -->
+    <Pane fx:id="animatedBackground"/>
+
+    <!-- CONTENT -->
+    <VBox spacing="30" style="-fx-padding: 40;">
+
+        <Label text="🚀 SynergyGig Dashboard"
+               style="-fx-text-fill: white;
+                      -fx-font-size:26;
+                      -fx-font-weight:bold;" />
+
+        <!-- Stats Cards -->
+        <HBox spacing="25">
+
+            <VBox fx:id="cardTotal" styleClass="stat-card stat-total">
+                <Label text="Total Offers" styleClass="stat-title"/>
+                <Label fx:id="totalOffers" text="0" styleClass="stat-value"/>
+            </VBox>
+
+            <VBox fx:id="cardPublished" styleClass="stat-card stat-published">
+                <Label text="Published" styleClass="stat-title"/>
+                <Label fx:id="publishedOffers" text="0" styleClass="stat-value"/>
+            </VBox>
+
+            <VBox fx:id="cardProgress" styleClass="stat-card stat-progress">
+                <Label text="In Progress" styleClass="stat-title"/>
+                <Label fx:id="inProgressOffers" text="0" styleClass="stat-value"/>
+            </VBox>
+
+            <VBox fx:id="cardCompleted" styleClass="stat-card stat-completed">
+                <Label text="Completed" styleClass="stat-title"/>
+                <Label fx:id="completedOffers" text="0" styleClass="stat-value"/>
+            </VBox>
+
+            <VBox fx:id="cardCancelled" styleClass="stat-card stat-cancelled">
+                <Label text="Cancelled" styleClass="stat-title"/>
+                <Label fx:id="cancelledOffers" text="0" styleClass="stat-value"/>
+            </VBox>
+
+        </HBox>
+
+        <!-- Charts -->
+        <HBox spacing="40">
+
+            <PieChart fx:id="offerPieChart" prefWidth="400"/>
+
+            <BarChart fx:id="offerBarChart"
+                      prefWidth="500"
+                      categoryGap="20"
+                      barGap="5">
+                <xAxis>
+                    <CategoryAxis/>
+                </xAxis>
+                <yAxis>
+                    <NumberAxis/>
+                </yAxis>
+            </BarChart>
+
+        </HBox>
+
+        <!-- Platform Health Score -->
+        <VBox spacing="15" style="-fx-padding: 20;">
+
+            <Label text="📊 SynergyGig Health Score"
+                   style="-fx-text-fill: white;
+                          -fx-font-size:20;
+                          -fx-font-weight:bold;" />
+
+            <ProgressBar fx:id="healthProgress"
+                         prefWidth="400"
+                         progress="0"/>
+
+            <Label fx:id="healthPercent"
+                   text="0%"
+                   style="-fx-text-fill: white;
+                          -fx-font-size:16;" />
+
+            <Label fx:id="healthBadge"
+                   text=""
+                   style="-fx-font-size:16;
+                          -fx-font-weight:bold;" />
+
+        </VBox>
+
+    </VBox>
+
+</StackPane>

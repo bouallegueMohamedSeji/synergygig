@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox spacing="12"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="tn.esprit.synergygig.controllers.EditOfferController">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="✏ Edit Offer"
+           style="-fx-font-size:16; -fx-font-weight:bold;" />
+
+    <TextField fx:id="titleField" promptText="Title"/>
+    <TextArea fx:id="descriptionField" promptText="Description"/>
+
+    <ComboBox fx:id="typeBox" promptText="Type"/>
+    <ComboBox fx:id="statusBox" promptText="Status"/>
+
+    <HBox spacing="10">
+        <Button text="Save" onAction="#handleSave"/>
+        <Button text="Cancel" onAction="#handleCancel"/>
+    </HBox>
+
+</VBox>

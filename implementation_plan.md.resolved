@@ -1,0 +1,86 @@
+# SynergyGig - User Module Implementation Plan (v3)
+
+## Goal
+Build the **application skeleton** + User module so teammates can plug in their modules.
+
+---
+
+## Role Hierarchy & Dashboard Routing
+
+```mermaid
+flowchart TD
+    A[Login / Signup] --> B{Authentication}
+    B -->|Failed| A
+    B -->|Success| C{User Role}
+    C -->|ADMIN| D["🛡️ Admin Dashboard<br/>User CRUD, Role Management,<br/>Promote HR→Admin"]
+    C -->|HR_MANAGER| E["📋 HR Dashboard<br/>Employee oversight + HR tools<br/>(Attendance, Leave, Payroll placeholders)"]
+    C -->|EMPLOYEE| F["👤 Employee Dashboard<br/>Profile, basic features"]
+    C -->|PROJECT_OWNER| G["📊 Employee Dashboard + Projects/Tasks<br/>(Employee with extra section)"]
+    C -->|GIG_WORKER| H["💼 Gig Dashboard<br/>Browse offers, applications, contracts"]
+```
+
+### Signup Rules
+- **Available roles at signup**: `EMPLOYEE`, `PROJECT_OWNER`, `GIG_WORKER`
+- ❌ **ADMIN** → Only created via DB seed or promoted by existing Admin
+- ❌ **HR_MANAGER** → Promoted by Admin only
+
+### Role Promotion Flow
+- Admin can promote: `EMPLOYEE` → `HR_MANAGER` → `ADMIN`
+- Admin can demote/deactivate any non-admin user
+
+---
+
+## Project Structure
+
+```
+SynergyGig/
+├── pom.xml
+├── src/main/java/
+│   ├── entities/        ← User.java, Message.java
+│   ├── services/        ← IService.java, ServiceUser.java, ServiceMessage.java
+│   ├── controllers/     ← Login, Signup, Dashboard, AdminUsers controllers
+│   ├── utils/           ← MyDatabase.java, SessionManager.java
+│   └── mains/           ← MainFX.java
+├── src/main/resources/
+│   ├── fxml/            ← Login, Signup, Dashboard, AdminUsers FXML
+│   └── css/             ← style.css
+└── src/test/java/services/  ← ServiceUserTest.java
+```
+
+---
+
+## Build Order
+
+| Step | What | Files |
+|------|------|-------|
+| 1 | Maven project + pom.xml | [pom.xml](file:///c:/Users/seji/Desktop/pi/WorkshopJdbc-3A14/pom.xml) |
+| 2 | DB singleton | [MyDatabase.java](file:///c:/Users/seji/Desktop/pi/WorkshopJdbc-3A14/src/main/java/utils/MyDatabase.java) |
+| 3 | Entities | `User.java`, `Message.java` |
+| 4 | Service interface | [IService.java](file:///c:/Users/seji/Desktop/pi/WorkshopJdbc-3A14/src/main/java/services/IService.java) |
+| 5 | User service (CRUD + login) | `ServiceUser.java` |
+| 6 | Unit tests | `ServiceUserTest.java` |
+| 7 | Session tracker | `SessionManager.java` |
+| 8 | App entry point | `MainFX.java` |
+| 9 | Login UI | `Login.fxml` + `LoginController.java` |
+| 10 | Signup UI (no Admin/HR roles) | `Signup.fxml` + `SignupController.java` |
+| 11 | Dashboard (role-based) | `Dashboard.fxml` + `DashboardController.java` |
+| 12 | Admin user management | `AdminUsers.fxml` + `AdminUsersController.java` |
+| 13 | Styling | `style.css` |
+
+---
+
+## Skeleton Design (For Teammates)
+
+> [!IMPORTANT]
+> The Dashboard will have a **sidebar with placeholder sections** for each module. Teammates plug their FXML into the content area.
+
+| Sidebar Section | Module Owner | Placeholder |
+|----------------|-------------|-------------|
+| 💬 Messages | You (Module 1) | Implemented |
+| 📝 Recruitment | Teammate (Module 2) | Empty pane |
+| 📋 HR Admin | Teammate (Module 3) | Empty pane |
+| 📊 Projects | Teammate (Module 4) | Empty pane |
+| 🎓 Training | Teammate (Module 5) | Empty pane |
+| 🏛️ Community | Teammate (Module 6) | Empty pane |
+
+Each section loads dynamically based on role visibility.
