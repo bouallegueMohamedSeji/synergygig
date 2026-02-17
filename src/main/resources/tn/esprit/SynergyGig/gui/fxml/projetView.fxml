@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="tn.esprit.SynergyGig.Controller.ProjetController"
+      spacing="20"
+      style="-fx-background-color: #f0f2f5;">
+
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <!-- HEADER -->
+    <HBox alignment="CENTER_LEFT" spacing="15">
+        <Label text="📊 Gestion des Projets"
+               style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
+    </HBox>
+
+    <Separator/>
+
+    <!-- FORMULAIRE -->
+    <VBox spacing="15"
+          style="-fx-background-color: white; -fx-background-radius: 10; -fx-padding: 20;
+                 -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);">
+
+        <Label text="➕ Nouveau Projet"
+               style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #34495e;"/>
+
+        <!-- Ligne 1 -->
+        <HBox spacing="15" alignment="CENTER_LEFT">
+            <VBox spacing="5" HBox.hgrow="ALWAYS">
+                <Label text="Nom du projet *" style="-fx-font-weight: bold; -fx-text-fill: #555;"/>
+                <TextField fx:id="nomField"
+                           promptText="Ex: Application Mobile SynergyGig"
+                           prefWidth="300"
+                           style="-fx-border-color: #ddd; -fx-border-radius: 5px;
+                                  -fx-background-radius: 5px; -fx-padding: 8px 12px;"/>
+            </VBox>
+
+            <VBox spacing="5">
+                <Label text="Statut *" style="-fx-font-weight: bold; -fx-text-fill: #555;"/>
+                <ComboBox fx:id="statutBox"
+                          promptText="Sélectionner..."
+                          prefWidth="180"
+                          style="-fx-border-color: #ddd; -fx-border-radius: 5px;"/>
+            </VBox>
+
+            <VBox spacing="5">
+                <Label text="Budget (TND) *" style="-fx-font-weight: bold; -fx-text-fill: #555;"/>
+                <TextField fx:id="budgetField"
+                           promptText="Ex: 5000"
+                           prefWidth="150"
+                           style="-fx-border-color: #ddd; -fx-border-radius: 5px;
+                                  -fx-background-radius: 5px; -fx-padding: 8px 12px;"/>
+            </VBox>
+        </HBox>
+
+        <!-- Ligne 2 -->
+        <HBox spacing="15" alignment="CENTER_LEFT">
+            <VBox spacing="5">
+                <Label text="Date de début *" style="-fx-font-weight: bold; -fx-text-fill: #555;"/>
+                <DatePicker fx:id="dateDebutPicker"
+                            promptText="Sélectionner..."
+                            prefWidth="200"
+                            style="-fx-border-color: #ddd; -fx-border-radius: 5px;"/>
+            </VBox>
+
+            <VBox spacing="5">
+                <Label text="Date de fin *" style="-fx-font-weight: bold; -fx-text-fill: #555;"/>
+                <DatePicker fx:id="dateFinPicker"
+                            promptText="Sélectionner..."
+                            prefWidth="200"
+                            style="-fx-border-color: #ddd; -fx-border-radius: 5px;"/>
+            </VBox>
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <VBox spacing="5" alignment="BOTTOM_RIGHT">
+                <Label text=" "/>
+                <HBox spacing="10">
+                    <Button fx:id="btnAjouter"
+                            text="➕ Ajouter"
+                            onAction="#ajouterProjet"
+                            prefWidth="150"
+                            style="-fx-background-color: #3498db; -fx-text-fill: white;
+                                   -fx-font-weight: bold; -fx-font-size: 14px;
+                                   -fx-padding: 10px 20px; -fx-background-radius: 6px; -fx-cursor: hand;"/>
+
+                    <Button text="🔄 Réinitialiser"
+                            onAction="#annulerModification"
+                            prefWidth="150"
+                            style="-fx-background-color: #95a5a6; -fx-text-fill: white;
+                                   -fx-font-weight: bold; -fx-font-size: 14px;
+                                   -fx-padding: 10px 20px; -fx-background-radius: 6px; -fx-cursor: hand;"/>
+                </HBox>
+            </VBox>
+        </HBox>
+
+        <Label text="* Champs obligatoires" style="-fx-text-fill: #999; -fx-font-size: 11px;"/>
+    </VBox>
+
+    <!-- TABLEAU -->
+    <VBox spacing="10" VBox.vgrow="ALWAYS"
+          style="-fx-background-color: white; -fx-background-radius: 10; -fx-padding: 20;
+                 -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);">
+
+        <Label text="📋 Liste des Projets"
+               style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #34495e;"/>
+
+        <TableView fx:id="projetTable" VBox.vgrow="ALWAYS">
+            <columns>
+                <TableColumn fx:id="colId"       text="ID"           prefWidth="50"/>
+                <TableColumn fx:id="colNom"       text="Nom du Projet" prefWidth="220"/>
+                <TableColumn fx:id="colStatut"    text="Statut"       prefWidth="110"/>
+                <TableColumn fx:id="colBudget"    text="Budget (TND)" prefWidth="120"/>
+                <TableColumn fx:id="colDateDebut" text="Date Début"   prefWidth="110"/>
+                <TableColumn fx:id="colDateFin"   text="Date Fin"     prefWidth="110"/>
+                <!-- ✅ prefWidth augmenté pour les 3 boutons -->
+                <TableColumn fx:id="colActions"   text="Actions"      prefWidth="310"/>
+            </columns>
+
+            <placeholder>
+                <Label text="Aucun projet disponible. Ajoutez-en un !"
+                       style="-fx-text-fill: #999; -fx-font-size: 14px;"/>
+            </placeholder>
+        </TableView>
+    </VBox>
+
+</VBox>

@@ -1,0 +1,193 @@
+/* ============================================
+   STYLE.CSS - SynergyGig Application
+   ============================================ */
+
+/* === COULEURS PRINCIPALES === */
+/*
+   Bleu: #3498db
+   Vert: #4CAF50
+   Rouge: #f44336
+   Gris foncé: #2c3e50
+*/
+
+/* === GÉNÉRAL === */
+.root {
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-font-size: 13px;
+}
+
+/* === CHAMPS DE TEXTE === */
+.custom-text-field {
+    -fx-background-color: white;
+    -fx-border-color: #ddd;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+    -fx-padding: 8px 12px;
+    -fx-font-size: 13px;
+}
+
+.custom-text-field:focused {
+    -fx-border-color: #3498db;
+    -fx-border-width: 2px;
+}
+
+/* === COMBOBOX === */
+.custom-combo {
+    -fx-background-color: white;
+    -fx-border-color: #ddd;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+}
+
+.custom-combo:focused {
+    -fx-border-color: #3498db;
+    -fx-border-width: 2px;
+}
+
+/* === DATE PICKER === */
+.custom-date-picker {
+    -fx-background-color: white;
+    -fx-border-color: #ddd;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+}
+
+.custom-date-picker:focused {
+    -fx-border-color: #3498db;
+    -fx-border-width: 2px;
+}
+
+/* === BOUTONS === */
+.btn-primary {
+    -fx-background-color: #3498db;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-padding: 10px 20px;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 5, 0, 0, 2);
+}
+
+.btn-primary:hover {
+    -fx-background-color: #2980b9;
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+.btn-primary:pressed {
+    -fx-background-color: #21618c;
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+
+.btn-secondary {
+    -fx-background-color: #95a5a6;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-padding: 10px 20px;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+}
+
+.btn-secondary:hover {
+    -fx-background-color: #7f8c8d;
+}
+
+/* === TABLE === */
+.custom-table {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.custom-table .table-view {
+    -fx-background-color: white;
+}
+
+/* En-tête du tableau */
+.custom-table .column-header {
+    -fx-background-color: #34495e;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-padding: 10px;
+}
+
+.custom-table .column-header-background {
+    -fx-background-color: #34495e;
+}
+
+.custom-table .column-header .label {
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+/* Lignes du tableau */
+.custom-table .table-row-cell {
+    -fx-background-color: white;
+    -fx-border-color: transparent;
+    -fx-padding: 5px;
+}
+
+.custom-table .table-row-cell:odd {
+    -fx-background-color: #f8f9fa;
+}
+
+.custom-table .table-row-cell:selected {
+    -fx-background-color: #e3f2fd;
+    -fx-text-fill: #2c3e50;
+}
+
+.custom-table .table-row-cell:hover {
+    -fx-background-color: #ecf0f1;
+    -fx-cursor: hand;
+}
+
+/* Cellules */
+.custom-table .table-cell {
+    -fx-padding: 8px;
+    -fx-alignment: CENTER_LEFT;
+}
+
+/* Alignement des colonnes */
+.table-column-center .table-cell {
+    -fx-alignment: CENTER;
+}
+
+.table-column-right .table-cell {
+    -fx-alignment: CENTER_RIGHT;
+}
+
+/* Placeholder (quand le tableau est vide) */
+.custom-table .placeholder {
+    -fx-background-color: transparent;
+}
+
+/* === SCROLLBAR === */
+.custom-table .scroll-bar:vertical {
+    -fx-background-color: transparent;
+}
+
+.custom-table .scroll-bar:vertical .thumb {
+    -fx-background-color: #bdc3c7;
+    -fx-background-radius: 5px;
+}
+
+.custom-table .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #95a5a6;
+}
+
+/* === SEPARATOR === */
+.separator {
+    -fx-background-color: #ddd;
+}
+
+/* === ANIMATIONS === */
+.btn-primary,
+.btn-secondary {
+    -fx-transition: all 0.2s ease;
+}
