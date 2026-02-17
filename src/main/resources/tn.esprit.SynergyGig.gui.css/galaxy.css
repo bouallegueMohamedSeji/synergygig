@@ -1,0 +1,448 @@
+/* =============================================
+   SYNERGYGIG — GALAXY THEME CSS
+   Couleurs : #0a0e1a (fond), #6c63ff (violet),
+              #00d4ff (cyan), #ff6b9d (rose néon)
+   ============================================= */
+
+/* ---- ROOT VARIABLES ---- */
+.root {
+    -fx-font-family: "Segoe UI";
+    -galaxy-bg:       #0a0e1a;
+    -galaxy-card:     rgba(255,255,255,0.05);
+    -galaxy-border:   rgba(108,99,255,0.4);
+    -galaxy-violet:   #6c63ff;
+    -galaxy-cyan:     #00d4ff;
+    -galaxy-rose:     #ff6b9d;
+    -galaxy-text:     #e8eaf6;
+    -galaxy-muted:    rgba(232,234,246,0.5);
+}
+
+/* =============================================
+   SIDEBAR
+   ============================================= */
+.sidebar {
+    -fx-background-color: #080c18;
+    -fx-border-color: rgba(108,99,255,0.3);
+    -fx-border-width: 0 1 0 0;
+}
+
+.sidebar-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: rgba(232,234,246,0.75);
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 12 20 12 20;
+    -fx-alignment: CENTER_LEFT;
+    -fx-cursor: hand;
+    -fx-background-radius: 8;
+    -fx-border-color: transparent;
+    -fx-min-width: 190px;
+    -fx-pref-width: 190px;
+}
+
+.sidebar-btn:hover {
+    -fx-background-color: rgba(108,99,255,0.2);
+    -fx-text-fill: #e8eaf6;
+    -fx-border-color: rgba(108,99,255,0.5);
+    -fx-border-radius: 8;
+    -fx-effect: dropshadow(gaussian, #6c63ff, 8, 0.3, 0, 0);
+}
+
+.sidebar-btn-active {
+    -fx-background-color: rgba(108,99,255,0.3);
+    -fx-text-fill: #6c63ff;
+    -fx-border-color: #6c63ff;
+    -fx-border-radius: 8;
+    -fx-effect: dropshadow(gaussian, #6c63ff, 12, 0.5, 0, 0);
+}
+
+.sidebar-logo-label {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #6c63ff;
+    -fx-effect: dropshadow(gaussian, #6c63ff, 15, 0.6, 0, 0);
+}
+
+.sidebar-separator {
+    -fx-background-color: rgba(108,99,255,0.25);
+}
+
+/* =============================================
+   HEADER
+   ============================================= */
+.header-bar {
+    -fx-background-color: rgba(8,12,24,0.95);
+    -fx-border-color: rgba(0,212,255,0.2);
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 0 24 0 24;
+    -fx-min-height: 60px;
+    -fx-pref-height: 60px;
+}
+
+.header-title {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e8eaf6;
+}
+
+.header-badge {
+    -fx-background-color: rgba(108,99,255,0.25);
+    -fx-text-fill: #6c63ff;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 4 12 4 12;
+    -fx-background-radius: 20;
+    -fx-border-color: rgba(108,99,255,0.5);
+    -fx-border-radius: 20;
+}
+
+.header-admin-label {
+    -fx-text-fill: rgba(232,234,246,0.6);
+    -fx-font-size: 13px;
+}
+
+/* =============================================
+   CONTENU PRINCIPAL (projetView)
+   ============================================= */
+.main-content {
+    -fx-background-color: #0a0e1a;
+    -fx-padding: 28;
+}
+
+/* Titre page */
+.page-title {
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e8eaf6;
+    -fx-effect: dropshadow(gaussian, #6c63ff, 10, 0.3, 0, 0);
+}
+
+/* =============================================
+   CARDS (formulaire + tableau)
+   ============================================= */
+.galaxy-card {
+    -fx-background-color: rgba(255,255,255,0.04);
+    -fx-background-radius: 12;
+    -fx-border-color: rgba(108,99,255,0.35);
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-padding: 22;
+    -fx-effect: dropshadow(gaussian, rgba(108,99,255,0.15), 20, 0, 0, 4);
+}
+
+.card-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #00d4ff;
+    -fx-effect: dropshadow(gaussian, #00d4ff, 6, 0.3, 0, 0);
+}
+
+/* =============================================
+   LABELS DE FORMULAIRE
+   ============================================= */
+.form-label {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: rgba(232,234,246,0.7);
+    -fx-padding: 0 0 2 0;
+}
+
+.required-note {
+    -fx-text-fill: rgba(232,234,246,0.35);
+    -fx-font-size: 11px;
+}
+
+/* =============================================
+   CHAMPS TEXTE
+   ============================================= */
+.galaxy-field {
+    -fx-background-color: rgba(255,255,255,0.06);
+    -fx-text-fill: #e8eaf6;
+    -fx-prompt-text-fill: rgba(232,234,246,0.3);
+    -fx-border-color: rgba(108,99,255,0.4);
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 9 14 9 14;
+    -fx-font-size: 13px;
+}
+
+.galaxy-field:focused {
+    -fx-border-color: #6c63ff;
+    -fx-background-color: rgba(108,99,255,0.1);
+    -fx-effect: dropshadow(gaussian, #6c63ff, 8, 0.25, 0, 0);
+}
+
+/* =============================================
+   COMBOBOX
+   ============================================= */
+.galaxy-combo .combo-box {
+    -fx-background-color: rgba(255,255,255,0.06);
+    -fx-text-fill: #e8eaf6;
+    -fx-border-color: rgba(108,99,255,0.4);
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 4 10 4 10;
+}
+
+.galaxy-combo .combo-box:focused {
+    -fx-border-color: #6c63ff;
+    -fx-effect: dropshadow(gaussian, #6c63ff, 8, 0.25, 0, 0);
+}
+
+.galaxy-combo .combo-box .label {
+    -fx-text-fill: #e8eaf6;
+    -fx-font-size: 13px;
+}
+
+.galaxy-combo .combo-box .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.galaxy-combo .combo-box .arrow {
+    -fx-background-color: #6c63ff;
+}
+
+.galaxy-combo .list-view {
+    -fx-background-color: #10162a;
+    -fx-border-color: rgba(108,99,255,0.5);
+    -fx-border-radius: 8;
+}
+
+.galaxy-combo .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #e8eaf6;
+    -fx-padding: 8 14 8 14;
+    -fx-font-size: 13px;
+}
+
+.galaxy-combo .list-cell:hover {
+    -fx-background-color: rgba(108,99,255,0.25);
+    -fx-text-fill: #fff;
+}
+
+/* =============================================
+   DATEPICKER
+   ============================================= */
+.galaxy-date .date-picker {
+    -fx-background-color: rgba(255,255,255,0.06);
+    -fx-border-color: rgba(108,99,255,0.4);
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.galaxy-date .date-picker .text-field {
+    -fx-background-color: transparent;
+    -fx-text-fill: #e8eaf6;
+    -fx-prompt-text-fill: rgba(232,234,246,0.3);
+    -fx-padding: 9 10 9 14;
+    -fx-font-size: 13px;
+}
+
+.galaxy-date .date-picker .arrow-button {
+    -fx-background-color: rgba(108,99,255,0.2);
+    -fx-background-radius: 0 8 8 0;
+}
+
+.galaxy-date .date-picker .arrow-button .arrow {
+    -fx-background-color: #6c63ff;
+}
+
+/* =============================================
+   BOUTONS
+   ============================================= */
+
+/* Bouton AJOUTER — violet néon */
+.btn-add {
+    -fx-background-color: linear-gradient(to right, #6c63ff, #4a42d4);
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-padding: 10 24 10 24;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, #6c63ff, 12, 0.4, 0, 2);
+}
+
+.btn-add:hover {
+    -fx-background-color: linear-gradient(to right, #7d75ff, #5a52e0);
+    -fx-effect: dropshadow(gaussian, #6c63ff, 20, 0.6, 0, 0);
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+/* Bouton RESET — gris spatial */
+.btn-reset {
+    -fx-background-color: rgba(255,255,255,0.08);
+    -fx-text-fill: rgba(232,234,246,0.8);
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-padding: 10 24 10 24;
+    -fx-background-radius: 8;
+    -fx-border-color: rgba(232,234,246,0.2);
+    -fx-border-radius: 8;
+    -fx-cursor: hand;
+}
+
+.btn-reset:hover {
+    -fx-background-color: rgba(255,255,255,0.14);
+    -fx-text-fill: #e8eaf6;
+    -fx-border-color: rgba(232,234,246,0.4);
+}
+
+/* Bouton MODIFIER — vert cyan */
+.btn-edit {
+    -fx-background-color: rgba(0,212,255,0.15);
+    -fx-text-fill: #00d4ff;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 5 12 5 12;
+    -fx-background-radius: 6;
+    -fx-border-color: rgba(0,212,255,0.5);
+    -fx-border-radius: 6;
+    -fx-cursor: hand;
+}
+
+.btn-edit:hover {
+    -fx-background-color: rgba(0,212,255,0.3);
+    -fx-effect: dropshadow(gaussian, #00d4ff, 8, 0.4, 0, 0);
+}
+
+/* Bouton SUPPRIMER — rose néon */
+.btn-delete {
+    -fx-background-color: rgba(255,107,157,0.15);
+    -fx-text-fill: #ff6b9d;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 5 12 5 12;
+    -fx-background-radius: 6;
+    -fx-border-color: rgba(255,107,157,0.5);
+    -fx-border-radius: 6;
+    -fx-cursor: hand;
+}
+
+.btn-delete:hover {
+    -fx-background-color: rgba(255,107,157,0.3);
+    -fx-effect: dropshadow(gaussian, #ff6b9d, 8, 0.4, 0, 0);
+}
+
+/* Bouton VOIR TACHES — violet clair */
+.btn-tasks {
+    -fx-background-color: rgba(108,99,255,0.15);
+    -fx-text-fill: #a89cff;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 5 12 5 12;
+    -fx-background-radius: 6;
+    -fx-border-color: rgba(108,99,255,0.5);
+    -fx-border-radius: 6;
+    -fx-cursor: hand;
+}
+
+.btn-tasks:hover {
+    -fx-background-color: rgba(108,99,255,0.3);
+    -fx-effect: dropshadow(gaussian, #6c63ff, 8, 0.4, 0, 0);
+}
+
+/* Bouton RETOUR (dans tache view) */
+.btn-back {
+    -fx-background-color: rgba(255,255,255,0.06);
+    -fx-text-fill: rgba(232,234,246,0.7);
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 7 16 7 16;
+    -fx-background-radius: 7;
+    -fx-border-color: rgba(232,234,246,0.2);
+    -fx-border-radius: 7;
+    -fx-cursor: hand;
+}
+
+.btn-back:hover {
+    -fx-background-color: rgba(255,255,255,0.12);
+    -fx-text-fill: #e8eaf6;
+}
+
+/* =============================================
+   TABLEVIEW TRANSPARENT GALAXY
+   ============================================= */
+.galaxy-table {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(108,99,255,0.3);
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 0;
+}
+
+.galaxy-table .column-header-background {
+    -fx-background-color: rgba(108,99,255,0.15);
+    -fx-background-radius: 8 8 0 0;
+}
+
+.galaxy-table .column-header {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(108,99,255,0.2);
+    -fx-border-width: 0 0 1 0;
+    -fx-size: 40;
+}
+
+.galaxy-table .column-header .label {
+    -fx-text-fill: #00d4ff;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+}
+
+.galaxy-table .table-row-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: rgba(108,99,255,0.1);
+    -fx-border-width: 0 0 1 0;
+    -fx-table-cell-border-color: transparent;
+}
+
+.galaxy-table .table-row-cell:hover {
+    -fx-background-color: rgba(108,99,255,0.12);
+}
+
+.galaxy-table .table-row-cell:selected {
+    -fx-background-color: rgba(108,99,255,0.25);
+    -fx-effect: dropshadow(gaussian, rgba(108,99,255,0.3), 4, 0, 0, 0);
+}
+
+.galaxy-table .table-cell {
+    -fx-text-fill: rgba(232,234,246,0.85);
+    -fx-font-size: 13px;
+    -fx-border-color: transparent;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 0 10 0 10;
+}
+
+.galaxy-table .table-row-cell:empty {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+/* Scrollbar */
+.galaxy-table .scroll-bar:vertical {
+    -fx-background-color: rgba(108,99,255,0.08);
+    -fx-pref-width: 8px;
+}
+
+.galaxy-table .scroll-bar:vertical .thumb {
+    -fx-background-color: rgba(108,99,255,0.5);
+    -fx-background-radius: 4;
+}
+
+.galaxy-table .scroll-bar:vertical .track {
+    -fx-background-color: transparent;
+}
+
+/* placeholder vide */
+.galaxy-table .placeholder .label {
+    -fx-text-fill: rgba(232,234,246,0.3);
+    -fx-font-size: 14px;
+}
+
+/* =============================================
+   SEPARATEUR
+   ============================================= */
+.galaxy-separator {
+    -fx-background-color: rgba(108,99,255,0.25);
+}

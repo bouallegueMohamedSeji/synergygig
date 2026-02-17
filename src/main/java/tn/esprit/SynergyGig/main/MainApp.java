@@ -10,11 +10,14 @@ public class MainApp extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         FXMLLoader loader = new FXMLLoader(
-                getClass().getResource("/tn/esprit/SynergyGig/gui/fxml/projetView.fxml")
+                getClass().getResource("/tn/esprit/SynergyGig/gui/fxml/MainLayout.fxml")
         );
 
-        stage.setScene(new Scene(loader.load()));
-        stage.setTitle("Gestion des Projets");
+        Scene scene = new Scene(loader.load(), 1200, 750);
+        stage.setScene(scene);
+        stage.setTitle("SynergyGig — Galaxy Edition");
+        stage.setMinWidth(900);
+        stage.setMinHeight(600);
         stage.show();
     }
 

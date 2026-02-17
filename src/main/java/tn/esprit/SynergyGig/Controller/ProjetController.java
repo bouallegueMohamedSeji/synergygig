@@ -4,6 +4,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -62,8 +63,10 @@ public class ProjetController {
     }
 
     /**
-     * Crée 3 boutons dans chaque ligne :
-     * [✏️ Modifier] [🗑️ Supprimer] [📋 Voir Tâches]
+     * ✅ MODIFIÉ : utilise les classes CSS galaxy au lieu des styles inline
+     * btn-edit    → Modifier  (cyan néon)
+     * btn-delete  → Supprimer (rose néon)
+     * btn-tasks   → Voir Tâches (violet)
      */
     private void ajouterBoutonsActions() {
         colActions.setCellFactory(new Callback<>() {
@@ -71,25 +74,21 @@ public class ProjetController {
             public TableCell<Projet, Void> call(TableColumn<Projet, Void> param) {
                 return new TableCell<>() {
 
-                    private final Button btnModifier    = new Button("✏️ Modifier");
-                    private final Button btnSupprimer   = new Button("🗑️ Supprimer");
-                    private final Button btnVoirTaches  = new Button("📋 Voir Tâches");
+                    private final Button btnModifier   = new Button("✎ Modifier");
+                    private final Button btnSupprimer  = new Button("✕ Supprimer");
+                    private final Button btnVoirTaches = new Button("◈ Voir Tâches");
 
                     {
-                        // === Styles ===
-                        btnModifier.setStyle(
-                                "-fx-background-color: #4CAF50; -fx-text-fill: white; " +
-                                        "-fx-cursor: hand; -fx-background-radius: 4;");
+                        // ✅ Classes CSS galaxy (plus de style inline)
+                        btnModifier.getStyleClass().add("btn-edit");
+                        btnSupprimer.getStyleClass().add("btn-delete");
+                        btnVoirTaches.getStyleClass().add("btn-tasks");
 
-                        btnSupprimer.setStyle(
-                                "-fx-background-color: #f44336; -fx-text-fill: white; " +
-                                        "-fx-cursor: hand; -fx-background-radius: 4;");
+                        HBox hbox = new HBox(8, btnModifier, btnSupprimer, btnVoirTaches);
+                        hbox.setAlignment(Pos.CENTER_LEFT);
+                        hbox.setPadding(new Insets(4, 0, 4, 6));
 
-                        btnVoirTaches.setStyle(
-                                "-fx-background-color: #3498db; -fx-text-fill: white; " +
-                                        "-fx-cursor: hand; -fx-background-radius: 4;");
-
-                        // === Actions ===
+                        // === Actions (identiques à avant) ===
                         btnModifier.setOnAction(e -> {
                             Projet projet = getTableView().getItems().get(getIndex());
                             remplirFormulaireModification(projet);
@@ -100,7 +99,6 @@ public class ProjetController {
                             supprimerProjet(projet);
                         });
 
-                        // ✅ Bouton Voir Tâches : ouvre une nouvelle fenêtre
                         btnVoirTaches.setOnAction(e -> {
                             Projet projet = getTableView().getItems().get(getIndex());
                             ouvrirFenetreTaches(projet);
@@ -113,9 +111,9 @@ public class ProjetController {
                         if (empty) {
                             setGraphic(null);
                         } else {
-                            HBox hbox = new HBox(5);
-                            hbox.setAlignment(Pos.CENTER);
-                            hbox.getChildren().addAll(btnModifier, btnSupprimer, btnVoirTaches);
+                            HBox hbox = new HBox(8, btnModifier, btnSupprimer, btnVoirTaches);
+                            hbox.setAlignment(Pos.CENTER_LEFT);
+                            hbox.setPadding(new Insets(4, 0, 4, 6));
                             setGraphic(hbox);
                         }
                     }
@@ -125,8 +123,7 @@ public class ProjetController {
     }
 
     /**
-     * Ouvre une nouvelle fenêtre (popup) avec les tâches du projet sélectionné
-     * Passe l'objet Projet au TacheController via une méthode dédiée
+     * Ouvre la fenêtre tâches (inchangé)
      */
     private void ouvrirFenetreTaches(Projet projet) {
         try {
@@ -135,14 +132,11 @@ public class ProjetController {
             );
 
             Stage stageTaches = new Stage();
-
-            // Modality.WINDOW_MODAL = la fenêtre projet est bloquée pendant qu'on est dans les tâches
             stageTaches.initModality(Modality.WINDOW_MODAL);
             stageTaches.initOwner(projetTable.getScene().getWindow());
-            stageTaches.setTitle("📋 Tâches du projet : " + projet.getNom());
+            stageTaches.setTitle("◈ Tâches — " + projet.getNom());
             stageTaches.setScene(new Scene(loader.load(), 1000, 650));
 
-            // ✅ IMPORTANT : on transmet le projet sélectionné au TacheController
             TacheController tacheController = loader.getController();
             tacheController.initialiserAvecProjet(projet);
 
@@ -186,7 +180,7 @@ public class ProjetController {
                 showSuccess("Projet modifié avec succès ! ✅");
 
                 projetEnCoursModification = null;
-                btnAjouter.setText("➕ Ajouter");
+                btnAjouter.setText("✦ Ajouter");
             }
 
             loadProjets();
@@ -213,14 +207,14 @@ public class ProjetController {
     private void supprimerProjet(Projet projet) {
         Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION);
         confirmation.setTitle("Confirmation");
-        confirmation.setHeaderText("Supprimer le projet ?");
-        confirmation.setContentText("Voulez-vous vraiment supprimer \"" + projet.getNom() + "\" ?");
+        confirmation.setHeaderText(null);
+        confirmation.setContentText("Supprimer \"" + projet.getNom() + "\" ?");
 
         Optional<ButtonType> result = confirmation.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             projetService.supprimerProjet(projet.getId());
             loadProjets();
-            showSuccess("Projet supprimé ! 🗑️");
+            showSuccess("Projet supprimé ! ✕");
             if (projetEnCoursModification != null &&
                     projetEnCoursModification.getId() == projet.getId()) {
                 annulerModification();
@@ -231,7 +225,7 @@ public class ProjetController {
     @FXML
     private void annulerModification() {
         projetEnCoursModification = null;
-        btnAjouter.setText("➕ Ajouter");
+        btnAjouter.setText("✦ Ajouter");
         clearForm();
     }
 

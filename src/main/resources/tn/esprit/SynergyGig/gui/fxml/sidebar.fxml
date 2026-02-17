@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.shape.*?>
+<?import javafx.geometry.Insets?>
+
+<StackPane
+        xmlns="http://javafx.com/javafx/21"
+        xmlns:fx="http://javafx.com/fxml/1"
+        fx:controller="tn.esprit.SynergyGig.Controller.SidebarController"
+        prefWidth="210"
+        minWidth="210"
+        maxWidth="210"
+        styleClass="sidebar">
+
+    <!-- Fond étoilé animé (Java crée les étoiles) -->
+    <Pane fx:id="starsPane"
+          prefWidth="210"
+          style="-fx-background-color: #080c18;"/>
+
+    <!-- Contenu sidebar -->
+    <VBox fx:id="sidebarContent"
+          spacing="6"
+          alignment="TOP_CENTER"
+          style="-fx-padding: 24 12 24 12;">
+
+        <!-- LOGO / NOM APP -->
+        <VBox alignment="CENTER" spacing="4" style="-fx-padding: 0 0 20 0;">
+            <Label text="✦ SynergyGig"
+                   styleClass="sidebar-logo-label"/>
+            <Label text="HR Dashboard"
+                   style="-fx-font-size: 10px;
+                          -fx-text-fill: rgba(108,99,255,0.6);
+                          -fx-font-weight: bold;"/>
+        </VBox>
+
+        <!-- Séparateur -->
+        <Separator styleClass="galaxy-separator" style="-fx-padding: 0 0 10 0;"/>
+
+        <!-- MENU ITEMS -->
+        <Button fx:id="btnProjets"
+                text="🚀  Projets"
+                onAction="#showProjets"
+                styleClass="sidebar-btn"/>
+
+        <Button fx:id="btnTaches"
+                text="✅  Tâches"
+                onAction="#showTaches"
+                styleClass="sidebar-btn"/>
+
+        <Button fx:id="btnDashboard"
+                text="📊  Dashboard"
+                onAction="#showDashboard"
+                styleClass="sidebar-btn"/>
+
+        <Button fx:id="btnEmployes"
+                text="👥  Employés"
+                onAction="#showEmployes"
+                styleClass="sidebar-btn"/>
+
+        <Button fx:id="btnConges"
+                text="🌴  Congés"
+                onAction="#showConges"
+                styleClass="sidebar-btn"/>
+
+        <Button fx:id="btnOffres"
+                text="💼  Offres"
+                onAction="#showOffres"
+                styleClass="sidebar-btn"/>
+
+        <!-- Spacer -->
+        <Region VBox.vgrow="ALWAYS"/>
+
+        <!-- Séparateur bas -->
+        <Separator styleClass="galaxy-separator"/>
+
+        <!-- Version -->
+        <Label text="v1.0.0 — Galaxy Edition"
+               style="-fx-font-size: 10px;
+                      -fx-text-fill: rgba(232,234,246,0.2);
+                      -fx-padding: 8 0 0 0;"/>
+
+    </VBox>
+
+</StackPane>
+

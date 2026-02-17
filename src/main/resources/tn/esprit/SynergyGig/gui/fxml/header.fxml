@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<HBox
+        xmlns="http://javafx.com/javafx/21"
+        xmlns:fx="http://javafx.com/fxml/1"
+        fx:controller="tn.esprit.SynergyGig.Controller.HeaderController"
+        alignment="CENTER_LEFT"
+        spacing="12"
+        styleClass="header-bar">
+
+    <!-- Titre dynamique (mis à jour par MainLayoutController) -->
+    <Label fx:id="pageTitle"
+           text="Gestion des Projets"
+           styleClass="header-title"
+           HBox.hgrow="ALWAYS"/>
+
+    <!-- Spacer -->
+    <Region HBox.hgrow="ALWAYS"/>
+
+    <!-- Badge statut -->
+    <Label text="● En ligne"
+           styleClass="header-badge"/>
+
+    <!-- Séparateur vertical -->
+    <Separator orientation="VERTICAL"
+               style="-fx-background-color: rgba(108,99,255,0.3);
+                      -fx-padding: 8 0 8 0;"/>
+
+    <!-- Icône + nom admin -->
+    <HBox alignment="CENTER" spacing="8">
+        <Label text="◉"
+               style="-fx-font-size: 18px;
+                      -fx-text-fill: #6c63ff;
+                      -fx-effect: dropshadow(gaussian, #6c63ff, 8, 0.5, 0, 0);"/>
+        <Label fx:id="adminLabel"
+               text="Admin"
+               styleClass="header-admin-label"/>
+    </HBox>
+
+</HBox>
