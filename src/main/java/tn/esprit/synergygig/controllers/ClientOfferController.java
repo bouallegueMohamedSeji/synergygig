@@ -17,6 +17,14 @@ import javafx.scene.effect.DropShadow;
 import javafx.scene.paint.Color;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.stage.FileChooser;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+
 import javafx.animation.ScaleTransition;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.paint.Color;
@@ -47,7 +55,14 @@ public class ClientOfferController {
     @FXML
     private TableColumn<Offer, OfferStatus> colStatus;
     @FXML
+    private TableColumn<Offer, String> colImage;
+    @FXML
     private ImageView logoImage;
+    @FXML
+    private ImageView previewImage;
+
+    private String uploadedImageName;
+
 
     private final OfferService service = new OfferService();
     private Offer selectedOffer;
@@ -61,6 +76,41 @@ public class ClientOfferController {
         colDescription.setCellValueFactory(new PropertyValueFactory<>("description"));
         colType.setCellValueFactory(new PropertyValueFactory<>("type"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+        colImage.setCellValueFactory(new PropertyValueFactory<>("imageUrl"));
+
+        colImage.setCellValueFactory(new PropertyValueFactory<>("imageUrl"));
+
+        colImage.setCellFactory(col -> new TableCell<Offer, String>() {
+
+            private final ImageView img = new ImageView();
+
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+
+                if (empty || item == null) {
+                    setGraphic(null);
+                } else {
+
+                    File file = new File("uploads/" + item);
+
+                    if (file.exists()) {
+                        img.setImage(new Image(file.toURI().toString()));
+                        img.setFitHeight(40);
+                        img.setPreserveRatio(true);
+                        setGraphic(img);
+                    } else {
+                        setGraphic(null);
+                    }
+                }
+            }
+        });
+
+
+        offerTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+
+        loadOffers();
+        createStars();
 
         offerTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
@@ -160,8 +210,9 @@ public class ClientOfferController {
                     descriptionArea.getText(),
                     typeBox.getValue(),
                     currentUserId,
-                    null
+                    uploadedImageName   // 🔥 IMPORTANT
             );
+
 
             service.addOffer(offer);
             loadOffers();
@@ -191,6 +242,11 @@ public class ClientOfferController {
             selectedOffer.setTitle(titleField.getText());
             selectedOffer.setDescription(descriptionArea.getText());
             selectedOffer.setType(typeBox.getValue());
+
+            // 🔥 AJOUT IMAGE UNIQUEMENT SI NOUVELLE IMAGE
+            if (uploadedImageName != null) {
+                selectedOffer.setImageUrl(uploadedImageName);
+            }
 
             service.updateOffer(selectedOffer);
 
@@ -295,6 +351,42 @@ public class ClientOfferController {
         alert.setContentText(message);
         alert.showAndWait();
     }
+    @FXML
+    private void handleUploadImage() {
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Choisir une image");
+
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Images", "*.png", "*.jpg", "*.jpeg")
+        );
+
+        File file = fileChooser.showOpenDialog(titleField.getScene().getWindow());
+
+        if (file != null) {
+            try {
+
+                File uploadsDir = new File("uploads");
+                if (!uploadsDir.exists()) {
+                    uploadsDir.mkdir();
+                }
+
+                uploadedImageName = System.currentTimeMillis() + "_" + file.getName();
+
+                File destination = new File("uploads/" + uploadedImageName);
+
+                Files.copy(file.toPath(), destination.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING);
+
+                previewImage.setImage(new Image(destination.toURI().toString()));
+
+            } catch (IOException e) {
+                showError("Erreur upload image");
+                e.printStackTrace();
+            }
+        }
+    }
+
 
 
 

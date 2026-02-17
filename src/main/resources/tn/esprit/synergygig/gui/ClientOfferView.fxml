@@ -36,8 +36,8 @@
         <GridPane hgap="20" vgap="18">
 
             <columnConstraints>
-                <ColumnConstraints percentWidth="10"/>
-                <ColumnConstraints percentWidth="80"/>
+                <ColumnConstraints percentWidth="15"/>
+                <ColumnConstraints percentWidth="85"/>
             </columnConstraints>
 
             <!-- Title -->
@@ -71,6 +71,26 @@
                       GridPane.columnIndex="1"
                       GridPane.rowIndex="2"/>
 
+            <!-- 🔥 Image Upload -->
+            <Label text="Image"
+                   styleClass="label-galaxy"
+                   GridPane.rowIndex="3"
+                   GridPane.halignment="RIGHT"/>
+
+            <HBox spacing="15"
+                  alignment="CENTER_LEFT"
+                  GridPane.columnIndex="1"
+                  GridPane.rowIndex="3">
+
+                <Button text="📷 Upload Image"
+                        onAction="#handleUploadImage"
+                        styleClass="btn-primary"/>
+
+                <ImageView fx:id="previewImage"
+                           fitHeight="60"
+                           preserveRatio="true"/>
+            </HBox>
+
         </GridPane>
 
         <!-- ===== BUTTONS ===== -->
@@ -99,6 +119,7 @@
                 <TableColumn fx:id="colDescription" text="Description"/>
                 <TableColumn fx:id="colType" text="Type"/>
                 <TableColumn fx:id="colStatus" text="Status"/>
+                <TableColumn fx:id="colImage" text="Image"/>
             </columns>
 
         </TableView>
