@@ -88,6 +88,9 @@
             <Button fx:id="btnResources" text="📂  Resources" onAction="#showResources"
                     styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
 
+            <Button fx:id="btnQuizzes" text="❓  Quizzes" onAction="#showQuizzes"
+                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+
             <Button fx:id="btnCommunity" text="🏛️  Community" onAction="#showPlaceholder"
                     styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
         </VBox>

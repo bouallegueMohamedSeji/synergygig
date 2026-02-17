@@ -57,6 +57,8 @@ public class DashboardController {
     @FXML
     private Button btnResources;
     @FXML
+    private Button btnQuizzes;
+    @FXML
     private Button btnCommunity;
 
     // Content area
@@ -205,6 +207,11 @@ public class DashboardController {
     @FXML
     private void showResources() {
         loadContent("/fxml/ResourceManagement.fxml");
+    }
+
+    @FXML
+    private void showQuizzes() {
+        loadContent("/fxml/QuizManagement.fxml");
     }
 
     @FXML
