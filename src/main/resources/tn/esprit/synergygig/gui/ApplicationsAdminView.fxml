@@ -3,20 +3,40 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox spacing="15" style="-fx-padding:20"
-      xmlns:fx="http://javafx.com/fxml"
-      fx:controller="tn.esprit.synergygig.controllers.ApplicationsAdminController">
+<StackPane xmlns:fx="http://javafx.com/fxml"
+           alignment="CENTER"
+           fx:controller="tn.esprit.synergygig.controllers.ApplicationsAdminController">
 
-    <Label text="📬 Candidatures reçues"
-           style="-fx-font-size:18; -fx-font-weight:bold; -fx-text-fill:white;" />
+    <!-- 🌌 Background animé -->
+    <Pane fx:id="animatedBackground"/>
 
-    <TableView fx:id="applicationTable" VBox.vgrow="ALWAYS">
-        <columns>
-            <TableColumn fx:id="colOffer" text="Offre" prefWidth="200"/>
-            <TableColumn fx:id="colApplicant" text="Candidat" prefWidth="150"/>
-            <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
-            <TableColumn fx:id="colActions" text="Actions" prefWidth="220"/>
-        </columns>
-    </TableView>
+    <!-- Glass Container -->
+    <VBox spacing="20"
+          maxWidth="1000"
+          prefWidth="1000"
+          alignment="TOP_CENTER"
+          style="-fx-padding:40;
+                 -fx-background-color: rgba(255,255,255,0.05);
+                 -fx-background-radius:20;
+                 -fx-border-color: rgba(255,255,255,0.1);
+                 -fx-border-radius:20;">
 
-</VBox>
+        <Label text="📬 Candidatures reçues"
+               styleClass="title-galaxy"/>
+
+        <TableView fx:id="applicationTable"
+                   VBox.vgrow="ALWAYS"
+                   styleClass="table-glass">
+
+            <columns>
+                <TableColumn fx:id="colOffer" text="Offre"/>
+                <TableColumn fx:id="colApplicant" text="Candidat"/>
+                <TableColumn fx:id="colStatus" text="Status"/>
+                <TableColumn fx:id="colActions" text="Actions"/>
+            </columns>
+
+        </TableView>
+
+    </VBox>
+
+</StackPane>

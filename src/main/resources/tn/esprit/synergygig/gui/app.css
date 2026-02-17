@@ -454,5 +454,91 @@
     -fx-background-color: rgba(255,255,255,0.05);
     -fx-background-radius: 15;
 }
+/* ===== TABLE GLASS ===== */
+.table-glass {
+    -fx-background-color: transparent;
+}
+
+.table-glass .column-header-background {
+    -fx-background-color: transparent;
+}
+
+.table-glass .column-header {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+}
+
+.table-glass .table-row-cell {
+    -fx-background-color: rgba(255,255,255,0.03);
+    -fx-text-fill: white;
+}
+
+.table-glass .table-row-cell:filled:selected {
+    -fx-background-color: rgba(106,17,203,0.4);
+}
+
+.table-glass .table-cell {
+    -fx-text-fill: white;
+}
+.title-galaxy {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: linear-gradient(to right, #6a11cb, #2575fc);
+}
+/* Accept Button Galaxy */
+.btn-accept {
+    -fx-background-color: linear-gradient(to right, #00c853, #64dd17);
+    -fx-text-fill: white;
+    -fx-background-radius: 20;
+    -fx-font-weight: bold;
+}
+
+.btn-accept:hover {
+    -fx-effect: dropshadow(gaussian, #00ff99, 15, 0.5, 0, 0);
+    -fx-scale-x: 1.08;
+    -fx-scale-y: 1.08;
+}
+
+/* Reject Button Galaxy */
+.btn-reject {
+    -fx-background-color: linear-gradient(to right, #ff416c, #ff4b2b);
+    -fx-text-fill: white;
+    -fx-background-radius: 20;
+    -fx-font-weight: bold;
+}
+
+.btn-reject:hover {
+    -fx-effect: dropshadow(gaussian, #ff4b2b, 15, 0.5, 0, 0);
+    -fx-scale-x: 1.08;
+    -fx-scale-y: 1.08;
+}
+.status-badge {
+    -fx-padding: 5 12 5 12;
+    -fx-background-radius: 15;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+/* Pending - violet galaxy */
+.badge-pending {
+    -fx-background-color: linear-gradient(to right, #6a11cb, #2575fc);
+}
+
+/* Accepted - green neon */
+.badge-accepted {
+    -fx-background-color: linear-gradient(to right, #00c853, #64dd17);
+}
+
+/* Rejected - red cosmic */
+.badge-rejected {
+    -fx-background-color: linear-gradient(to right, #ff416c, #ff4b2b);
+}
+/* ===== Galaxy Neon Labels ===== */
+.label-galaxy {
+    -fx-text-fill: #b388ff;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, #6a11cb, 10, 0.5, 0, 0);
+}
 
 

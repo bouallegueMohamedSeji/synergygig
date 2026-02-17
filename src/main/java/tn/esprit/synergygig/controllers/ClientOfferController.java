@@ -98,10 +98,11 @@ public class ClientOfferController {
     }
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setHeaderText("Erreur");
+        alert.setHeaderText("Validation Error");
         alert.setContentText(message);
-        alert.show();
+        alert.showAndWait();
     }
+
 
 
     private void createStars() {
@@ -148,15 +149,12 @@ public class ClientOfferController {
     @FXML
     private void addOffer() {
 
-        if (titleField.getText().isBlank() ||
-                descriptionArea.getText().isBlank() ||
-                typeBox.getValue() == null) {
-
-            showError("All fields are required");
+        if (!validateForm()) {
             return;
         }
 
         try {
+
             Offer offer = new Offer(
                     titleField.getText(),
                     descriptionArea.getText(),
@@ -169,52 +167,69 @@ public class ClientOfferController {
             loadOffers();
             clearForm();
 
+            showSuccess("Offer added successfully");
+
         } catch (Exception e) {
             showError(e.getMessage());
         }
     }
+
     @FXML
     private void updateOffer() {
 
         if (selectedOffer == null) {
-            showError("Select an offer first");
+            showError("Please select an offer to update");
+            return;
+        }
+
+        if (!validateForm()) {
             return;
         }
 
         try {
+
             selectedOffer.setTitle(titleField.getText());
             selectedOffer.setDescription(descriptionArea.getText());
             selectedOffer.setType(typeBox.getValue());
 
             service.updateOffer(selectedOffer);
+
             loadOffers();
+            clearForm();
+
+            showSuccess("Offer updated successfully");
 
         } catch (Exception e) {
             showError(e.getMessage());
         }
     }
+
     @FXML
     private void deleteOffer() {
 
         if (selectedOffer == null) {
-            showError("Select an offer first");
+            showError("Please select an offer to delete");
             return;
         }
 
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setHeaderText("Delete Offer?");
-        confirm.setContentText("Are you sure?");
+        confirm.setHeaderText("Confirm deletion");
+        confirm.setContentText("Are you sure you want to delete this offer?");
 
-        if (confirm.showAndWait().get() == ButtonType.OK) {
-            try {
-                service.deleteOffer(selectedOffer);
-                loadOffers();
-                clearForm();
-            } catch (Exception e) {
-                showError(e.getMessage());
+        confirm.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                try {
+                    service.deleteOffer(selectedOffer);
+                    loadOffers();
+                    clearForm();
+                    showSuccess("Offer deleted successfully");
+                } catch (Exception e) {
+                    showError(e.getMessage());
+                }
             }
-        }
+        });
     }
+
     private void clearForm() {
         titleField.clear();
         descriptionArea.clear();
@@ -237,6 +252,51 @@ public class ClientOfferController {
         logoImage.setEffect(glow);
 
     }
+    private boolean validateForm() {
+
+        String title = titleField.getText();
+        String description = descriptionArea.getText();
+        OfferType type = typeBox.getValue();
+
+        if (title == null || title.trim().isEmpty()) {
+            showError("Title is required");
+            titleField.requestFocus();
+            return false;
+        }
+
+        if (title.length() < 3) {
+            showError("Title must contain at least 3 characters");
+            titleField.requestFocus();
+            return false;
+        }
+
+        if (description == null || description.trim().isEmpty()) {
+            showError("Description is required");
+            descriptionArea.requestFocus();
+            return false;
+        }
+
+        if (description.length() < 5) {
+            showError("Description must contain at least 5 characters");
+            descriptionArea.requestFocus();
+            return false;
+        }
+
+        if (type == null) {
+            showError("Please select a type");
+            return false;
+        }
+
+        return true;
+    }
+    private void showSuccess(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+
 
 
 }
