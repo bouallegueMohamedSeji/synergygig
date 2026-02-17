@@ -6,6 +6,7 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.VBox;
 import services.ServiceCourse;
 
 import java.sql.SQLException;
@@ -41,6 +42,15 @@ public class CourseController {
     }
 
     @FXML
+    private VBox formContainer; // Need to wrap form in VBox in FXML
+    @FXML
+    private Button btnDelete;
+    @FXML
+    private Button btnSave;
+    @FXML
+    private Button btnClear;
+
+    @FXML
     public void initialize() {
         // Initialize columns
         colId.setCellValueFactory(new PropertyValueFactory<>("id"));
@@ -50,6 +60,28 @@ public class CourseController {
 
         // Load data
         loadCourses();
+
+        // RBAC logic
+        entities.User currentUser = utils.SessionManager.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            String role = currentUser.getRole();
+            if ("ADMIN".equals(role)) {
+                // Admin: Delete only, no create/edit
+                formContainer.setVisible(false);
+                formContainer.setManaged(false);
+                btnDelete.setVisible(true);
+            } else if ("HR_MANAGER".equals(role) || "PROJECT_OWNER".equals(role)) {
+                // HR/Project Owner: Full access
+                formContainer.setVisible(true);
+                btnDelete.setVisible(true);
+            } else {
+                // User/GigWorker: Read only
+                formContainer.setVisible(false);
+                formContainer.setManaged(false);
+                btnDelete.setVisible(false);
+                btnDelete.setManaged(false);
+            }
+        }
 
         // Listen for selection changes
         courseTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {

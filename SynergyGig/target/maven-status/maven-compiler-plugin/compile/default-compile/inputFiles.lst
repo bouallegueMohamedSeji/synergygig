@@ -12,7 +12,9 @@ C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\ChatRoom.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\Course.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\Interview.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\Message.java
+C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\Question.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\Quiz.java
+C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\QuizAttempt.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\Resource.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\User.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\mains\MainFX.java
@@ -22,7 +24,9 @@ C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceChatRoom.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceCourse.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceInterview.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceMessage.java
+C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceQuestion.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceQuiz.java
+C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceQuizAttempt.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceResource.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceUser.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\utils\MyDatabase.java

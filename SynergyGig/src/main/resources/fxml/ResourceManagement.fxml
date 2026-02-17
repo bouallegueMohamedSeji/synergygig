@@ -16,16 +16,16 @@
         
         <HBox spacing="20.0" VBox.vgrow="ALWAYS">
             <!-- Form Section -->
-            <VBox spacing="10.0" prefWidth="300.0" style="-fx-background-color: #f4f4f4; -fx-padding: 15; -fx-background-radius: 5;">
+            <VBox fx:id="formContainer" spacing="10.0" prefWidth="300.0" style="-fx-background-color: #f4f4f4; -fx-padding: 15; -fx-background-radius: 5;">
                 <Label style="-fx-font-size: 16px; -fx-font-weight: bold;" text="Add / Edit Resource" />
                 
                 <Label text="Course" />
-                <ComboBox fx:id="courseComboBox" prefWidth="300.0" promptText="Select Course" />
+                <ComboBox fx:id="courseComboBox" prefWidth="270.0" promptText="Select Course" />
                 
                 <Label text="Type" />
-                <ComboBox fx:id="typeComboBox" prefWidth="300.0" promptText="Select Type (VIDEO/PDF)" />
+                <ComboBox fx:id="typeComboBox" prefWidth="270.0" promptText="Select Type" />
                 
-                <Label text="URL" />
+                <Label text="URL / Link" />
                 <TextField fx:id="urlField" promptText="Enter resource URL" />
                 
                 <HBox spacing="10.0" alignment="CENTER_RIGHT">

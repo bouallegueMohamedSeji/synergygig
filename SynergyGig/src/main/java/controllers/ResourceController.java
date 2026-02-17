@@ -7,6 +7,7 @@ import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
 import services.ServiceCourse;
 import services.ServiceResource;
@@ -36,6 +37,15 @@ public class ResourceController {
     @FXML
     private Label statusLabel;
 
+    @FXML
+    private VBox formContainer;
+    @FXML
+    private Button btnDelete;
+    @FXML
+    private Button btnSave;
+    @FXML
+    private Button btnClear;
+
     private ServiceResource serviceResource;
     private ServiceCourse serviceCourse;
     private Resource selectedResource;
@@ -59,6 +69,28 @@ public class ResourceController {
 
         // Load data
         loadResources();
+
+        // RBAC logic
+        entities.User currentUser = utils.SessionManager.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            String role = currentUser.getRole();
+            if ("ADMIN".equals(role)) {
+                // Admin: Delete only, no create/edit
+                formContainer.setVisible(false);
+                formContainer.setManaged(false);
+                btnDelete.setVisible(true);
+            } else if ("HR_MANAGER".equals(role) || "PROJECT_OWNER".equals(role)) {
+                // HR/Project Owner: Full access
+                formContainer.setVisible(true);
+                btnDelete.setVisible(true);
+            } else {
+                // User/GigWorker: Read only
+                formContainer.setVisible(false);
+                formContainer.setManaged(false);
+                btnDelete.setVisible(false);
+                btnDelete.setManaged(false);
+            }
+        }
 
         // Listen for selection
         resourceTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
