@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.control.Label?>
+
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml"
+           fx:controller="tn.esprit.synergygig.controllers.SplashController"
+           alignment="CENTER">
+
+    <Pane fx:id="animatedBackground"/>
+
+    <VBox alignment="CENTER" spacing="20">
+
+        <ImageView fx:id="logoImage"
+                   fitWidth="220"
+                   preserveRatio="true"/>
+
+        <Label fx:id="nameLabel"
+               text="ANAS:SOFTWARE DEVELOPER"
+               styleClass="splash-name"/>
+
+    </VBox>
+
+</StackPane>

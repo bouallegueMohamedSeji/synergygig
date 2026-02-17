@@ -599,5 +599,13 @@
     -fx-scale-x: 1.05;
     -fx-scale-y: 1.05;
 }
-
+.splash-background {
+    -fx-background-color: #121826
+}
+.splash-name {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: linear-gradient(to right, #60a5fa, #8b5cf6);
+    -fx-letter-spacing: 2px;
+}
 
