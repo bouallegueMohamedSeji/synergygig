@@ -31,8 +31,28 @@ public class TitleBarController {
     }
 
     @FXML
+    private Button btnMaximize;
+
+    @FXML
+    private void maximize(ActionEvent event) {
+        Stage stage = getStage(event);
+        if (stage.isMaximized()) {
+            stage.setMaximized(false);
+            if (btnMaximize != null)
+                btnMaximize.setText("☐");
+        } else {
+            stage.setMaximized(true);
+            if (btnMaximize != null)
+                btnMaximize.setText("❐");
+        }
+    }
+
+    @FXML
     private void handleMouseDragged(MouseEvent event) {
         Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
+        if (stage.isMaximized())
+            return; // Disable drag if maximized
+
         stage.setX(event.getScreenX() - xOffset);
         stage.setY(event.getScreenY() - yOffset);
     }
@@ -47,17 +67,31 @@ public class TitleBarController {
     private boolean isLightMode = false;
 
     @FXML
+    public void initialize() {
+        // Apply saved theme preference on load
+        isLightMode = !utils.SessionManager.getInstance().isDarkMode();
+        updateThemeUI();
+    }
+
+    @FXML
     private void toggleTheme() {
         isLightMode = !isLightMode;
-        Scene scene = btnTheme.getScene();
+        utils.SessionManager.getInstance().setDarkMode(!isLightMode);
+        updateThemeUI();
+    }
 
+    private void updateThemeUI() {
+        if (btnTheme == null || btnTheme.getScene() == null)
+            return;
+
+        Scene scene = btnTheme.getScene();
         if (isLightMode) {
             btnTheme.setText("☀️");
-            // Add light theme stylesheet
-            scene.getStylesheets().add(getClass().getResource("/css/light-theme.css").toExternalForm());
+            if (!scene.getStylesheets().contains(getClass().getResource("/css/light-theme.css").toExternalForm())) {
+                scene.getStylesheets().add(getClass().getResource("/css/light-theme.css").toExternalForm());
+            }
         } else {
             btnTheme.setText("🌙");
-            // Remove light theme stylesheet
             scene.getStylesheets().remove(getClass().getResource("/css/light-theme.css").toExternalForm());
         }
     }

@@ -37,6 +37,16 @@ public class SessionManager {
         return currentUser != null;
     }
 
+    private boolean isDarkMode = true; // Default to Dark Mode
+
+    public boolean isDarkMode() {
+        return isDarkMode;
+    }
+
+    public void setDarkMode(boolean darkMode) {
+        isDarkMode = darkMode;
+    }
+
     public String getCurrentRole() {
         return currentUser != null ? currentUser.getRole() : null;
     }

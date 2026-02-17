@@ -93,19 +93,37 @@ public class LoginController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
             Parent root = loader.load();
+
+            // Get current stage from an element in the current scene
             Stage stage = (Stage) emailField.getScene().getWindow();
 
-            // Re-apply transparent scene style if needed, though Stage style persists
+            // Capture current window state
+            boolean isMaximized = stage.isMaximized();
+            boolean isDarkMode = SessionManager.getInstance().isDarkMode();
+
+            // Re-apply transparent scene style if needed
             Scene scene = new Scene(root, 1200, 800);
             scene.setFill(null);
+
+            // Apply Base Style
             scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
 
+            // Apply Light Mode if needed
+            if (!isDarkMode) {
+                scene.getStylesheets().add(getClass().getResource("/css/light-theme.css").toExternalForm());
+            }
+
             stage.setScene(scene);
+
+            // Re-apply maximized state
+            stage.setMaximized(isMaximized);
 
             // Re-apply resize listener to the NEW scene/root
             utils.ResizeHelper.addResizeListener(stage);
 
-            stage.centerOnScreen();
+            if (!isMaximized) {
+                stage.centerOnScreen();
+            }
         } catch (IOException e) {
             e.printStackTrace();
             showAlert("Error", "Failed to load scene: " + fxmlPath);
