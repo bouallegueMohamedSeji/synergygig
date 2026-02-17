@@ -5,17 +5,27 @@ public class Course {
     private String title;
     private String description;
     private int instructorId;
+    private int skillId; // Added for Skill Integration
 
     public Course() {
     }
 
-    public Course(int id, String title, String description, int instructorId) {
+    public Course(int id, String title, String description, int instructorId, int skillId) {
         this.id = id;
         this.title = title;
         this.description = description;
         this.instructorId = instructorId;
+        this.skillId = skillId;
     }
 
+    public Course(String title, String description, int instructorId, int skillId) {
+        this.title = title;
+        this.description = description;
+        this.instructorId = instructorId;
+        this.skillId = skillId;
+    }
+
+    // Keep constructors for backward compatibility if needed, or update callers
     public Course(String title, String description, int instructorId) {
         this.title = title;
         this.description = description;
@@ -54,6 +64,14 @@ public class Course {
         this.instructorId = instructorId;
     }
 
+    public int getSkillId() {
+        return skillId;
+    }
+
+    public void setSkillId(int skillId) {
+        this.skillId = skillId;
+    }
+
     @Override
     public String toString() {
         return "Course{" +
@@ -61,6 +79,7 @@ public class Course {
                 ", title='" + title + '\'' +
                 ", description='" + description + '\'' +
                 ", instructorId=" + instructorId +
+                ", skillId=" + skillId +
                 '}';
     }
 }

@@ -1,15 +1,19 @@
 package controllers;
 
 import entities.Course;
+import entities.Skill;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox;
+import javafx.util.StringConverter;
 import services.ServiceCourse;
+import services.ServiceSkill;
 
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Optional;
 
 public class CourseController {
@@ -21,6 +25,9 @@ public class CourseController {
     @FXML
     private TextField instructorIdField;
     @FXML
+    private ComboBox<Skill> skillComboBox; // Added Skill ComboBox
+
+    @FXML
     private TableView<Course> courseTable;
     @FXML
     private TableColumn<Course, Integer> colId;
@@ -31,24 +38,29 @@ public class CourseController {
     @FXML
     private TableColumn<Course, Integer> colInstructor;
     @FXML
+    private TableColumn<Course, Integer> colSkill; // Optional: Show Skill ID in table
+
+    @FXML
     private Label statusLabel;
 
     private ServiceCourse serviceCourse;
+    private ServiceSkill serviceSkill;
     private ObservableList<Course> courseList;
     private Course selectedCourse; // For editing
 
-    public CourseController() {
-        serviceCourse = new ServiceCourse();
-    }
-
     @FXML
-    private VBox formContainer; // Need to wrap form in VBox in FXML
+    private VBox formContainer;
     @FXML
     private Button btnDelete;
     @FXML
     private Button btnSave;
     @FXML
     private Button btnClear;
+
+    public CourseController() {
+        serviceCourse = new ServiceCourse();
+        serviceSkill = new ServiceSkill();
+    }
 
     @FXML
     public void initialize() {
@@ -57,9 +69,13 @@ public class CourseController {
         colTitle.setCellValueFactory(new PropertyValueFactory<>("title"));
         colDescription.setCellValueFactory(new PropertyValueFactory<>("description"));
         colInstructor.setCellValueFactory(new PropertyValueFactory<>("instructorId"));
+        // If you want to show Skill ID in the table, ensure column exists in FXML or
+        // add it dynamically
+        // colSkill.setCellValueFactory(new PropertyValueFactory<>("skillId"));
 
         // Load data
         loadCourses();
+        loadSkills();
 
         // RBAC logic
         entities.User currentUser = utils.SessionManager.getInstance().getCurrentUser();
@@ -100,11 +116,46 @@ public class CourseController {
         }
     }
 
+    private void loadSkills() {
+        try {
+            List<Skill> skills = serviceSkill.recuperer();
+            skillComboBox.setItems(FXCollections.observableArrayList(skills));
+
+            // Converter to display Skill Name in ComboBox
+            skillComboBox.setConverter(new StringConverter<Skill>() {
+                @Override
+                public String toString(Skill skill) {
+                    return skill == null ? "" : skill.getName();
+                }
+
+                @Override
+                public Skill fromString(String string) {
+                    return null; // Not needed
+                }
+            });
+
+        } catch (SQLException e) {
+            showError("Failed to load skills: " + e.getMessage());
+        }
+    }
+
     private void selectCourse(Course course) {
         selectedCourse = course;
         titleField.setText(course.getTitle());
         descriptionArea.setText(course.getDescription());
         instructorIdField.setText(String.valueOf(course.getInstructorId()));
+
+        // Select the skill in ComboBox
+        if (course.getSkillId() > 0) {
+            for (Skill s : skillComboBox.getItems()) {
+                if (s.getId() == course.getSkillId()) {
+                    skillComboBox.setValue(s);
+                    break;
+                }
+            }
+        } else {
+            skillComboBox.setValue(null);
+        }
     }
 
     @FXML
@@ -112,6 +163,7 @@ public class CourseController {
         String title = titleField.getText().trim();
         String description = descriptionArea.getText().trim();
         String instructorIdStr = instructorIdField.getText().trim();
+        Skill selectedSkill = skillComboBox.getValue();
 
         if (title.isEmpty() || instructorIdStr.isEmpty()) {
             statusLabel.setText("Title and Instructor ID are required.");
@@ -128,10 +180,12 @@ public class CourseController {
             return;
         }
 
+        int skillId = selectedSkill != null ? selectedSkill.getId() : 0;
+
         try {
             if (selectedCourse == null) {
                 // Add new
-                Course newCourse = new Course(title, description, instructorId);
+                Course newCourse = new Course(title, description, instructorId, skillId);
                 serviceCourse.ajouter(newCourse);
                 statusLabel.setText("Course added successfully.");
                 statusLabel.setStyle("-fx-text-fill: green;");
@@ -140,6 +194,7 @@ public class CourseController {
                 selectedCourse.setTitle(title);
                 selectedCourse.setDescription(description);
                 selectedCourse.setInstructorId(instructorId);
+                selectedCourse.setSkillId(skillId);
                 serviceCourse.modifier(selectedCourse);
                 statusLabel.setText("Course updated successfully.");
                 statusLabel.setStyle("-fx-text-fill: green;");
@@ -184,6 +239,7 @@ public class CourseController {
         titleField.clear();
         descriptionArea.clear();
         instructorIdField.clear();
+        skillComboBox.setValue(null);
         selectedCourse = null;
         courseTable.getSelectionModel().clearSelection();
         statusLabel.setText("");

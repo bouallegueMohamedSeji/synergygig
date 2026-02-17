@@ -16,36 +16,38 @@ public class ServiceCourse implements IService<Course> {
     }
 
     @Override
-    public void ajouter(Course course) throws SQLException {
-        String req = "INSERT INTO courses (title, description, instructor_id) VALUES (?, ?, ?)";
+    public void ajouter(Course t) throws SQLException {
+        String req = "INSERT INTO courses (title, description, instructor_id, skill_id) VALUES (?, ?, ?, ?)";
         PreparedStatement ps = connection.prepareStatement(req);
-        ps.setString(1, course.getTitle());
-        ps.setString(2, course.getDescription());
-        if (course.getInstructorId() != 0) {
-            ps.setInt(3, course.getInstructorId());
+        ps.setString(1, t.getTitle());
+        ps.setString(2, t.getDescription());
+        ps.setInt(3, t.getInstructorId());
+
+        if (t.getSkillId() > 0) {
+            ps.setInt(4, t.getSkillId());
         } else {
-            ps.setNull(3, Types.INTEGER);
+            ps.setNull(4, java.sql.Types.INTEGER);
         }
+
         ps.executeUpdate();
-        ps.close();
-        System.out.println("✅ Course added: " + course.getTitle());
     }
 
     @Override
-    public void modifier(Course course) throws SQLException {
-        String req = "UPDATE courses SET title=?, description=?, instructor_id=? WHERE id=?";
+    public void modifier(Course t) throws SQLException {
+        String req = "UPDATE courses SET title=?, description=?, instructor_id=?, skill_id=? WHERE id=?";
         PreparedStatement ps = connection.prepareStatement(req);
-        ps.setString(1, course.getTitle());
-        ps.setString(2, course.getDescription());
-        if (course.getInstructorId() != 0) {
-            ps.setInt(3, course.getInstructorId());
+        ps.setString(1, t.getTitle());
+        ps.setString(2, t.getDescription());
+        ps.setInt(3, t.getInstructorId());
+
+        if (t.getSkillId() > 0) {
+            ps.setInt(4, t.getSkillId());
         } else {
-            ps.setNull(3, Types.INTEGER);
+            ps.setNull(4, java.sql.Types.INTEGER);
         }
-        ps.setInt(4, course.getId());
+
+        ps.setInt(5, t.getId());
         ps.executeUpdate();
-        ps.close();
-        System.out.println("✅ Course updated: " + course.getTitle());
     }
 
     @Override
@@ -54,8 +56,6 @@ public class ServiceCourse implements IService<Course> {
         PreparedStatement ps = connection.prepareStatement(req);
         ps.setInt(1, id);
         ps.executeUpdate();
-        ps.close();
-        System.out.println("✅ Course deleted: id=" + id);
     }
 
     @Override
@@ -65,15 +65,13 @@ public class ServiceCourse implements IService<Course> {
         PreparedStatement ps = connection.prepareStatement(req);
         ResultSet rs = ps.executeQuery();
         while (rs.next()) {
-            Course course = new Course(
+            courses.add(new Course(
                     rs.getInt("id"),
                     rs.getString("title"),
                     rs.getString("description"),
-                    rs.getInt("instructor_id"));
-            courses.add(course);
+                    rs.getInt("instructor_id"),
+                    rs.getInt("skill_id")));
         }
-        rs.close();
-        ps.close();
         return courses;
     }
 }
