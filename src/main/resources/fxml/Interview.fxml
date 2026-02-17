@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="controllers.InterviewController" spacing="14">
+    <padding><Insets top="6" right="6" bottom="6" left="6"/></padding>
+
+    <!-- Header -->
+    <HBox alignment="CENTER_LEFT" spacing="12">
+        <VBox spacing="2">
+            <Label text="Interviews" styleClass="content-title"/>
+            <Label text="Schedule and manage candidate interviews" styleClass="content-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="+ Schedule New" onAction="#toggleForm" styleClass="btn-primary" fx:id="btnSchedule"/>
+    </HBox>
+
+    <!-- Inline Schedule / Edit Form (hidden by default) -->
+    <VBox fx:id="formCard" styleClass="dashboard-card" spacing="0" managed="false" visible="false">
+        <VBox styleClass="dashboard-card-header" spacing="2">
+            <Label fx:id="formTitle" text="Schedule Interview" styleClass="dashboard-card-title"/>
+            <Label fx:id="formSubtitle" text="Create a new interview session" styleClass="dashboard-card-description"/>
+        </VBox>
+        <VBox styleClass="dashboard-card-content" spacing="10">
+            <HBox spacing="12">
+                <VBox spacing="4" styleClass="input-group" HBox.hgrow="ALWAYS">
+                    <Label text="Candidate" styleClass="input-label"/>
+                    <ComboBox fx:id="candidateCombo" editable="true" maxWidth="Infinity" promptText="Search candidate..." styleClass="input-field"/>
+                </VBox>
+                <VBox spacing="4" styleClass="input-group" HBox.hgrow="ALWAYS">
+                    <Label text="Status" styleClass="input-label"/>
+                    <ComboBox fx:id="statusCombo" maxWidth="Infinity" styleClass="input-field"/>
+                </VBox>
+            </HBox>
+            <HBox spacing="12">
+                <VBox spacing="4" styleClass="input-group" HBox.hgrow="ALWAYS">
+                    <Label text="Date" styleClass="input-label"/>
+                    <DatePicker fx:id="datePicker" maxWidth="Infinity" styleClass="input-field"/>
+                </VBox>
+                <VBox spacing="4" styleClass="input-group" HBox.hgrow="ALWAYS">
+                    <Label text="Time (HH:MM)" styleClass="input-label"/>
+                    <TextField fx:id="timeField" promptText="e.g. 14:30" styleClass="input-field"/>
+                </VBox>
+            </HBox>
+            <VBox spacing="4" styleClass="input-group">
+                <Label text="Meeting Link" styleClass="input-label"/>
+                <TextField fx:id="linkField" promptText="https://meet.google.com/..." styleClass="input-field"/>
+            </VBox>
+
+            <Label fx:id="formStatus" text="" managed="false" visible="false"/>
+
+            <HBox spacing="10" alignment="CENTER_RIGHT">
+                <Button text="Cancel" onAction="#cancelForm" styleClass="btn-secondary"/>
+                <Button fx:id="btnSave" text="Schedule" onAction="#handleSave" styleClass="btn-primary"/>
+            </HBox>
+        </VBox>
+    </VBox>
+
+    <!-- Filter bar -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <TextField fx:id="searchField" promptText="Search by name, link..." styleClass="input-field"
+                   HBox.hgrow="ALWAYS" onKeyReleased="#handleSearch"/>
+        <ComboBox fx:id="filterStatusCombo" promptText="Filter status" styleClass="input-field"
+                  onAction="#handleSearch"/>
+        <Label fx:id="countLabel" text="0 interviews" styleClass="stat-label"/>
+    </HBox>
+
+    <!-- Interview Cards Grid -->
+    <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                style="-fx-background-color: transparent; -fx-border-color: transparent;">
+        <FlowPane fx:id="cardsPane" hgap="12" vgap="12" alignment="TOP_LEFT">
+            <padding><Insets top="2" right="2" bottom="12" left="2"/></padding>
+        </FlowPane>
+    </ScrollPane>
+</VBox>
