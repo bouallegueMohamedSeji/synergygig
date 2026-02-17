@@ -4,8 +4,6 @@ import entities.Course;
 import entities.Question;
 import entities.Quiz;
 import entities.User;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -13,7 +11,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import services.ServiceCourse;
 import services.ServiceQuestion;
-import services.ServiceQuiz;
 import services.ServiceUserSkill;
 import utils.SessionManager;
 
@@ -152,8 +149,7 @@ public class QuizTakingController {
             return;
 
         try {
-            // Find the course to get the skill ID
-            // Ideally Quiz should optionally store skillId, but it's linked via Course
+            // Find the course to get the skill ID and Level
             Optional<Course> courseOpt = serviceCourse.recuperer().stream()
                     .filter(c -> c.getId() == currentQuiz.getCourseId())
                     .findFirst();
@@ -161,8 +157,10 @@ public class QuizTakingController {
             if (courseOpt.isPresent()) {
                 Course course = courseOpt.get();
                 if (course.getSkillId() > 0) {
-                    serviceUserSkill.addSkillToUser(currentUser.getId(), course.getSkillId());
-                    resultLabel.setText(resultLabel.getText() + "\nSkill added to your profile!");
+                    // Pass the skill level here
+                    serviceUserSkill.addSkillToUser(currentUser.getId(), course.getSkillId(), course.getSkillLevel());
+                    resultLabel.setText(
+                            resultLabel.getText() + "\nSkill (" + course.getSkillLevel() + ") added to your profile!");
                 } else {
                     // No skill associated with this course
                 }

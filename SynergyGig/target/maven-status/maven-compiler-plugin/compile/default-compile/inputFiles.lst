@@ -11,6 +11,7 @@ C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\QuizTakingControl
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\ResourceController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\SignupController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\TitleBarController.java
+C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\UserSkillsController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\ChatRoom.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\Course.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\Interview.java
@@ -21,6 +22,7 @@ C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\QuizAttempt.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\Resource.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\Skill.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\User.java
+C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\UserSkillView.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\mains\MainFX.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\mains\TestModule5.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\IService.java

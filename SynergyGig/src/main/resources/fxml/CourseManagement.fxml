@@ -33,6 +33,9 @@
                 <Label text="Skill" />
                 <ComboBox fx:id="skillComboBox" promptText="Select Associated Skill" prefWidth="270.0" />
                 
+                <Label text="Skill Level" />
+                <ComboBox fx:id="skillLevelComboBox" promptText="Select Level" prefWidth="270.0" />
+                
                 <HBox spacing="10.0" alignment="CENTER_RIGHT">
                     <Button fx:id="btnClear" mnemonicParsing="false" onAction="#clearForm" text="Clear" />
                     <Button fx:id="btnSave" mnemonicParsing="false" onAction="#saveCourse" style="-fx-background-color: #2196F3; -fx-text-fill: white;" text="Save" />

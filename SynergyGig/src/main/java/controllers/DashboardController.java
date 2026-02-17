@@ -173,6 +173,13 @@ public class DashboardController {
     }
 
     @FXML
+    private void showMySkills() {
+        loadContent("/fxml/UserSkills.fxml");
+        dashboardTitle.setText("My Skills");
+        dashboardSubtitle.setText("View your earned skills and proficiency levels");
+    }
+
+    @FXML
     private void showProfile() {
         loadContent("/fxml/Profile.fxml");
     }

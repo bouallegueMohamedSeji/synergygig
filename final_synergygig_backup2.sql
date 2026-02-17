@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1
--- Généré le : mar. 17 fév. 2026 à 23:50
+-- Généré le : mar. 17 fév. 2026 à 22:52
 -- Version du serveur : 10.4.32-MariaDB
 -- Version de PHP : 8.2.12
 
@@ -102,21 +102,16 @@ CREATE TABLE `courses` (
   `id` int(11) NOT NULL,
   `title` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,
-  `instructor_id` int(11) DEFAULT NULL,
-  `skill_id` int(11) DEFAULT NULL,
-  `skill_level` varchar(50) DEFAULT 'Beginner'
+  `instructor_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Déchargement des données de la table `courses`
 --
 
-INSERT INTO `courses` (`id`, `title`, `description`, `instructor_id`, `skill_id`, `skill_level`) VALUES
-(2, 'faza', 'xd', 1, NULL, 'Beginner'),
-(3, 'oiiaia', 'aaaa', 1, NULL, 'Beginner'),
-(4, 'faza2', 'xd', 3, 1, 'Beginner'),
-(5, 'perefect', 'testing', 2, 8, 'Beginner'),
-(6, 'perfect1', 'a', 3, 8, 'Beginner');
+INSERT INTO `courses` (`id`, `title`, `description`, `instructor_id`) VALUES
+(2, 'faza', 'xd', 1),
+(3, 'oiiaia', 'aaaa', 1);
 
 -- --------------------------------------------------------
 
@@ -291,15 +286,6 @@ CREATE TABLE `questions` (
   `correct_option` char(1) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Déchargement des données de la table `questions`
---
-
-INSERT INTO `questions` (`id`, `quiz_id`, `question_text`, `option_a`, `option_b`, `option_c`, `correct_option`) VALUES
-(1, 1, 'oiiaia B', 'oiiaia', 'oiiaia', 'oiiaia', 'B'),
-(2, 1, 'oiiaia A', 'oiiaia', 'oiiaia', 'oiiaia', 'A'),
-(3, 1, 'oiiaia C', 'oiiaia', 'oiiaia', 'oiiaia', 'C');
-
 -- --------------------------------------------------------
 
 --
@@ -311,13 +297,6 @@ CREATE TABLE `quizzes` (
   `course_id` int(11) NOT NULL,
   `title` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Déchargement des données de la table `quizzes`
---
-
-INSERT INTO `quizzes` (`id`, `course_id`, `title`) VALUES
-(1, 4, 'qui2');
 
 -- --------------------------------------------------------
 
@@ -356,20 +335,6 @@ CREATE TABLE `skills` (
   `id` int(11) NOT NULL,
   `name` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Déchargement des données de la table `skills`
---
-
-INSERT INTO `skills` (`id`, `name`) VALUES
-(5, 'Communication'),
-(4, 'Data Science'),
-(7, 'Design'),
-(1, 'Java'),
-(8, 'Marketing'),
-(6, 'Project Management'),
-(2, 'Python'),
-(3, 'Web Development');
 
 -- --------------------------------------------------------
 
@@ -422,16 +387,8 @@ INSERT INTO `users` (`id`, `email`, `password`, `first_name`, `last_name`, `role
 CREATE TABLE `user_skills` (
   `user_id` int(11) NOT NULL,
   `skill_id` int(11) NOT NULL,
-  `level` enum('BEGINNER','INTERMEDIATE','ADVANCED') DEFAULT NULL,
-  `skill_level` varchar(50) DEFAULT 'Beginner'
+  `level` enum('BEGINNER','INTERMEDIATE','ADVANCED') DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Déchargement des données de la table `user_skills`
---
-
-INSERT INTO `user_skills` (`user_id`, `skill_id`, `level`, `skill_level`) VALUES
-(2, 1, NULL, 'Beginner');
 
 --
 -- Index pour les tables déchargées
@@ -478,8 +435,7 @@ ALTER TABLE `contracts`
 --
 ALTER TABLE `courses`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `instructor_id` (`instructor_id`),
-  ADD KEY `fk_courses_skill` (`skill_id`);
+  ADD KEY `instructor_id` (`instructor_id`);
 
 --
 -- Index pour la table `departments`
@@ -656,7 +612,7 @@ ALTER TABLE `contracts`
 -- AUTO_INCREMENT pour la table `courses`
 --
 ALTER TABLE `courses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT pour la table `departments`
@@ -728,13 +684,13 @@ ALTER TABLE `projects`
 -- AUTO_INCREMENT pour la table `questions`
 --
 ALTER TABLE `questions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `quizzes`
 --
 ALTER TABLE `quizzes`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `quiz_attempts`
@@ -752,7 +708,7 @@ ALTER TABLE `resources`
 -- AUTO_INCREMENT pour la table `skills`
 --
 ALTER TABLE `skills`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT pour la table `tasks`
@@ -800,8 +756,7 @@ ALTER TABLE `contracts`
 -- Contraintes pour la table `courses`
 --
 ALTER TABLE `courses`
-  ADD CONSTRAINT `courses_ibfk_1` FOREIGN KEY (`instructor_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_courses_skill` FOREIGN KEY (`skill_id`) REFERENCES `skills` (`id`) ON DELETE SET NULL;
+  ADD CONSTRAINT `courses_ibfk_1` FOREIGN KEY (`instructor_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Contraintes pour la table `departments`

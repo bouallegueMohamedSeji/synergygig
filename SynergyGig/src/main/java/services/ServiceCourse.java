@@ -17,7 +17,7 @@ public class ServiceCourse implements IService<Course> {
 
     @Override
     public void ajouter(Course t) throws SQLException {
-        String req = "INSERT INTO courses (title, description, instructor_id, skill_id) VALUES (?, ?, ?, ?)";
+        String req = "INSERT INTO courses (title, description, instructor_id, skill_id, skill_level) VALUES (?, ?, ?, ?, ?)";
         PreparedStatement ps = connection.prepareStatement(req);
         ps.setString(1, t.getTitle());
         ps.setString(2, t.getDescription());
@@ -28,13 +28,15 @@ public class ServiceCourse implements IService<Course> {
         } else {
             ps.setNull(4, java.sql.Types.INTEGER);
         }
+
+        ps.setString(5, t.getSkillLevel());
 
         ps.executeUpdate();
     }
 
     @Override
     public void modifier(Course t) throws SQLException {
-        String req = "UPDATE courses SET title=?, description=?, instructor_id=?, skill_id=? WHERE id=?";
+        String req = "UPDATE courses SET title=?, description=?, instructor_id=?, skill_id=?, skill_level=? WHERE id=?";
         PreparedStatement ps = connection.prepareStatement(req);
         ps.setString(1, t.getTitle());
         ps.setString(2, t.getDescription());
@@ -46,7 +48,9 @@ public class ServiceCourse implements IService<Course> {
             ps.setNull(4, java.sql.Types.INTEGER);
         }
 
-        ps.setInt(5, t.getId());
+        ps.setString(5, t.getSkillLevel());
+
+        ps.setInt(6, t.getId());
         ps.executeUpdate();
     }
 
@@ -70,7 +74,8 @@ public class ServiceCourse implements IService<Course> {
                     rs.getString("title"),
                     rs.getString("description"),
                     rs.getInt("instructor_id"),
-                    rs.getInt("skill_id")));
+                    rs.getInt("skill_id"),
+                    rs.getString("skill_level")));
         }
         return courses;
     }

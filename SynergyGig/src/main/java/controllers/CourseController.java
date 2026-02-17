@@ -26,6 +26,8 @@ public class CourseController {
     private TextField instructorIdField;
     @FXML
     private ComboBox<Skill> skillComboBox;
+    @FXML
+    private ComboBox<String> skillLevelComboBox;
 
     @FXML
     private TableView<Course> courseTable;
@@ -41,7 +43,7 @@ public class CourseController {
     @FXML
     private Label statusLabel;
     @FXML
-    private Label lblInstructorId; // Label for the field
+    private Label lblInstructorId;
 
     private ServiceCourse serviceCourse;
     private ServiceSkill serviceSkill;
@@ -73,37 +75,33 @@ public class CourseController {
         loadCourses();
         loadSkills();
 
+        // Initialize Skill Levels
+        skillLevelComboBox.setItems(FXCollections.observableArrayList("Beginner", "Intermediate", "Advanced"));
+        skillLevelComboBox.setValue("Beginner"); // Default
+
         // RBAC logic
         entities.User currentUser = utils.SessionManager.getInstance().getCurrentUser();
         if (currentUser != null) {
             String role = currentUser.getRole();
 
             if ("ADMIN".equals(role)) {
-                // Admin: Full access (Can edit instructor ID)
-                formContainer.setVisible(true); // Changed from false to true
+                formContainer.setVisible(true);
                 formContainer.setManaged(true);
                 btnDelete.setVisible(true);
-
-                // Show instructor field for Admins
                 setInstructorFieldVisible(true);
 
             } else if ("HR_MANAGER".equals(role) || "PROJECT_OWNER".equals(role)) {
-                // HR/Project Owner: Create/Edit/Delete
                 formContainer.setVisible(true);
                 btnDelete.setVisible(true);
-
-                // Hide instructor field for these users (Auto-assigned)
                 setInstructorFieldVisible(false);
 
             } else {
-                // Others: Read Only
                 formContainer.setVisible(false);
                 formContainer.setManaged(false);
                 btnDelete.setVisible(false);
             }
         }
 
-        // Listen for selection changes
         courseTable.getSelectionModel().selectedItemProperty().addListener((obs, oldSelection, newSelection) -> {
             if (newSelection != null) {
                 selectCourse(newSelection);
@@ -116,7 +114,7 @@ public class CourseController {
             instructorIdField.setVisible(visible);
             instructorIdField.setManaged(visible);
         }
-        if (lblInstructorId != null) { // Assuming we bind a label in FXML
+        if (lblInstructorId != null) {
             lblInstructorId.setVisible(visible);
             lblInstructorId.setManaged(visible);
         }
@@ -161,17 +159,12 @@ public class CourseController {
         entities.User currentUser = utils.SessionManager.getInstance().getCurrentUser();
 
         if (currentUser != null && "ADMIN".equals(currentUser.getRole())) {
-            // Admin sees and can edit instructor ID
             instructorIdField.setText(String.valueOf(course.getInstructorId()));
             setInstructorFieldVisible(true);
         } else {
-            // Others don't need to see it in the form, but if they did, it would require a
-            // Label
-            // We already hid it in initialize, but let's ensure consistency
             setInstructorFieldVisible(false);
         }
 
-        // Select the skill in ComboBox
         if (course.getSkillId() > 0) {
             for (Skill s : skillComboBox.getItems()) {
                 if (s.getId() == course.getSkillId()) {
@@ -182,6 +175,13 @@ public class CourseController {
         } else {
             skillComboBox.setValue(null);
         }
+
+        // Set Skill Level
+        if (course.getSkillLevel() != null) {
+            skillLevelComboBox.setValue(course.getSkillLevel());
+        } else {
+            skillLevelComboBox.setValue("Beginner");
+        }
     }
 
     @FXML
@@ -189,6 +189,7 @@ public class CourseController {
         String title = titleField.getText().trim();
         String description = descriptionArea.getText().trim();
         Skill selectedSkill = skillComboBox.getValue();
+        String selectedLevel = skillLevelComboBox.getValue();
 
         if (title.isEmpty()) {
             statusLabel.setText("Title is required.");
@@ -200,11 +201,8 @@ public class CourseController {
         int instructorId = 0;
 
         if (selectedCourse == null) {
-            // New Course
             if (currentUser != null) {
                 if ("ADMIN".equals(currentUser.getRole())) {
-                    // Admin creating course: must specify instructor ID? Or auto-set?
-                    // Let's check field
                     String idStr = instructorIdField.getText().trim();
                     if (!idStr.isEmpty()) {
                         try {
@@ -214,16 +212,13 @@ public class CourseController {
                             return;
                         }
                     } else {
-                        // Default to Admin's ID if left empty? Or required?
                         instructorId = currentUser.getId();
                     }
                 } else {
-                    // HR/PO creating: Auto-assign their ID
                     instructorId = currentUser.getId();
                 }
             }
         } else {
-            // Editing
             if (currentUser != null && "ADMIN".equals(currentUser.getRole())) {
                 String idStr = instructorIdField.getText().trim();
                 try {
@@ -233,16 +228,16 @@ public class CourseController {
                     return;
                 }
             } else {
-                // Keep existing ID
                 instructorId = selectedCourse.getInstructorId();
             }
         }
 
         int skillId = selectedSkill != null ? selectedSkill.getId() : 0;
+        String level = selectedLevel != null ? selectedLevel : "Beginner";
 
         try {
             if (selectedCourse == null) {
-                Course newCourse = new Course(title, description, instructorId, skillId);
+                Course newCourse = new Course(title, description, instructorId, skillId, level);
                 serviceCourse.ajouter(newCourse);
                 statusLabel.setText("Course added successfully.");
                 statusLabel.setStyle("-fx-text-fill: green;");
@@ -251,6 +246,7 @@ public class CourseController {
                 selectedCourse.setDescription(description);
                 selectedCourse.setInstructorId(instructorId);
                 selectedCourse.setSkillId(skillId);
+                selectedCourse.setSkillLevel(level);
                 serviceCourse.modifier(selectedCourse);
                 statusLabel.setText("Course updated successfully.");
                 statusLabel.setStyle("-fx-text-fill: green;");
@@ -293,16 +289,14 @@ public class CourseController {
         descriptionArea.clear();
         instructorIdField.clear();
         skillComboBox.setValue(null);
+        skillLevelComboBox.setValue("Beginner");
         selectedCourse = null;
         courseTable.getSelectionModel().clearSelection();
         statusLabel.setText("");
 
-        // Reset visibility for Admin (if they were viewing a course, form might be
-        // visible)
-        // Generally keep form visibility static based on role, just reset fields
         entities.User currentUser = utils.SessionManager.getInstance().getCurrentUser();
         if (currentUser != null && !"ADMIN".equals(currentUser.getRole())) {
-            setInstructorFieldVisible(false); // Ensure hidden
+            setInstructorFieldVisible(false);
         }
     }
 
