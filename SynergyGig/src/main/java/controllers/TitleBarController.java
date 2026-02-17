@@ -3,6 +3,8 @@ package controllers;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
+import javafx.scene.Scene;
 import javafx.scene.Node;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
@@ -37,5 +39,26 @@ public class TitleBarController {
 
     private Stage getStage(ActionEvent event) {
         return (Stage) ((Node) event.getSource()).getScene().getWindow();
+    }
+
+    @FXML
+    private Button btnTheme;
+
+    private boolean isLightMode = false;
+
+    @FXML
+    private void toggleTheme() {
+        isLightMode = !isLightMode;
+        Scene scene = btnTheme.getScene();
+
+        if (isLightMode) {
+            btnTheme.setText("☀️");
+            // Add light theme stylesheet
+            scene.getStylesheets().add(getClass().getResource("/css/light-theme.css").toExternalForm());
+        } else {
+            btnTheme.setText("🌙");
+            // Remove light theme stylesheet
+            scene.getStylesheets().remove(getClass().getResource("/css/light-theme.css").toExternalForm());
+        }
     }
 }

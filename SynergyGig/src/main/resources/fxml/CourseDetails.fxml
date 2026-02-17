@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Text?>
+<?import javafx.scene.text.TextFlow?>
+
+<AnchorPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controllers.CourseDetailsController">
+    <VBox spacing="20.0" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="20.0" AnchorPane.rightAnchor="20.0" AnchorPane.topAnchor="20.0">
+        
+        <Button text="← Back to Catalog" onAction="#goBack" style="-fx-background-color: transparent; -fx-text-fill: #2196F3; -fx-cursor: hand;" />
+
+        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
+            <content>
+                <VBox spacing="20.0">
+                    <padding>
+                        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+                    </padding>
+                    
+                    <!-- Header -->
+                    <VBox spacing="5" style="-fx-border-color: #ddd; -fx-border-width: 0 0 1 0; -fx-padding: 0 0 20 0;">
+                        <Label fx:id="courseTitle" style="-fx-font-size: 32px; -fx-font-weight: bold;" text="Course Title" wrapText="true" />
+                        <HBox spacing="15">
+                             <Label fx:id="courseInstructor" text="Instructor: Name" style="-fx-text-fill: #666; -fx-font-size: 14px;" />
+                             <Label fx:id="courseLevel" text="Level: Beginner" style="-fx-background-color: #E3F2FD; -fx-text-fill: #1976D2; -fx-padding: 2 8; -fx-background-radius: 10;" />
+                        </HBox>
+                    </VBox>
+                    
+                    <!-- Description -->
+                    <VBox spacing="10">
+                        <Label text="About this course" style="-fx-font-size: 18px; -fx-font-weight: bold;" />
+                        <TextFlow>
+                            <Text fx:id="courseDescription" text="Course description goes here..." style="-fx-font-size: 16px; -fx-fill: #333;" />
+                        </TextFlow>
+                    </VBox>
+                    
+                    <!-- Resources -->
+                    <VBox spacing="10">
+                        <Label text="Resources" style="-fx-font-size: 18px; -fx-font-weight: bold;" />
+                        <VBox fx:id="resourcesContainer" spacing="5" />
+                        <Label fx:id="noResourcesLabel" text="No resources available." style="-fx-text-fill: #888; -fx-font-style: italic;" managed="false" visible="false" />
+                    </VBox>
+                    
+                    <!-- Assessment -->
+                    <VBox spacing="10" style="-fx-background-color: #F5F5F5; -fx-padding: 20; -fx-background-radius: 5;">
+                        <Label text="Assessment" style="-fx-font-size: 18px; -fx-font-weight: bold;" />
+                        <Label text="Test your knowledge to earn a skill badge!" />
+                        <Button fx:id="btnTakeQuiz" text="Take Quiz" onAction="#takeQuiz" style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10 20;" />
+                        <Label fx:id="noQuizLabel" text="No quiz available for this course yet." style="-fx-text-fill: #888; -fx-font-style: italic;" managed="false" visible="false" />
+                    </VBox>
+
+                </VBox>
+            </content>
+        </ScrollPane>
+    </VBox>
+</AnchorPane>

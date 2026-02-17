@@ -68,4 +68,22 @@ public class ServiceQuiz implements IService<Quiz> {
         ps.close();
         return quizzes;
     }
+
+    public List<Quiz> getByCourseId(int courseId) throws SQLException {
+        List<Quiz> quizzes = new ArrayList<>();
+        String req = "SELECT * FROM quizzes WHERE course_id = ?";
+        PreparedStatement ps = connection.prepareStatement(req);
+        ps.setInt(1, courseId);
+        ResultSet rs = ps.executeQuery();
+        while (rs.next()) {
+            Quiz quiz = new Quiz(
+                    rs.getInt("id"),
+                    rs.getInt("course_id"),
+                    rs.getString("title"));
+            quizzes.add(quiz);
+        }
+        rs.close();
+        ps.close();
+        return quizzes;
+    }
 }

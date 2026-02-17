@@ -1,6 +1,7 @@
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\AdminUsersController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\ChatController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\CourseController.java
+C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\CourseDetailsController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\DashboardController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\InterviewController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\LoginController.java
@@ -11,6 +12,7 @@ C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\QuizTakingControl
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\ResourceController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\SignupController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\TitleBarController.java
+C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\UserCourseCatalogController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\UserSkillsController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\ChatRoom.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\entities\Course.java
@@ -37,6 +39,7 @@ C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceResource.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceSkill.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceUser.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceUserSkill.java
+C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\utils\ComboBoxAutoComplete.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\utils\MyDatabase.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\utils\ResizeHelper.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\utils\SessionManager.java

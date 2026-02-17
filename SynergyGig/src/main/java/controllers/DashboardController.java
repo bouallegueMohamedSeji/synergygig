@@ -123,16 +123,24 @@ public class DashboardController {
             case "EMPLOYEE":
                 // Employee sees basic modules
                 showNode(btnHrAdmin); // can view attendance/leave
+                // btnResources is hidden by default in FXML? No, it's visible.
+                // We need to explicitly hide it if it's visible by default.
+                btnResources.setVisible(false);
+                btnResources.setManaged(false);
                 break;
 
             case "PROJECT_OWNER":
                 // Employee + Projects/Tasks
                 showNode(btnHrAdmin);
                 showNode(btnProjects);
+                // Project Owner might still want direct Resource Management?
+                // "keep it like how it is for the admin and for the project owner"
                 break;
 
             case "GIG_WORKER":
                 // Gig worker sees recruitment-focused modules
+                btnResources.setVisible(false);
+                btnResources.setManaged(false);
                 break;
         }
     }
@@ -208,11 +216,30 @@ public class DashboardController {
 
     @FXML
     private void showCourses() {
-        loadContent("/fxml/CourseManagement.fxml");
+        User currentUser = SessionManager.getInstance().getCurrentUser();
+        if (currentUser != null &&
+                ("ADMIN".equals(currentUser.getRole()) ||
+                        "HR_MANAGER".equals(currentUser.getRole()) ||
+                        "PROJECT_OWNER".equals(currentUser.getRole()))) {
+            loadContent("/fxml/CourseManagement.fxml");
+        } else {
+            // Employees and Gig Workers see the Catalog
+            loadContent("/fxml/UserCourseCatalog.fxml");
+        }
     }
 
     @FXML
     private void showResources() {
+        User currentUser = SessionManager.getInstance().getCurrentUser();
+        // Hide resources for non-admins if they are supposed to access it via Courses
+        if (currentUser != null &&
+                !"ADMIN".equals(currentUser.getRole()) &&
+                !"HR_MANAGER".equals(currentUser.getRole()) &&
+                !"PROJECT_OWNER".equals(currentUser.getRole())) {
+            // For employees, this button should ideally be hidden from sidebar
+            // But if specific routing is needed:
+            return;
+        }
         loadContent("/fxml/ResourceManagement.fxml");
     }
 

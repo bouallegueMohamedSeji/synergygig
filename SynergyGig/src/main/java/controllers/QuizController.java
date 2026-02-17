@@ -136,12 +136,12 @@ public class QuizController {
     private void loadCourses() {
         try {
             courseList = FXCollections.observableArrayList(serviceCourse.recuperer());
-            courseComboBox.setItems(courseList);
+            courseComboBox.setItems(FXCollections.observableArrayList(courseList));
 
             courseComboBox.setConverter(new StringConverter<Course>() {
                 @Override
                 public String toString(Course course) {
-                    return course == null ? "" : course.getId() + " - " + course.getTitle();
+                    return course == null ? "" : course.getTitle();
                 }
 
                 @Override
@@ -149,6 +149,10 @@ public class QuizController {
                     return null;
                 }
             });
+
+            // Enable AutoComplete
+            utils.ComboBoxAutoComplete.setup(courseComboBox);
+
         } catch (SQLException e) {
             showError("Failed to load courses: " + e.getMessage());
         }

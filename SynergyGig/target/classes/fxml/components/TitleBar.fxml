@@ -12,6 +12,8 @@
 
     <Label text="SynergyGig" styleClass="window-title"/>
     <Region HBox.hgrow="ALWAYS" />
+    <Button fx:id="btnTheme" text="🌙" onAction="#toggleTheme" styleClass="window-btn" />
+    <Button text="—" onAction="#minimize" styleClass="window-btn"/>
     <Button text="—" onAction="#minimize" styleClass="window-btn"/>
     <Button text="X" onAction="#close" styleClass="window-btn, window-btn-close"/>
 

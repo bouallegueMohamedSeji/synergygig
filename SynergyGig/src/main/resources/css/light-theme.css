@@ -1,0 +1,153 @@
+/* ===========================================
+   SynergyGig — Dark Theme Override
+   =========================================== */
+
+/* We can use the main style.css as the base (which is already dark-ish). 
+   If the user wants a "Light" mode, then style.css is actually the Dark mode?
+   Wait, the current style.css has #0A090C background. That IS dark mode.
+   
+   The user asked for "light and darkmode feature".
+   Since the current one IS dark, I should create a `light-theme.css` to override values 
+   when toggled to Light Mode. 
+   
+   But let's stick to the convention: 
+   style.css = Default (Dark)
+   light-theme.css = Light Mode Overrides
+*/
+
+.root-pane {
+    -fx-background-color: #F0F2F5;
+}
+
+.dashboard-root {
+    -fx-background-color: #F0F2F5;
+}
+
+/* Sidebar */
+.sidebar {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: transparent #E0E0E0 transparent transparent;
+}
+
+.sidebar-btn {
+    -fx-text-fill: #555555;
+}
+
+.sidebar-btn:hover {
+    -fx-background-color: #E3F2FD;
+    -fx-text-fill: #1976D2;
+}
+
+.sidebar-btn:pressed {
+    -fx-background-color: #BBDEFB;
+}
+
+/* Topbar */
+.topbar {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: transparent transparent #E0E0E0 transparent;
+}
+
+.topbar-brand {
+    -fx-text-fill: #1976D2;
+}
+
+.topbar-welcome {
+    -fx-text-fill: #333333;
+}
+
+/* Content Area */
+.content-area {
+    -fx-background-color: #F0F2F5;
+}
+
+.content-title {
+    -fx-text-fill: #222222;
+}
+
+.content-subtitle {
+    -fx-text-fill: #666666;
+}
+
+/* Cards */
+.stat-card, .profile-card, .data-table {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0E0E0;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.05), 5, 0, 0, 2);
+}
+
+.stat-label {
+    -fx-text-fill: #777777;
+}
+
+.stat-value {
+    -fx-text-fill: #333333;
+}
+
+/* Inputs */
+.input-field {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #333333;
+    -fx-border-color: #CCCCCC;
+    -fx-prompt-text-fill: #999999;
+}
+
+.input-field:focused {
+    -fx-border-color: #1976D2;
+    -fx-background-color: #FFFFFF;
+}
+
+/* Tables */
+.data-table .column-header-background {
+    -fx-background-color: #F5F5F5;
+}
+
+.data-table .column-header {
+    -fx-background-color: #F5F5F5;
+    -fx-border-color: transparent transparent #E0E0E0 transparent;
+}
+
+.data-table .column-header .label {
+    -fx-text-fill: #555555;
+}
+
+.data-table .table-row-cell {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: transparent transparent #EEEEEE transparent;
+}
+
+.data-table .table-row-cell:odd {
+    -fx-background-color: #FAFAFA;
+}
+
+.data-table .table-cell {
+    -fx-text-fill: #333333;
+}
+
+.data-table .table-row-cell:hover {
+    -fx-background-color: #E3F2FD;
+}
+
+/* ComboBox */
+.combo-box {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #CCCCCC;
+}
+
+.combo-box .list-cell {
+    -fx-text-fill: #333333;
+    -fx-background-color: #FFFFFF;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #FFFFFF;
+}
+
+.combo-box-popup .list-cell {
+    -fx-text-fill: #333333;
+    -fx-background-color: #FFFFFF;
+}
+
+.combo-box-popup .list-cell:hover {
+    -fx-background-color: #E3F2FD;
+}

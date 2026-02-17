@@ -146,6 +146,9 @@ public class CourseController {
                 }
             });
 
+            // Enable AutoComplete
+            utils.ComboBoxAutoComplete.setup(skillComboBox);
+
         } catch (SQLException e) {
             showError("Failed to load skills: " + e.getMessage());
         }

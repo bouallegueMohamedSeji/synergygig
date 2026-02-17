@@ -68,4 +68,23 @@ public class ServiceResource implements IService<Resource> {
         ps.close();
         return resources;
     }
+
+    public List<Resource> getByCourseId(int courseId) throws SQLException {
+        List<Resource> resources = new ArrayList<>();
+        String req = "SELECT * FROM resources WHERE course_id = ?";
+        PreparedStatement ps = connection.prepareStatement(req);
+        ps.setInt(1, courseId);
+        ResultSet rs = ps.executeQuery();
+        while (rs.next()) {
+            Resource resource = new Resource(
+                    rs.getInt("id"),
+                    rs.getInt("course_id"),
+                    rs.getString("type"),
+                    rs.getString("url"));
+            resources.add(resource);
+        }
+        rs.close();
+        ps.close();
+        return resources;
+    }
 }
