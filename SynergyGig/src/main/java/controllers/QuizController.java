@@ -6,6 +6,8 @@ import entities.User;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox;
@@ -14,6 +16,7 @@ import services.ServiceCourse;
 import services.ServiceQuiz;
 import utils.SessionManager;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +46,8 @@ public class QuizController {
     private Button btnSave;
     @FXML
     private Button btnClear;
+    @FXML
+    private Button btnManageQuestions;
 
     private ServiceQuiz serviceQuiz;
     private ServiceCourse serviceCourse;
@@ -84,56 +89,39 @@ public class QuizController {
             }
         }
 
+        if (btnManageQuestions != null) {
+            btnManageQuestions.setVisible(false);
+        }
+
         // Listen for selection changes to update form and Delete button logic
         quizTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 selectQuiz(newVal);
                 updateDeleteAccess(newVal);
+                updateManageQuestionsAccess(newVal);
+            } else {
+                if (btnManageQuestions != null)
+                    btnManageQuestions.setVisible(false);
             }
         });
     }
 
     private void updateDeleteAccess(Quiz quiz) {
-        User currentUser = SessionManager.getInstance().getCurrentUser();
-        if (currentUser == null)
-            return;
-
-        String role = currentUser.getRole();
-        if ("ADMIN".equals(role)) {
+        if (canEditOrDelete(quiz)) {
             btnDelete.setVisible(true);
-            return;
-        }
-
-        if ("EMPLOYEE".equals(role) || "GIG_WORKER".equals(role)) {
+        } else {
             btnDelete.setVisible(false);
-            return;
         }
+    }
 
-        // For Instructors/HR/PO - check ownership of the course
-        try {
-            // Find the course details to check instructor
-            Optional<Course> courseOpt = serviceCourse.recuperer().stream()
-                    .filter(c -> c.getId() == quiz.getCourseId())
-                    .findFirst();
+    private void updateManageQuestionsAccess(Quiz quiz) {
+        if (btnManageQuestions == null)
+            return;
 
-            if (courseOpt.isPresent()) {
-                Course c = courseOpt.get();
-                if (c.getInstructorId() == currentUser.getId()) {
-                    btnDelete.setVisible(true); // Owner can delete
-                } else {
-                    // Even HR/PO cannot delete quizzes of courses they don't own (per requirement
-                    // "only that instructor")
-                    // OR maybe HR can delete anything? Requirement said: "only that instructor can
-                    // edit the quiz or the admin"
-                    // So we stick to strict rule: Admin OR Owner.
-                    btnDelete.setVisible(false);
-                }
-            } else {
-                btnDelete.setVisible(false);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            btnDelete.setVisible(false);
+        if (canEditOrDelete(quiz)) {
+            btnManageQuestions.setVisible(true);
+        } else {
+            btnManageQuestions.setVisible(false);
         }
     }
 
@@ -253,6 +241,36 @@ public class QuizController {
         }
     }
 
+    @FXML
+    private void manageQuestions() {
+        if (selectedQuiz == null)
+            return;
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/QuestionManagement.fxml"));
+            Parent root = loader.load();
+
+            QuestionController controller = loader.getController();
+            controller.setQuiz(selectedQuiz);
+
+            // Replace content in Dashboard
+            if (quizTable.getScene() != null
+                    && quizTable.getScene().getRoot() instanceof javafx.scene.layout.BorderPane) {
+                javafx.scene.layout.BorderPane borderPane = (javafx.scene.layout.BorderPane) quizTable.getScene()
+                        .getRoot();
+                javafx.scene.layout.StackPane contentArea = (javafx.scene.layout.StackPane) borderPane.getCenter();
+                contentArea.getChildren().setAll(root);
+            } else {
+                // Fallback
+                quizTable.getScene().setRoot(root);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            showError("Failed to load Question Management: " + e.getMessage());
+        }
+    }
+
     private boolean canEditOrDelete(Quiz quiz) {
         User currentUser = SessionManager.getInstance().getCurrentUser();
         if (currentUser == null)
@@ -283,6 +301,8 @@ public class QuizController {
         selectedQuiz = null;
         quizTable.getSelectionModel().clearSelection();
         statusLabel.setText("");
+        if (btnManageQuestions != null)
+            btnManageQuestions.setVisible(false);
     }
 
     private void showError(String message) {
