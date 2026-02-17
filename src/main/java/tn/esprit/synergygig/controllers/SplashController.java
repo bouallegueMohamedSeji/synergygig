@@ -118,7 +118,7 @@ public class SplashController {
 
     private void autoSwitch() {
 
-        PauseTransition pause = new PauseTransition(Duration.seconds(8));
+        PauseTransition pause = new PauseTransition(Duration.seconds(5));
 
         pause.setOnFinished(event -> {
             try {
