@@ -261,26 +261,34 @@ public class OfferController {
                     getClass().getResource("/tn/esprit/synergygig/gui/EditOffer.fxml")
             );
 
-            Parent root = loader.load(); // <-- VBox ici (NORMAL)
+            Parent root = loader.load();
 
-            // controller
+            // Controller
             EditOfferController controller = loader.getController();
             controller.setOffer(offer);
 
-            // stage
+            // 🔥 Création Scene + CSS
+            Scene scene = new Scene(root);
+
+            scene.getStylesheets().add(
+                    getClass().getResource("/tn/esprit/synergygig/gui/app.css").toExternalForm()
+            );
+
+            // Stage
             Stage stage = new Stage();
             stage.setTitle("Edit Offer");
-            stage.setScene(new Scene(root));
+            stage.setScene(scene);
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.showAndWait();
 
-            loadOffers(); // refresh table after edit
+            loadOffers(); // refresh table
 
         } catch (Exception e) {
             e.printStackTrace();
             showError(e.getMessage());
         }
     }
+
 
 
 

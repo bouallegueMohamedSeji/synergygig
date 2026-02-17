@@ -540,5 +540,64 @@
     -fx-font-weight: bold;
     -fx-effect: dropshadow(gaussian, #6a11cb, 10, 0.5, 0, 0);
 }
+/* ===== BACKGROUND BLEU MARINE ===== */
+.galaxy-background {
+    -fx-background-color: #121826
+}
+
+/* ===== GLASS CARD ===== */
+.glass-card {
+    -fx-padding: 40;
+    -fx-background-color: rgba(255,255,255,0.05);
+    -fx-background-radius: 25;
+    -fx-border-color: rgba(255,255,255,0.1);
+    -fx-border-radius: 25;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 30, 0.2, 0, 0);
+}
+
+/* ===== TITLE GALAXY ===== */
+.title-galaxy {
+    -fx-text-fill: linear-gradient(to right, #6a11cb, #2575fc);
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, #6a11cb, 15, 0.5, 0, 0);
+}
+
+/* ===== LABELS ===== */
+.label-galaxy {
+    -fx-text-fill: #b388ff;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, #6a11cb, 8, 0.5, 0, 0);
+}
+
+/* ===== PRIMARY BUTTON ===== */
+.btn-galaxy-primary {
+    -fx-background-color: linear-gradient(to right, #396afc, #2948ff);
+    -fx-text-fill: white;
+    -fx-background-radius: 25;
+    -fx-padding: 8 25 8 25;
+    -fx-font-weight: bold;
+}
+
+.btn-galaxy-primary:hover {
+    -fx-effect: dropshadow(gaussian, #396afc, 20, 0.5, 0, 0);
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
+
+/* ===== DANGER BUTTON ===== */
+.btn-galaxy-danger {
+    -fx-background-color: linear-gradient(to right, #ff416c, #ff4b2b);
+    -fx-text-fill: white;
+    -fx-background-radius: 25;
+    -fx-padding: 8 25 8 25;
+    -fx-font-weight: bold;
+}
+
+.btn-galaxy-danger:hover {
+    -fx-effect: dropshadow(gaussian, #ff4b2b, 20, 0.5, 0, 0);
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+}
 
 

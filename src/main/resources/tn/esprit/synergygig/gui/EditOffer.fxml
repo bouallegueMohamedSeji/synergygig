@@ -1,29 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
 
-<VBox spacing="12"
-      xmlns:fx="http://javafx.com/fxml"
-      fx:controller="tn.esprit.synergygig.controllers.EditOfferController">
+<StackPane xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml"
+           alignment="CENTER"
+           styleClass="galaxy-background"
+           fx:controller="tn.esprit.synergygig.controllers.EditOfferController">
 
-    <padding>
-        <Insets top="20" right="20" bottom="20" left="20"/>
-    </padding>
+    <!-- 🌌 Galaxy Stars -->
+    <Pane fx:id="animatedBackground"/>
 
-    <Label text="✏ Edit Offer"
-           style="-fx-font-size:16; -fx-font-weight:bold;" />
+    <!-- Glass Card -->
+    <VBox spacing="25"
+          maxWidth="550"
+          alignment="TOP_CENTER"
+          styleClass="glass-card">
 
-    <TextField fx:id="titleField" promptText="Title"/>
-    <TextArea fx:id="descriptionField" promptText="Description"/>
+        <!-- TITLE -->
+        <Label text="✏ Edit Offer"
+               styleClass="title-galaxy"/>
 
-    <ComboBox fx:id="typeBox" promptText="Type"/>
-    <ComboBox fx:id="statusBox" promptText="Status"/>
+        <!-- FORM -->
+        <GridPane hgap="20" vgap="18">
 
-    <HBox spacing="10">
-        <Button text="Save" onAction="#handleSave"/>
-        <Button text="Cancel" onAction="#handleCancel"/>
-    </HBox>
+            <columnConstraints>
+                <ColumnConstraints percentWidth="15"/>
+                <ColumnConstraints percentWidth="75"/>
+            </columnConstraints>
 
-</VBox>
+            <Label text="Title"
+                   styleClass="label-galaxy"
+                   GridPane.halignment="RIGHT"/>
+
+            <TextField fx:id="titleField"
+                       promptText="Enter title"
+                       GridPane.columnIndex="1"/>
+
+            <Label text="Description"
+                   styleClass="label-galaxy"
+                   GridPane.rowIndex="1"
+                   GridPane.halignment="RIGHT"/>
+
+            <TextArea fx:id="descriptionField"
+                      prefRowCount="3"
+                      promptText="Enter description"
+                      GridPane.columnIndex="1"
+                      GridPane.rowIndex="1"/>
+
+            <Label text="Type"
+                   styleClass="label-galaxy"
+                   GridPane.rowIndex="2"
+                   GridPane.halignment="RIGHT"/>
+
+            <ComboBox fx:id="typeBox"
+                      GridPane.columnIndex="1"
+                      GridPane.rowIndex="2"/>
+
+            <Label text="Status"
+                   styleClass="label-galaxy"
+                   GridPane.rowIndex="3"
+                   GridPane.halignment="RIGHT"/>
+
+            <ComboBox fx:id="statusBox"
+                      GridPane.columnIndex="1"
+                      GridPane.rowIndex="3"/>
+
+        </GridPane>
+
+        <!-- BUTTONS -->
+        <HBox spacing="25" alignment="CENTER">
+            <Button text="💾 Save"
+                    onAction="#handleSave"
+                    styleClass="btn-galaxy-primary"/>
+
+            <Button text="✖ Cancel"
+                    onAction="#handleCancel"
+                    styleClass="btn-galaxy-danger"/>
+        </HBox>
+
+    </VBox>
+
+</StackPane>
