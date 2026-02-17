@@ -27,7 +27,7 @@
                 <Label text="Description" />
                 <TextArea fx:id="descriptionArea" prefHeight="100.0" promptText="Enter course description" wrapText="true" />
                 
-                <Label text="Instructor ID" />
+                <Label fx:id="lblInstructorId" text="Instructor ID" />
                 <TextField fx:id="instructorIdField" promptText="Enter instructor ID" />
                 
                 <Label text="Skill" />

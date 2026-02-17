@@ -7,6 +7,7 @@ C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\LoginController.j
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\ProfileController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\QuestionController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\QuizController.java
+C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\QuizTakingController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\ResourceController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\SignupController.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\controllers\TitleBarController.java
@@ -33,6 +34,7 @@ C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceQuizAttempt.j
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceResource.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceSkill.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceUser.java
+C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\services\ServiceUserSkill.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\utils\MyDatabase.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\utils\ResizeHelper.java
 C:\Users\Turtl\Desktop\pi\SynergyGig\src\main\java\utils\SessionManager.java

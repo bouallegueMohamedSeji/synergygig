@@ -43,6 +43,7 @@
                     </columns>
                 </TableView>
                 <HBox spacing="10.0" alignment="CENTER_RIGHT">
+                    <Button fx:id="btnTakeQuiz" mnemonicParsing="false" onAction="#takeQuiz" style="-fx-background-color: #4CAF50; -fx-text-fill: white;" text="Take Quiz" />
                     <Button fx:id="btnManageQuestions" mnemonicParsing="false" onAction="#manageQuestions" style="-fx-background-color: #FF9800; -fx-text-fill: white;" text="Manage Questions" />
                     <Button fx:id="btnDelete" mnemonicParsing="false" onAction="#deleteQuiz" style="-fx-background-color: #F44336; -fx-text-fill: white;" text="Delete Selected" />
                 </HBox>

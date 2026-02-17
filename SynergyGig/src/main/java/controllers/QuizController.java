@@ -18,7 +18,6 @@ import utils.SessionManager;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.Optional;
 
 public class QuizController {
@@ -48,6 +47,8 @@ public class QuizController {
     private Button btnClear;
     @FXML
     private Button btnManageQuestions;
+    @FXML
+    private Button btnTakeQuiz;
 
     private ServiceQuiz serviceQuiz;
     private ServiceCourse serviceCourse;
@@ -77,11 +78,15 @@ public class QuizController {
             String role = currentUser.getRole();
             // Create is for HR or Project Owner
             boolean canCreate = "HR_MANAGER".equals(role) || "PROJECT_OWNER".equals(role);
+
+            // Allow Admin to see form ONLY for layout purposes (checking items),
+            // but requirements say "only hr/po create". Admin is usually edit/delete.
+            // Let's hide creation form for Admin unless they select something to edit?
+            // Actually, keep simple: Create is HR/PO.
             formContainer.setVisible(canCreate);
             formContainer.setManaged(canCreate);
 
-            // Delete button visibility - logic handled more specifically on selection,
-            // but Hide it initially for Employees who can't delete anything
+            // Delete button visibility
             boolean isEmployee = "EMPLOYEE".equals(role) || "GIG_WORKER".equals(role);
             if (isEmployee) {
                 btnDelete.setVisible(false);
@@ -89,39 +94,42 @@ public class QuizController {
             }
         }
 
-        if (btnManageQuestions != null) {
+        // Hide action buttons initially
+        if (btnManageQuestions != null)
             btnManageQuestions.setVisible(false);
-        }
+        if (btnTakeQuiz != null)
+            btnTakeQuiz.setVisible(false);
 
-        // Listen for selection changes to update form and Delete button logic
+        // Listen for selection changes
         quizTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 selectQuiz(newVal);
-                updateDeleteAccess(newVal);
-                updateManageQuestionsAccess(newVal);
+                updateActionButtons(newVal);
             } else {
                 if (btnManageQuestions != null)
                     btnManageQuestions.setVisible(false);
+                if (btnTakeQuiz != null)
+                    btnTakeQuiz.setVisible(false);
             }
         });
     }
 
-    private void updateDeleteAccess(Quiz quiz) {
-        if (canEditOrDelete(quiz)) {
-            btnDelete.setVisible(true);
-        } else {
-            btnDelete.setVisible(false);
+    private void updateActionButtons(Quiz quiz) {
+        // Manage Questions: Admin or Owner
+        if (btnManageQuestions != null) {
+            btnManageQuestions.setVisible(canEditOrDelete(quiz));
         }
-    }
 
-    private void updateManageQuestionsAccess(Quiz quiz) {
-        if (btnManageQuestions == null)
-            return;
+        // Take Quiz: Available to everyone (except maybe not needed for creator? but
+        // useful for testing)
+        // Let's make it available to all
+        if (btnTakeQuiz != null) {
+            btnTakeQuiz.setVisible(true);
+        }
 
-        if (canEditOrDelete(quiz)) {
-            btnManageQuestions.setVisible(true);
-        } else {
-            btnManageQuestions.setVisible(false);
+        // Delete Access
+        if (btnDelete != null) {
+            btnDelete.setVisible(canEditOrDelete(quiz));
         }
     }
 
@@ -166,6 +174,14 @@ public class QuizController {
                 break;
             }
         }
+
+        // Admin or Owner should see the form populated to EDIT
+        User currentUser = SessionManager.getInstance().getCurrentUser();
+        if (canEditOrDelete(quiz)) {
+            // Show form for editing even if it was hidden (e.g. for Admin)
+            formContainer.setVisible(true);
+            formContainer.setManaged(true);
+        }
     }
 
     @FXML
@@ -187,10 +203,9 @@ public class QuizController {
                 statusLabel.setText("Quiz added successfully.");
                 statusLabel.setStyle("-fx-text-fill: green;");
             } else {
-                // Update - CHECK PERMISSIONS FIRST
-                // Requirement: "only that instructor can edit the quiz or the admin"
+                // Update
                 if (!canEditOrDelete(selectedQuiz)) {
-                    showError("Permission Denied: Only the Admin or the Instructor of this course can edit this quiz.");
+                    showError("Permission Denied: Only Admin or Instructor cause edit.");
                     return;
                 }
 
@@ -210,15 +225,11 @@ public class QuizController {
     @FXML
     private void deleteQuiz() {
         Quiz selected = quizTable.getSelectionModel().getSelectedItem();
-        if (selected == null) {
-            statusLabel.setText("Please select a quiz to delete.");
-            statusLabel.setStyle("-fx-text-fill: red;");
+        if (selected == null)
             return;
-        }
 
-        // CHECK PERMISSIONS
         if (!canEditOrDelete(selected)) {
-            showError("Permission Denied: Only the Admin or the Instructor of this course can delete this quiz.");
+            showError("Permission Denied.");
             return;
         }
 
@@ -243,17 +254,29 @@ public class QuizController {
 
     @FXML
     private void manageQuestions() {
-        if (selectedQuiz == null)
-            return;
+        navigate("/fxml/QuestionManagement.fxml", selectedQuiz);
+    }
 
+    @FXML
+    private void takeQuiz() {
+        navigate("/fxml/QuizTaking.fxml", selectedQuiz);
+    }
+
+    private void navigate(String fxmlPath, Quiz quiz) {
+        if (quiz == null)
+            return;
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/QuestionManagement.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
             Parent root = loader.load();
 
-            QuestionController controller = loader.getController();
-            controller.setQuiz(selectedQuiz);
+            // Pass quiz to controller
+            Object controller = loader.getController();
+            if (controller instanceof QuestionController) {
+                ((QuestionController) controller).setQuiz(quiz);
+            } else if (controller instanceof QuizTakingController) {
+                ((QuizTakingController) controller).setQuiz(quiz);
+            }
 
-            // Replace content in Dashboard
             if (quizTable.getScene() != null
                     && quizTable.getScene().getRoot() instanceof javafx.scene.layout.BorderPane) {
                 javafx.scene.layout.BorderPane borderPane = (javafx.scene.layout.BorderPane) quizTable.getScene()
@@ -261,13 +284,11 @@ public class QuizController {
                 javafx.scene.layout.StackPane contentArea = (javafx.scene.layout.StackPane) borderPane.getCenter();
                 contentArea.getChildren().setAll(root);
             } else {
-                // Fallback
                 quizTable.getScene().setRoot(root);
             }
-
         } catch (IOException e) {
             e.printStackTrace();
-            showError("Failed to load Question Management: " + e.getMessage());
+            showError("Navigation failed: " + e.getMessage());
         }
     }
 
@@ -280,7 +301,6 @@ public class QuizController {
             return true;
         }
 
-        // Check if current user is the instructor of the course
         try {
             Optional<Course> courseOpt = serviceCourse.recuperer().stream()
                     .filter(c -> c.getId() == quiz.getCourseId())
@@ -301,8 +321,15 @@ public class QuizController {
         selectedQuiz = null;
         quizTable.getSelectionModel().clearSelection();
         statusLabel.setText("");
-        if (btnManageQuestions != null)
-            btnManageQuestions.setVisible(false);
+
+        // Reset visibility based on basic role permissions
+        User currentUser = SessionManager.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            String role = currentUser.getRole();
+            boolean canCreate = "HR_MANAGER".equals(role) || "PROJECT_OWNER".equals(role);
+            formContainer.setVisible(canCreate);
+            formContainer.setManaged(canCreate);
+        }
     }
 
     private void showError(String message) {
