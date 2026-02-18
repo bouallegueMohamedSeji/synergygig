@@ -7,46 +7,73 @@
 <HBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="controllers.ChatController" spacing="0" styleClass="chat-container">
 
-    <!-- Left: Rooms List -->
-    <VBox spacing="10" styleClass="chat-sidebar" prefWidth="250">
-        <padding><Insets top="16" right="12" bottom="16" left="12"/></padding>
-        
-        <Label text="Conversations" styleClass="sidebar-section-title"/>
-        
-        <HBox spacing="8">
-            <TextField fx:id="roomNameField" promptText="New room..." HBox.hgrow="ALWAYS" styleClass="input-field"/>
-            <Button text="+" onAction="#handleCreateRoom" styleClass="btn-small"/>
+    <!-- Left: Conversations Sidebar -->
+    <VBox spacing="0" styleClass="chat-sidebar" prefWidth="280" minWidth="240">
+
+        <!-- Sidebar header -->
+        <HBox alignment="CENTER_LEFT" spacing="10" styleClass="chat-sidebar-header">
+            <padding><Insets top="16" right="14" bottom="12" left="14"/></padding>
+            <Label text="Messages" styleClass="sidebar-section-title" style="-fx-font-size: 16;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="btnNewRoom" text="+" onAction="#handleCreateRoom"
+                    styleClass="btn-small" style="-fx-min-width: 30; -fx-min-height: 30; -fx-font-size: 16;"/>
         </HBox>
-        
+
+        <!-- Search / new room field -->
+        <HBox styleClass="chat-search-box">
+            <padding><Insets top="0" right="14" bottom="10" left="14"/></padding>
+            <TextField fx:id="roomNameField" promptText="Search or create room..."
+                       HBox.hgrow="ALWAYS" styleClass="input-field"
+                       style="-fx-font-size: 12;"/>
+        </HBox>
+
+        <!-- Room list -->
         <ListView fx:id="roomsList" VBox.vgrow="ALWAYS" styleClass="rooms-list"/>
     </VBox>
 
     <!-- Right: Chat Area -->
-    <VBox spacing="12" HBox.hgrow="ALWAYS" styleClass="chat-area">
-        <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
-        
-        <!-- Header -->
-        <HBox alignment="CENTER_LEFT" spacing="12" styleClass="chat-header">
-            <Label fx:id="currentRoomLabel" text="Select a conversation" styleClass="content-subtitle"/>
+    <VBox spacing="0" HBox.hgrow="ALWAYS" styleClass="chat-area">
+
+        <!-- Chat header bar -->
+        <HBox fx:id="chatHeader" alignment="CENTER_LEFT" spacing="12" styleClass="chat-header">
+            <padding><Insets top="12" right="20" bottom="12" left="20"/></padding>
+            <VBox spacing="2">
+                <Label fx:id="currentRoomLabel" text="Select a conversation" styleClass="chat-room-title"/>
+                <Label fx:id="roomMembersLabel" text="" styleClass="chat-room-subtitle"/>
+            </VBox>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button text="Refresh" onAction="#refreshMessages" styleClass="btn-secondary"/>
+            <MenuButton fx:id="chatMenuBtn" text="⋮" styleClass="chat-kebab-btn" visible="false" managed="false">
+                <items>
+                    <MenuItem fx:id="deleteChatItem" text="Delete Chat" onAction="#handleDeleteRoom"
+                              styleClass="chat-menu-delete"/>
+                </items>
+            </MenuButton>
         </HBox>
-        
-        <!-- Messages -->
-        <ScrollPane fx:id="messagesScroll" VBox.vgrow="ALWAYS" fitToWidth="true" styleClass="messages-scroll">
+
+        <!-- Messages scroll area -->
+        <ScrollPane fx:id="messagesScroll" VBox.vgrow="ALWAYS" fitToWidth="true"
+                    styleClass="messages-scroll" hbarPolicy="NEVER">
             <content>
-                <VBox fx:id="messagesContainer" spacing="12">
-                    <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+                <VBox fx:id="messagesContainer" spacing="4">
+                    <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
                 </VBox>
             </content>
         </ScrollPane>
-        
-        <!-- Input -->
-        <HBox spacing="12" alignment="CENTER_LEFT">
-            <TextField fx:id="messageField" promptText="Type a message..." HBox.hgrow="ALWAYS" styleClass="input-field"
-                       onAction="#handleSendMessage"/>
-            <Button text="Send" onAction="#handleSendMessage" styleClass="btn-primary"/>
-        </HBox>
+
+        <!-- Input bar -->
+        <VBox spacing="0" styleClass="chat-input-bar">
+            <padding><Insets top="10" right="20" bottom="12" left="20"/></padding>
+            <HBox spacing="10" alignment="CENTER">
+                <TextField fx:id="messageField" promptText="Type a message..."
+                           HBox.hgrow="ALWAYS" styleClass="input-field chat-input"
+                           onAction="#handleSendMessage"/>
+                <Button fx:id="btnSend" text="Send" onAction="#handleSendMessage" styleClass="btn-primary"
+                        style="-fx-min-width: 70;"/>
+            </HBox>
+            <Label fx:id="inputErrorLabel" text="" styleClass="chat-input-error-label" managed="false" visible="false">
+                <padding><Insets top="4" left="2"/></padding>
+            </Label>
+        </VBox>
     </VBox>
-    
+
 </HBox>

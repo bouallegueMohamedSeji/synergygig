@@ -45,6 +45,13 @@
             <version>${javafx.version}</version>
         </dependency>
 
+        <!-- JavaFX Swing (for SwingFXUtils - image saving) -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-swing</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+
         <!-- JUnit 5 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -58,7 +65,12 @@
             <version>5.10.1</version>
             <scope>test</scope>
         </dependency>
-    </dependencies>
+        <!-- Gson (JSON parsing for face recognition bridge) -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+        </dependency>    </dependencies>
 
     <build>
         <plugins>

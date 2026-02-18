@@ -11,6 +11,8 @@ public class User {
     private String lastName;
     private String role; // ADMIN, HR_MANAGER, EMPLOYEE, PROJECT_OWNER, GIG_WORKER
     private Timestamp createdAt;
+    private String avatarPath;
+    private String faceEncoding;
 
     // Default constructor
     public User() {
@@ -35,6 +37,33 @@ public class User {
         this.lastName = lastName;
         this.role = role;
         this.createdAt = createdAt;
+    }
+
+    // Full constructor with avatar
+    public User(int id, String email, String password, String firstName, String lastName, String role,
+            Timestamp createdAt, String avatarPath) {
+        this.id = id;
+        this.email = email;
+        this.password = password;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.role = role;
+        this.createdAt = createdAt;
+        this.avatarPath = avatarPath;
+    }
+
+    // Full constructor with avatar + face encoding
+    public User(int id, String email, String password, String firstName, String lastName, String role,
+            Timestamp createdAt, String avatarPath, String faceEncoding) {
+        this.id = id;
+        this.email = email;
+        this.password = password;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.role = role;
+        this.createdAt = createdAt;
+        this.avatarPath = avatarPath;
+        this.faceEncoding = faceEncoding;
     }
 
     // Getters & Setters
@@ -92,6 +121,26 @@ public class User {
 
     public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getAvatarPath() {
+        return avatarPath;
+    }
+
+    public void setAvatarPath(String avatarPath) {
+        this.avatarPath = avatarPath;
+    }
+
+    public String getFaceEncoding() {
+        return faceEncoding;
+    }
+
+    public void setFaceEncoding(String faceEncoding) {
+        this.faceEncoding = faceEncoding;
+    }
+
+    public boolean hasFaceEnrolled() {
+        return faceEncoding != null && !faceEncoding.isEmpty();
     }
 
     @Override

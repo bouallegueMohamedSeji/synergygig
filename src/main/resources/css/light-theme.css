@@ -118,6 +118,57 @@
     -fx-text-fill: #ffffff;
 }
 
+/* ── Animated buttons light theme ── */
+.btn-animated-primary {
+    -fx-background-color: linear-gradient(to right, #613039, #8C4A56);
+    -fx-effect: dropshadow(gaussian, rgba(97, 48, 57, 0.25), 10, 0, 0, 2);
+}
+.btn-animated-primary:hover {
+    -fx-background-color: linear-gradient(to right, #8C4A56, #DE95A2);
+    -fx-effect: dropshadow(gaussian, rgba(222, 149, 162, 0.3), 16, 0, 0, 2);
+}
+.btn-animated-primary .anim-btn-text { -fx-text-fill: #FFFFFF; }
+.btn-animated-primary .anim-btn-icon { -fx-text-fill: #FFFFFF; }
+
+.btn-animated-secondary {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0D6D8;
+}
+.btn-animated-secondary:hover {
+    -fx-background-color: #F5F0F1;
+    -fx-border-color: #613039;
+}
+.btn-animated-secondary .anim-btn-text { -fx-text-fill: #8A7C7F; }
+.btn-animated-secondary .anim-btn-icon { -fx-text-fill: #0D0A0B; }
+.btn-animated-secondary:hover .anim-btn-text { -fx-text-fill: #0D0A0B; }
+
+.btn-animated-success {
+    -fx-background-color: linear-gradient(to right, #059669, #10b981);
+    -fx-effect: dropshadow(gaussian, rgba(16, 185, 129, 0.25), 10, 0, 0, 2);
+}
+.btn-animated-success:hover {
+    -fx-background-color: linear-gradient(to right, #06B07A, #34d399);
+}
+.btn-animated-success .anim-btn-text { -fx-text-fill: #ffffff; }
+.btn-animated-success .anim-btn-icon { -fx-text-fill: #ffffff; }
+
+.btn-animated-danger {
+    -fx-background-color: linear-gradient(to right, #dc2626, #b91c1c);
+    -fx-effect: dropshadow(gaussian, rgba(220, 38, 38, 0.25), 10, 0, 0, 2);
+}
+.btn-animated-danger:hover {
+    -fx-background-color: linear-gradient(to right, #ef4444, #dc2626);
+}
+.btn-animated-danger .anim-btn-text { -fx-text-fill: #ffffff; }
+.btn-animated-danger .anim-btn-icon { -fx-text-fill: #ffffff; }
+
+.anim-btn-compact {
+    -fx-padding: 5 10;
+    -fx-background-radius: 8;
+}
+.anim-btn-compact .anim-btn-text { -fx-font-size: 11; }
+.anim-btn-compact .anim-btn-icon { -fx-font-size: 14; }
+
 .btn-logout {
     -fx-text-fill: #8A7C7F;
     -fx-border-color: #E0D6D8;
@@ -180,29 +231,69 @@
     -fx-text-fill: #0D0A0B;
 }
 
-.sidebar-section-title {
+.sidebar-separator .line {
+    -fx-border-color: #E0D6D8;
+}
+
+.sidebar-scroll .scroll-bar:vertical .thumb {
+    -fx-background-color: #D8CCCE;
+}
+.sidebar-scroll .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #C5B8BA;
+}
+
+.sidebar-group-label {
     -fx-text-fill: #B0A5A8;
 }
 
-.sidebar-btn {
+.sidebar-menu-btn {
     -fx-text-fill: #4A3F42;
 }
 
-.sidebar-btn:hover {
-    -fx-background-color: #F0EAEA;
+.sidebar-menu-btn:hover {
+    -fx-background-color: rgba(240, 234, 234, 0.8);
     -fx-text-fill: #0D0A0B;
 }
 
-.sidebar-btn:pressed {
-    -fx-background-color: #F0EAEA;
+.sidebar-menu-btn:pressed {
+    -fx-background-color: rgba(240, 234, 234, 0.9);
     -fx-text-fill: #0D0A0B;
 }
 
-.sidebar-btn-active {
+.sidebar-menu-btn-active {
     -fx-background-color: rgba(97, 48, 57, 0.06);
     -fx-text-fill: #613039;
     -fx-border-color: transparent transparent transparent #613039;
     -fx-effect: none;
+}
+
+.sidebar-menu-icon {
+    -fx-text-fill: #8A7C7F;
+}
+
+.sidebar-menu-btn:hover .sidebar-menu-icon,
+.sidebar-menu-btn-active .sidebar-menu-icon {
+    -fx-text-fill: #613039;
+}
+
+.sidebar-trigger {
+    -fx-border-color: #E0D6D8;
+}
+
+.sidebar-trigger:hover {
+    -fx-background-color: #F0EAEA;
+}
+
+.sidebar-trigger-icon {
+    -fx-text-fill: #8A7C7F;
+}
+
+.sidebar-trigger:hover .sidebar-trigger-icon {
+    -fx-text-fill: #0D0A0B;
+}
+
+.sidebar-user-chevron {
+    -fx-text-fill: #B0A5A8;
 }
 
 /* ---------- CONTENT AREA ---------- */
@@ -295,33 +386,117 @@
 .combo-box-popup .list-view .scroll-bar .thumb { -fx-background-color: #D8CCCE; }
 .combo-box-popup .list-view .scroll-bar .thumb:hover { -fx-background-color: #C5B8BA; }
 
-/* ---------- CHAT SYSTEM ---------- */
+/* ---------- CHAT SYSTEM (Messenger-style) ---------- */
 .chat-container { -fx-background-color: #F0EDED; }
 .chat-sidebar { -fx-background-color: #F8F5F5; -fx-border-color: transparent #E0D6D8 transparent transparent; }
-.rooms-list .list-cell { -fx-text-fill: #4A3F42; }
-.rooms-list .list-cell:hover { -fx-background-color: #F0EAEA; -fx-text-fill: #0D0A0B; }
-.rooms-list .list-cell:selected { -fx-background-color: rgba(97, 48, 57, 0.06); -fx-text-fill: #613039; }
+.chat-sidebar-header { -fx-border-color: transparent transparent #E0D6D8 transparent; }
+.rooms-list .list-cell:hover { -fx-background-color: #F0EAEA; }
+.rooms-list .list-cell:selected { -fx-background-color: rgba(97, 48, 57, 0.06); }
+.room-cell-name { -fx-text-fill: #0D0A0B; }
+.rooms-list .list-cell:selected .room-cell-name { -fx-text-fill: #613039; }
+
 .chat-area { -fx-background-color: #F0EDED; }
 .chat-header { -fx-border-color: transparent transparent #E0D6D8 transparent; }
-.messages-scroll { -fx-border-color: #E0D6D8; }
-.messages-scroll .viewport { -fx-background-color: #FFFFFF; }
+.chat-room-title { -fx-text-fill: #0D0A0B; }
+.chat-room-subtitle { -fx-text-fill: #8A7C7F; }
+
+/* ── Kebab (3-dot) menu — light theme ── */
+.chat-kebab-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #8A7C7F;
+}
+.chat-kebab-btn:hover {
+    -fx-background-color: rgba(0, 0, 0, 0.05);
+    -fx-text-fill: #0D0A0B;
+}
+.chat-kebab-btn .context-menu {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0D6D8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 14, 0, 0, 4);
+}
+.chat-kebab-btn .menu-item .label {
+    -fx-text-fill: #0D0A0B;
+}
+.chat-kebab-btn .menu-item:hover,
+.chat-kebab-btn .menu-item:focused {
+    -fx-background-color: rgba(0, 0, 0, 0.04);
+}
+.chat-menu-delete .label {
+    -fx-text-fill: #dc2626 !important;
+}
+
+.chat-input-bar { -fx-border-color: #E0D6D8 transparent transparent transparent; }
+.chat-input-invalid {
+    -fx-border-color: #dc2626;
+    -fx-background-color: #FFF5F5;
+    -fx-effect: dropshadow(gaussian, rgba(220, 38, 38, 0.2), 6, 0, 0, 0);
+}
+.chat-input-invalid:focused {
+    -fx-border-color: #dc2626;
+    -fx-effect: dropshadow(gaussian, rgba(220, 38, 38, 0.25), 8, 0, 0, 0);
+}
+.chat-input-error-label {
+    -fx-text-fill: #dc2626;
+    -fx-font-size: 11;
+    -fx-font-weight: 500;
+}
+
+.messages-scroll { -fx-border-color: transparent; }
+.messages-scroll .viewport { -fx-background-color: #F0EDED; }
+.messages-scroll .scroll-bar:vertical .track { -fx-background-color: transparent; }
+.messages-scroll .scroll-bar:vertical .thumb { -fx-background-color: #E0D6D8; }
 
 .msg-bubble-me {
     -fx-background-color: linear-gradient(to right, #613039, #DE95A2);
     -fx-text-fill: #FFFFFF;
 }
-
 .msg-bubble-other {
-    -fx-background-color: #F5F0F1;
+    -fx-background-color: #FFFFFF;
     -fx-text-fill: #0D0A0B;
     -fx-border-color: #E0D6D8;
 }
+.msg-sender-name { -fx-text-fill: #613039; }
+.msg-timestamp { -fx-text-fill: #8A7C7F; }
+
+.msg-avatar-circle {
+    -fx-fill: #F5F0F1;
+    -fx-stroke: #DE95A2;
+    -fx-stroke-width: 1.5;
+}
+.msg-avatar-initials { -fx-text-fill: #613039; }
+
+/* ── AI Bot Bubbles (light) ── */
+.msg-bubble-bot {
+    -fx-background-color: linear-gradient(to right, #f3eeff, #ede5ff);
+    -fx-text-fill: #2d1b69;
+    -fx-border-color: rgba(139, 92, 246, 0.25);
+}
+.msg-bot-name { -fx-text-fill: #7c3aed; }
+.msg-bot-avatar-circle {
+    -fx-fill: #f3eeff;
+    -fx-stroke: #7c3aed;
+}
+.msg-ai-typing { -fx-text-fill: #7c3aed; }
 
 /* ---------- CUSTOM WINDOW ---------- */
 .window-root {
     -fx-background-color: #F0EDED;
     -fx-border-color: #E0D6D8;
 }
+
+/* Auth pages: keep the dark background behind the sparkle canvas */
+.auth-dark-bg {
+    -fx-background-color: #000000;
+    -fx-border-color: #1C1B22;
+}
+.auth-dark-bg .title-bar {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+.auth-dark-bg .window-title { -fx-text-fill: #9E9EA8; }
+.auth-dark-bg .window-btn { -fx-text-fill: #9E9EA8; }
+.auth-dark-bg .window-btn:hover { -fx-background-color: rgba(255,255,255,0.08); -fx-text-fill: #F0EDEE; }
+.auth-dark-bg .window-btn-close:hover { -fx-background-color: #dc2626; -fx-text-fill: #ffffff; }
 
 .title-bar {
     -fx-background-color: #FFFFFF;
@@ -465,4 +640,186 @@
 
 .theme-toggle-icon-moon {
     -fx-text-fill: #B0A5A8;
+}
+
+/* ---- Field / Input overrides (light theme) ---- */
+
+.field-label {
+    -fx-text-fill: #4A3F42;
+}
+
+.field-input {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0D6D8;
+    -fx-text-fill: #4A3F42;
+    -fx-prompt-text-fill: #B0A5A8;
+}
+
+.field-input:focused {
+    -fx-border-color: #DE95A2;
+    -fx-effect: dropshadow(gaussian, rgba(222, 149, 162, 0.25), 6, 0, 0, 0);
+}
+
+.field-input-invalid {
+    -fx-border-color: #e11d48;
+}
+
+.field-input-invalid:focused {
+    -fx-border-color: #e11d48;
+    -fx-effect: dropshadow(gaussian, rgba(225, 29, 72, 0.25), 6, 0, 0, 0);
+}
+
+.field-input-disabled {
+    -fx-background-color: #F5F0F1;
+    -fx-border-color: #E0D6D8;
+    -fx-text-fill: #B0A5A8;
+}
+
+.field-error {
+    -fx-text-fill: #e11d48;
+}
+
+.field-description {
+    -fx-text-fill: #B0A5A8;
+}
+
+.btn-icon {
+    -fx-text-fill: #4A3F42;
+}
+
+.btn-icon:hover {
+    -fx-background-color: rgba(222, 149, 162, 0.15);
+    -fx-text-fill: #613039;
+    -fx-effect: dropshadow(gaussian, rgba(222, 149, 162, 0.2), 4, 0, 0, 0);
+}
+
+.btn-icon:pressed {
+    -fx-background-color: rgba(222, 149, 162, 0.25);
+    -fx-text-fill: #330B11;
+}
+
+/* ---- Face Login / Face ID Card (light theme) ---- */
+
+.auth-btn-face {
+    -fx-text-fill: #4A3F42;
+    -fx-border-color: #E0D6D8;
+}
+
+.auth-btn-face:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.04);
+    -fx-border-color: rgba(97, 48, 57, 0.3);
+    -fx-text-fill: #613039;
+    -fx-effect: dropshadow(gaussian, rgba(97, 48, 57, 0.1), 8, 0, 0, 0);
+}
+
+.auth-btn-face:pressed {
+    -fx-background-color: rgba(97, 48, 57, 0.08);
+    -fx-border-color: #613039;
+}
+
+.face-id-icon-circle {
+    -fx-background-color: rgba(97, 48, 57, 0.06);
+}
+
+/* ==========================================================
+   AUTH PAGES — Keep dark sparkle background, only card goes light
+   ========================================================== */
+
+/* Keep the page background and window root dark on auth pages */
+.auth-page {
+    -fx-background-color: #000000;
+}
+.auth-page .window-root,
+.auth-page .title-bar {
+    -fx-background-color: transparent;
+}
+
+/* Brand text stays light on the dark background */
+.auth-brand {
+    -fx-text-fill: #F0EDEE;
+}
+
+/* Card becomes a frosted white panel */
+.auth-card {
+    -fx-background-color: rgba(255, 255, 255, 0.92);
+    -fx-background-radius: 16;
+    -fx-border-color: rgba(224, 214, 216, 0.6);
+    -fx-border-radius: 16;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.25), 20, 0, 0, 6);
+}
+
+.auth-title {
+    -fx-text-fill: #0D0A0B;
+}
+
+.auth-subtitle {
+    -fx-text-fill: #8A7C7F;
+}
+
+.auth-separator {
+    -fx-background-color: linear-gradient(to right, transparent, #E0D6D8, #DE95A280, #E0D6D8, transparent);
+}
+
+.auth-label {
+    -fx-text-fill: #4A3F42;
+}
+
+.auth-input {
+    -fx-background-color: #F5F0F1;
+    -fx-text-fill: #0D0A0B;
+    -fx-prompt-text-fill: #B0A5A8;
+    -fx-border-color: #E0D6D8;
+}
+
+.auth-input:hover {
+    -fx-border-color: #D0C5C8;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.04), 6, 0, 0, 0);
+}
+
+.auth-input:focused {
+    -fx-border-color: #613039;
+    -fx-background-color: #FFFFFF;
+    -fx-effect: dropshadow(gaussian, rgba(97, 48, 57, 0.15), 8, 0, 0, 3);
+}
+
+.auth-btn-primary {
+    -fx-background-color: linear-gradient(to bottom right, #613039, #DE95A2);
+    -fx-text-fill: #FFFFFF;
+    -fx-effect: dropshadow(gaussian, rgba(97, 48, 57, 0.3), 8, 0, 0, 2);
+}
+.auth-btn-primary:hover {
+    -fx-background-color: linear-gradient(to bottom right, #DE95A2, #F0C4CB);
+    -fx-effect: dropshadow(gaussian, rgba(222, 149, 162, 0.35), 16, 0, 0, 2);
+}
+.auth-btn-primary:pressed {
+    -fx-background-color: linear-gradient(to bottom right, #330B11, #613039);
+    -fx-effect: dropshadow(gaussian, rgba(97, 48, 57, 0.1), 4, 0, 0, 1);
+}
+
+.auth-btn-glow {
+    -fx-background-color: linear-gradient(to right, transparent, rgba(222, 149, 162, 0.5), rgba(240, 196, 203, 0.3), rgba(222, 149, 162, 0.5), transparent);
+    -fx-effect: dropshadow(gaussian, rgba(222, 149, 162, 0.3), 4, 0.2, 0, 0);
+}
+
+.auth-btn-face {
+    -fx-text-fill: #4A3F42;
+    -fx-border-color: #E0D6D8;
+    -fx-background-color: rgba(255, 255, 255, 0.5);
+}
+.auth-btn-face:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.06);
+    -fx-border-color: rgba(97, 48, 57, 0.3);
+    -fx-text-fill: #613039;
+}
+
+.auth-hint {
+    -fx-text-fill: #8A7C7F;
+}
+
+.auth-link {
+    -fx-text-fill: #613039;
+}
+.auth-link:hover {
+    -fx-text-fill: #DE95A2;
 }

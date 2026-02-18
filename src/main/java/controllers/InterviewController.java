@@ -12,6 +12,7 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
 import services.ServiceInterview;
 import services.ServiceUser;
+import utils.AnimatedButton;
 import utils.SessionManager;
 
 import java.sql.SQLException;
@@ -40,6 +41,7 @@ public class InterviewController {
     @FXML private Label formStatus;
     @FXML private Button btnSave;
     @FXML private Button btnSchedule;
+    @FXML private HBox headerRow;
 
     // Filter
     @FXML private TextField searchField;
@@ -79,6 +81,17 @@ public class InterviewController {
         if (!"HR_MANAGER".equals(currentRole)) {
             btnSchedule.setManaged(false);
             btnSchedule.setVisible(false);
+        } else {
+            // Replace static button with animated version
+            btnSchedule.setManaged(false);
+            btnSchedule.setVisible(false);
+            StackPane animSchedule = AnimatedButton.createPrimary(
+                    "+ Schedule New", "📅", e -> toggleForm());
+            animSchedule.setMinWidth(170);
+            animSchedule.setMaxHeight(38);
+            if (headerRow != null) {
+                headerRow.getChildren().add(animSchedule);
+            }
         }
 
         loadUsers();
@@ -484,36 +497,37 @@ public class InterviewController {
             sep3.getStyleClass().add("card-separator");
 
             // Action buttons — only HR_MANAGER gets full controls
-            HBox actions = new HBox(8);
+            HBox actions = new HBox(6);
             actions.setAlignment(Pos.CENTER_LEFT);
 
             if ("HR_MANAGER".equals(currentRole)) {
-                Button editBtn = new Button("Edit");
-                editBtn.getStyleClass().add("btn-secondary");
-                editBtn.setStyle("-fx-padding: 6 16;");
-                editBtn.setOnAction(e -> openEditForm(interview));
+                StackPane editBtn = AnimatedButton.createSecondary(
+                        "Edit", "✏", e -> openEditForm(interview));
+                editBtn.getStyleClass().add("anim-btn-compact");
+                editBtn.setMinWidth(62);
+                editBtn.setMaxHeight(30);
 
-                Button deleteBtn = new Button("Delete");
-                deleteBtn.getStyleClass().add("btn-secondary");
-                deleteBtn.setStyle("-fx-padding: 6 16; -fx-text-fill: #ef4444;");
-                deleteBtn.setOnAction(e -> deleteInterview(interview));
-
-                Region actionSpacer = new Region();
-                HBox.setHgrow(actionSpacer, Priority.ALWAYS);
+                StackPane deleteBtn = AnimatedButton.create(
+                        "Delete", "🗑", "btn-animated-danger", e -> deleteInterview(interview));
+                deleteBtn.getStyleClass().add("anim-btn-compact");
+                deleteBtn.setMinWidth(66);
+                deleteBtn.setMaxHeight(30);
 
                 // Quick status buttons
                 if ("PENDING".equals(interview.getStatus())) {
-                    Button acceptBtn = new Button("Accept");
-                    acceptBtn.getStyleClass().add("btn-primary");
-                    acceptBtn.setStyle("-fx-padding: 6 14; -fx-background-color: linear-gradient(to right, #059669, #10b981);");
-                    acceptBtn.setOnAction(e -> updateStatus(interview, "ACCEPTED"));
+                    StackPane acceptBtn = AnimatedButton.create(
+                            "Accept", "✓", "btn-animated-success", e -> updateStatus(interview, "ACCEPTED"));
+                    acceptBtn.getStyleClass().add("anim-btn-compact");
+                    acceptBtn.setMinWidth(68);
+                    acceptBtn.setMaxHeight(30);
 
-                    Button rejectBtn = new Button("Reject");
-                    rejectBtn.getStyleClass().add("btn-primary");
-                    rejectBtn.setStyle("-fx-padding: 6 14; -fx-background-color: linear-gradient(to right, #dc2626, #b91c1c);");
-                    rejectBtn.setOnAction(e -> updateStatus(interview, "REJECTED"));
+                    StackPane rejectBtn = AnimatedButton.create(
+                            "Reject", "✕", "btn-animated-danger", e -> updateStatus(interview, "REJECTED"));
+                    rejectBtn.getStyleClass().add("anim-btn-compact");
+                    rejectBtn.setMinWidth(68);
+                    rejectBtn.setMaxHeight(30);
 
-                    actions.getChildren().addAll(editBtn, deleteBtn, actionSpacer, acceptBtn, rejectBtn);
+                    actions.getChildren().addAll(editBtn, deleteBtn, acceptBtn, rejectBtn);
                 } else {
                     actions.getChildren().addAll(editBtn, deleteBtn);
                 }

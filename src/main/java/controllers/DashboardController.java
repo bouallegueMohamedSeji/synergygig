@@ -2,6 +2,10 @@ package controllers;
 
 import entities.User;
 import entities.Interview;
+import javafx.animation.Interpolator;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -12,6 +16,11 @@ import javafx.geometry.Side;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
@@ -26,75 +35,54 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class DashboardController {
 
     // Top bar
-    @FXML
-    private Label welcomeLabel;
-    @FXML
-    private Label roleLabel;
-    @FXML
-    private HBox themeToggleTrack;
-    @FXML
-    private Region themeToggleThumb;
+    @FXML private Label welcomeLabel;
+    @FXML private Label roleLabel;
+    @FXML private HBox themeToggleTrack;
+    @FXML private Region themeToggleThumb;
+    @FXML private Button sidebarTrigger;
+    @FXML private Label sidebarTriggerIcon;
 
-    // Sidebar
-    @FXML
-    private VBox sidebar;
-    @FXML
-    private Button btnDashboard;
+    // Sidebar structure
+    @FXML private VBox sidebar;
+    @FXML private HBox sidebarHeader;
+    @FXML private Label sidebarBrandName;
+    @FXML private ScrollPane sidebarScroll;
 
-    // Admin-only
-    @FXML
-    private Label adminSectionLabel;
-    @FXML
-    private Button btnManageUsers;
+    // Sidebar groups
+    @FXML private VBox adminGroup;
+    @FXML private VBox hrGroup;
 
-    // HR-only
-    @FXML
-    private Label hrSectionLabel;
-    @FXML
-    private Button btnHrDashboard;
-
-    // Module buttons
-    @FXML
-    private Button btnMessages;
-    @FXML
-    private Button btnRecruitment;
-    @FXML
-    private Button btnHrAdmin;
-    @FXML
-    private Button btnProjects;
-    @FXML
-    private Button btnTraining;
-    @FXML
-    private Button btnCommunity;
+    // Sidebar menu buttons
+    @FXML private Button btnDashboard;
+    @FXML private Button btnManageUsers;
+    @FXML private Button btnHrDashboard;
+    @FXML private Button btnMessages;
+    @FXML private Button btnRecruitment;
+    @FXML private Button btnHrAdmin;
+    @FXML private Button btnProjects;
+    @FXML private Button btnTraining;
+    @FXML private Button btnCommunity;
 
     // Content area
-    @FXML
-    private StackPane contentArea;
-    @FXML
-    private ScrollPane dashboardScroll;
-    @FXML
-    private VBox dashboardHome;
+    @FXML private StackPane contentArea;
+    @FXML private ScrollPane dashboardScroll;
+    @FXML private VBox dashboardHome;
 
     // Stats - top cards
-    @FXML
-    private Label dashboardTitle;
-    @FXML
-    private Label dashboardSubtitle;
-    @FXML
-    private Label statTotalUsers;
-    @FXML
-    private Label statEmployees;
-    @FXML
-    private Label statGigWorkers;
-    @FXML
-    private Label statInterviews;
-    @FXML
-    private Label statTotalUsersTrend;
+    @FXML private Label dashboardTitle;
+    @FXML private Label dashboardSubtitle;
+    @FXML private Label statTotalUsers;
+    @FXML private Label statEmployees;
+    @FXML private Label statGigWorkers;
+    @FXML private Label statInterviews;
+    @FXML private Label statTotalUsersTrend;
     @FXML
     private Label statEmployeesTrend;
     @FXML
@@ -103,38 +91,33 @@ public class DashboardController {
     private Label statInterviewsTrend;
 
     // Account card
-    @FXML
-    private Label avatarInitial;
-    @FXML
-    private Label accountName;
-    @FXML
-    private Label accountEmail;
-    @FXML
-    private Label statRole;
-    @FXML
-    private Label accountCreatedAt;
+    @FXML private Label avatarInitial;
+    @FXML private Label accountName;
+    @FXML private Label accountEmail;
+    @FXML private Label statRole;
+    @FXML private Label accountCreatedAt;
 
     // Platform overview
-    @FXML
-    private Label statChatRooms;
-    @FXML
-    private Label statMessages;
-    @FXML
-    private Label statPendingInterviews;
+    @FXML private Label statChatRooms;
+    @FXML private Label statMessages;
+    @FXML private Label statPendingInterviews;
 
-    // Sidebar user card
-    @FXML
-    private Label sidebarUserName;
-    @FXML
-    private Label sidebarUserEmail;
-    @FXML
-    private VBox sidebarUserCard;
-    @FXML
-    private Label sidebarAvatarInitial;
+    // Sidebar footer (user card)
+    @FXML private Label sidebarUserName;
+    @FXML private Label sidebarUserEmail;
+    @FXML private VBox sidebarUserCard;
+    @FXML private VBox sidebarUserInfo;
+    @FXML private Label sidebarUserChevron;
+    @FXML private Label sidebarAvatarInitial;
+    @FXML private ImageView sidebarAvatarImage;
+    @FXML private ImageView accountAvatarImage;
 
     private ContextMenu userContextMenu;
     private boolean isDarkTheme = true;
+    private boolean sidebarCollapsed = false;
     private static final String LIGHT_THEME_PATH = "/css/light-theme.css";
+    private static final double SIDEBAR_EXPANDED = 220;
+    private static final double SIDEBAR_COLLAPSED = 60;
 
     private ServiceUser serviceUser = new ServiceUser();
     private ServiceInterview serviceInterview = new ServiceInterview();
@@ -165,6 +148,17 @@ public class DashboardController {
             accountCreatedAt.setText(new SimpleDateFormat("MMM dd, yyyy").format(currentUser.getCreatedAt()));
         }
 
+        // Load avatar images
+        loadDashboardAvatars(currentUser);
+
+        // Register avatar change listener for instant updates
+        SessionManager.getInstance().setOnAvatarChanged(() -> {
+            User refreshedUser = SessionManager.getInstance().getCurrentUser();
+            if (refreshedUser != null) {
+                loadDashboardAvatars(refreshedUser);
+            }
+        });
+
         // Configure sidebar based on role
         configureRoleAccess(currentUser.getRole());
 
@@ -176,44 +170,82 @@ public class DashboardController {
 
         // Load stats
         loadDashboardStats();
+
+        // Register Ctrl+B keyboard shortcut for sidebar toggle
+        sidebar.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                newScene.getAccelerators().put(
+                        new KeyCodeCombination(KeyCode.B, KeyCombination.CONTROL_DOWN),
+                        () -> toggleSidebar()
+                );
+
+                // Sync theme state from SessionManager (carries swipe from Login/Signup)
+                isDarkTheme = SessionManager.getInstance().isDarkTheme();
+                if (!isDarkTheme) {
+                    String lightCss = getClass().getResource(LIGHT_THEME_PATH).toExternalForm();
+                    if (!newScene.getStylesheets().contains(lightCss)) {
+                        newScene.getStylesheets().add(lightCss);
+                    }
+                    themeToggleThumb.setTranslateX(-12);
+                }
+            }
+        });
+    }
+
+    /**
+     * Load avatar images into sidebar and account card ImageViews.
+     */
+    private void loadDashboardAvatars(User user) {
+        if (user.getAvatarPath() != null && !user.getAvatarPath().isEmpty()) {
+            java.io.File avatarFile = new java.io.File(user.getAvatarPath());
+            if (avatarFile.exists()) {
+                Image avatarImg = new Image(avatarFile.toURI().toString());
+
+                // Sidebar avatar (32x32)
+                sidebarAvatarImage.setImage(avatarImg);
+                sidebarAvatarImage.setVisible(true);
+                sidebarAvatarImage.setManaged(true);
+                sidebarAvatarInitial.getParent().setVisible(false);
+                sidebarAvatarInitial.getParent().setManaged(false);
+
+                // Account card avatar (40x40)
+                accountAvatarImage.setImage(avatarImg);
+                accountAvatarImage.setVisible(true);
+                accountAvatarImage.setManaged(true);
+                avatarInitial.getParent().setVisible(false);
+                avatarInitial.getParent().setManaged(false);
+            }
+        }
     }
 
     private void configureRoleAccess(String role) {
         switch (role) {
             case "ADMIN":
-                // Admin sees everything
-                showNode(adminSectionLabel);
-                showNode(btnManageUsers);
-                showNode(hrSectionLabel);
-                showNode(btnHrDashboard);
+                showNode(adminGroup);
+                showNode(hrGroup);
                 showNode(btnHrAdmin);
                 showNode(btnProjects);
                 showNode(btnRecruitment);
                 break;
 
             case "HR_MANAGER":
-                // HR sees HR tools + employee management
-                showNode(hrSectionLabel);
-                showNode(btnHrDashboard);
+                showNode(hrGroup);
                 showNode(btnHrAdmin);
                 showNode(btnProjects);
                 showNode(btnRecruitment);
                 break;
 
             case "EMPLOYEE":
-                // Employee sees basic modules — NO interviews
-                showNode(btnHrAdmin); // can view attendance/leave
+                showNode(btnHrAdmin);
                 break;
 
             case "PROJECT_OWNER":
-                // Employee + Projects/Tasks + Interviews
                 showNode(btnHrAdmin);
                 showNode(btnProjects);
                 showNode(btnRecruitment);
                 break;
 
             case "GIG_WORKER":
-                // Gig worker sees recruitment-focused modules — interviews where they are candidates
                 showNode(btnRecruitment);
                 break;
         }
@@ -272,9 +304,10 @@ public class DashboardController {
         );
         for (Button btn : allButtons) {
             btn.getStyleClass().remove("sidebar-btn-active");
+            btn.getStyleClass().remove("sidebar-menu-btn-active");
         }
-        if (activeBtn != null && !activeBtn.getStyleClass().contains("sidebar-btn-active")) {
-            activeBtn.getStyleClass().add("sidebar-btn-active");
+        if (activeBtn != null && !activeBtn.getStyleClass().contains("sidebar-menu-btn-active")) {
+            activeBtn.getStyleClass().add("sidebar-menu-btn-active");
         }
     }
 
@@ -286,7 +319,90 @@ public class DashboardController {
         );
         for (Button btn : allButtons) {
             btn.getStyleClass().remove("sidebar-btn-active");
+            btn.getStyleClass().remove("sidebar-menu-btn-active");
         }
+    }
+
+    // ========== Sidebar Collapse/Expand ==========
+
+    @FXML
+    private void toggleSidebar() {
+        sidebarCollapsed = !sidebarCollapsed;
+        double target = sidebarCollapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
+
+        Timeline timeline = new Timeline(
+                new KeyFrame(Duration.millis(200),
+                        new KeyValue(sidebar.prefWidthProperty(), target, Interpolator.EASE_BOTH),
+                        new KeyValue(sidebar.maxWidthProperty(), target, Interpolator.EASE_BOTH),
+                        new KeyValue(sidebar.minWidthProperty(), target, Interpolator.EASE_BOTH)
+                )
+        );
+
+        if (sidebarCollapsed) {
+            setSidebarTextVisible(false);
+            sidebarTriggerIcon.setText("\u25b6");
+        } else {
+            timeline.setOnFinished(e -> setSidebarTextVisible(true));
+            sidebarTriggerIcon.setText("\u2630");
+        }
+
+        timeline.play();
+    }
+
+    private void setSidebarTextVisible(boolean visible) {
+        // Brand name
+        sidebarBrandName.setVisible(visible);
+        sidebarBrandName.setManaged(visible);
+
+        // Group labels
+        sidebar.lookupAll(".sidebar-group-label").forEach(n -> {
+            n.setVisible(visible);
+            n.setManaged(visible);
+        });
+
+        // Menu text labels (inside button graphics)
+        sidebar.lookupAll(".sidebar-menu-text").forEach(n -> {
+            n.setVisible(visible);
+            n.setManaged(visible);
+        });
+
+        // User card info
+        sidebarUserInfo.setVisible(visible);
+        sidebarUserInfo.setManaged(visible);
+        sidebarUserChevron.setVisible(visible);
+        sidebarUserChevron.setManaged(visible);
+
+        // Toggle CSS class
+        if (!visible) {
+            if (!sidebar.getStyleClass().contains("sidebar-collapsed")) {
+                sidebar.getStyleClass().add("sidebar-collapsed");
+            }
+            addCollapsedTooltips();
+        } else {
+            sidebar.getStyleClass().remove("sidebar-collapsed");
+            removeCollapsedTooltips();
+        }
+    }
+
+    private final Map<Button, String> btnTooltipMap = new LinkedHashMap<>();
+
+    private void addCollapsedTooltips() {
+        if (btnTooltipMap.isEmpty()) {
+            btnTooltipMap.put(btnDashboard, "Dashboard");
+            btnTooltipMap.put(btnManageUsers, "Users");
+            btnTooltipMap.put(btnHrDashboard, "HR Dashboard");
+            btnTooltipMap.put(btnMessages, "Messages");
+            btnTooltipMap.put(btnRecruitment, "Interviews");
+            btnTooltipMap.put(btnHrAdmin, "HR Admin");
+            btnTooltipMap.put(btnProjects, "Projects");
+            btnTooltipMap.put(btnTraining, "Training");
+            btnTooltipMap.put(btnCommunity, "Community");
+        }
+        btnTooltipMap.forEach((btn, tip) -> btn.setTooltip(new Tooltip(tip)));
+    }
+
+    private void removeCollapsedTooltips() {
+        btnTooltipMap.forEach((btn, tip) -> btn.setTooltip(null));
     }
 
     // ========== User Popup Menu ==========
@@ -334,6 +450,7 @@ public class DashboardController {
             slide.setToX(12);   // slide right toward moon
             isDarkTheme = true;
         }
+        SessionManager.getInstance().setDarkTheme(isDarkTheme);
         slide.play();
     }
 
@@ -423,9 +540,12 @@ public class DashboardController {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Login.fxml"));
             Parent root = loader.load();
             Stage stage = (Stage) welcomeLabel.getScene().getWindow();
-            Scene scene = new Scene(root, 1200, 800);
+            Scene scene = new Scene(root, stage.getWidth(), stage.getHeight());
+            scene.setFill(null);
             scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
             stage.setScene(scene);
+
+            utils.ResizeHelper.addResizeListener(stage);
         } catch (IOException e) {
             System.err.println("Failed to logout: " + e.getMessage());
         }

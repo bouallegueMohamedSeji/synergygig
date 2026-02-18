@@ -18,6 +18,11 @@
             <HBox alignment="CENTER_LEFT" spacing="12" styleClass="topbar">
                 <padding><Insets top="8" right="16" bottom="8" left="16"/></padding>
 
+                <Button fx:id="sidebarTrigger" onAction="#toggleSidebar" styleClass="sidebar-trigger">
+                    <graphic>
+                        <Label fx:id="sidebarTriggerIcon" text="☰" styleClass="sidebar-trigger-icon"/>
+                    </graphic>
+                </Button>
                 <Label fx:id="welcomeLabel" text="Welcome" styleClass="topbar-welcome"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 <HBox fx:id="themeToggleTrack" styleClass="theme-toggle-track" alignment="CENTER_LEFT"
@@ -36,81 +41,174 @@
 
     <!-- SIDEBAR -->
     <left>
-        <VBox fx:id="sidebar" spacing="1" styleClass="sidebar" prefWidth="210">
-            <padding><Insets top="6" right="8" bottom="8" left="8"/></padding>
+        <VBox fx:id="sidebar" spacing="0" styleClass="sidebar" prefWidth="220" minWidth="60" maxWidth="220">
 
-            <!-- App branding -->
-            <HBox spacing="8" alignment="CENTER_LEFT" styleClass="sidebar-brand">
-                <padding><Insets top="4" right="10" bottom="10" left="10"/></padding>
+            <!-- ═══ SidebarHeader ═══ -->
+            <HBox fx:id="sidebarHeader" styleClass="sidebar-header" alignment="CENTER_LEFT" spacing="10">
+                <padding><Insets top="14" right="14" bottom="14" left="16"/></padding>
                 <Label text="⬡" styleClass="sidebar-brand-icon"/>
-                <Label text="SynergyGig" styleClass="sidebar-brand-name"/>
+                <Label fx:id="sidebarBrandName" text="SynergyGig" styleClass="sidebar-brand-name"/>
             </HBox>
 
-            <Separator styleClass="card-separator"/>
+            <Separator styleClass="sidebar-separator"/>
 
-            <Label text="OVERVIEW" styleClass="sidebar-section-title"/>
+            <!-- ═══ SidebarContent (scrollable) ═══ -->
+            <ScrollPane fx:id="sidebarScroll" styleClass="sidebar-scroll" VBox.vgrow="ALWAYS"
+                        fitToWidth="true" hbarPolicy="NEVER">
+                <VBox spacing="4" styleClass="sidebar-content">
+                    <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
 
-            <Button fx:id="btnDashboard" text="◈  Dashboard" onAction="#showDashboardHome"
-                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+                    <!-- ─── Group: Overview ─── -->
+                    <VBox styleClass="sidebar-group" spacing="2">
+                        <Label text="Overview" styleClass="sidebar-group-label"/>
+                        <VBox spacing="1">
+                            <Button fx:id="btnDashboard" onAction="#showDashboardHome"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="◈" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Dashboard" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
+                        </VBox>
+                    </VBox>
 
-            <!-- Admin Only -->
-            <Label fx:id="adminSectionLabel" text="ADMIN" styleClass="sidebar-section-title"
-                   managed="false" visible="false"/>
+                    <!-- ─── Group: Admin (hidden by default) ─── -->
+                    <VBox fx:id="adminGroup" styleClass="sidebar-group" spacing="2"
+                          managed="false" visible="false">
+                        <Label text="Admin" styleClass="sidebar-group-label"/>
+                        <VBox spacing="1">
+                            <Button fx:id="btnManageUsers" onAction="#showManageUsers"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="◉" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Users" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
+                        </VBox>
+                    </VBox>
 
-            <Button fx:id="btnManageUsers" text="◉  Users" onAction="#showManageUsers"
-                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
-                    managed="false" visible="false"/>
+                    <!-- ─── Group: HR (hidden by default) ─── -->
+                    <VBox fx:id="hrGroup" styleClass="sidebar-group" spacing="2"
+                          managed="false" visible="false">
+                        <Label text="HR" styleClass="sidebar-group-label"/>
+                        <VBox spacing="1">
+                            <Button fx:id="btnHrDashboard" onAction="#showHrDashboard"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="◎" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="HR Dashboard" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
+                        </VBox>
+                    </VBox>
 
-            <!-- HR Only -->
-            <Label fx:id="hrSectionLabel" text="HR" styleClass="sidebar-section-title"
-                   managed="false" visible="false"/>
+                    <!-- ─── Group: Modules ─── -->
+                    <VBox styleClass="sidebar-group" spacing="2">
+                        <Label text="Modules" styleClass="sidebar-group-label"/>
+                        <VBox spacing="1">
+                            <Button fx:id="btnMessages" onAction="#showMessages"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="✉" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Messages" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
 
-            <Button fx:id="btnHrDashboard" text="◎  HR Dashboard" onAction="#showHrDashboard"
-                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
-                    managed="false" visible="false"/>
+                            <Button fx:id="btnRecruitment" onAction="#showRecruitment"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
+                                    managed="false" visible="false">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="◈" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Interviews" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
 
-            <!-- Modules -->
-            <Label text="MODULES" styleClass="sidebar-section-title"/>
+                            <Button fx:id="btnHrAdmin" onAction="#showPlaceholder"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
+                                    managed="false" visible="false">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="◈" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="HR Admin" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
 
-            <Button fx:id="btnMessages" text="◈  Messages" onAction="#showMessages"
-                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+                            <Button fx:id="btnProjects" onAction="#showPlaceholder"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
+                                    managed="false" visible="false">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="◈" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Projects" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
 
-            <Button fx:id="btnRecruitment" text="◈  Interviews" onAction="#showRecruitment"
-                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
-                    managed="false" visible="false"/>
+                            <Button fx:id="btnTraining" onAction="#showPlaceholder"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="◈" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Training" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
 
-            <Button fx:id="btnHrAdmin" text="◈  HR Admin" onAction="#showPlaceholder"
-                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
-                    managed="false" visible="false"/>
+                            <Button fx:id="btnCommunity" onAction="#showPlaceholder"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="◈" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Community" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
+                        </VBox>
+                    </VBox>
 
-            <Button fx:id="btnProjects" text="◈  Projects" onAction="#showPlaceholder"
-                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
-                    managed="false" visible="false"/>
+                </VBox>
+            </ScrollPane>
 
-            <Button fx:id="btnTraining" text="◈  Training" onAction="#showPlaceholder"
-                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
+            <Separator styleClass="sidebar-separator"/>
 
-            <Button fx:id="btnCommunity" text="◈  Community" onAction="#showPlaceholder"
-                    styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
-            
-            <!-- Spacer pushes user card to bottom -->
-            <Region VBox.vgrow="ALWAYS"/>
-            
-            <!-- User info card at bottom of sidebar (clickable — shows popup) -->
-            <VBox fx:id="sidebarUserCard" styleClass="sidebar-user-card" spacing="4" onMouseClicked="#toggleUserMenu">
+            <!-- ═══ SidebarFooter ═══ -->
+            <VBox fx:id="sidebarUserCard" styleClass="sidebar-user-card" spacing="4"
+                  onMouseClicked="#toggleUserMenu">
                 <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
                 <HBox spacing="8" alignment="CENTER_LEFT">
-                    <VBox styleClass="avatar-circle" alignment="CENTER" minWidth="32" minHeight="32" maxWidth="32" maxHeight="32">
-                        <Label fx:id="sidebarAvatarInitial" text="U" styleClass="avatar-initial" style="-fx-font-size: 13;"/>
-                    </VBox>
-                    <VBox spacing="1">
+                    <StackPane alignment="CENTER" minWidth="32" minHeight="32" maxWidth="32" maxHeight="32">
+                        <VBox styleClass="avatar-circle" alignment="CENTER"
+                              minWidth="32" minHeight="32" maxWidth="32" maxHeight="32">
+                            <Label fx:id="sidebarAvatarInitial" text="U" styleClass="avatar-initial"
+                                   style="-fx-font-size: 13;"/>
+                        </VBox>
+                        <ImageView fx:id="sidebarAvatarImage" fitWidth="32" fitHeight="32"
+                                   preserveRatio="false" visible="false" managed="false">
+                            <clip>
+                                <Circle radius="16" centerX="16" centerY="16"/>
+                            </clip>
+                        </ImageView>
+                    </StackPane>
+                    <VBox fx:id="sidebarUserInfo" spacing="1">
                         <Label fx:id="sidebarUserName" text="User" styleClass="sidebar-user-name"/>
                         <Label fx:id="sidebarUserEmail" text="email@example.com" styleClass="sidebar-user-email"/>
                     </VBox>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Label text="▸" style="-fx-text-fill: #7a7a8e; -fx-font-size: 12;"/>
+                    <Label fx:id="sidebarUserChevron" text="⋮" styleClass="sidebar-user-chevron"/>
                 </HBox>
             </VBox>
+
         </VBox>
     </left>
 
@@ -204,9 +302,17 @@
                         </VBox>
                         <VBox styleClass="dashboard-card-content" spacing="12">
                             <HBox spacing="12" alignment="CENTER_LEFT">
-                                <VBox styleClass="avatar-circle" alignment="CENTER" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40">
-                                    <Label fx:id="avatarInitial" text="U" styleClass="avatar-initial"/>
-                                </VBox>
+                                <StackPane alignment="CENTER" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40">
+                                    <VBox styleClass="avatar-circle" alignment="CENTER" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40">
+                                        <Label fx:id="avatarInitial" text="U" styleClass="avatar-initial"/>
+                                    </VBox>
+                                    <ImageView fx:id="accountAvatarImage" fitWidth="40" fitHeight="40"
+                                               preserveRatio="false" visible="false" managed="false">
+                                        <clip>
+                                            <Circle radius="20" centerX="20" centerY="20"/>
+                                        </clip>
+                                    </ImageView>
+                                </StackPane>
                                 <VBox spacing="2">
                                     <Label fx:id="accountName" text="User Name" styleClass="account-name"/>
                                     <Label fx:id="accountEmail" text="user@example.com" styleClass="account-email"/>

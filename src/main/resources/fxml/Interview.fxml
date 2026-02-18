@@ -9,7 +9,7 @@
     <padding><Insets top="6" right="6" bottom="6" left="6"/></padding>
 
     <!-- Header -->
-    <HBox alignment="CENTER_LEFT" spacing="12">
+    <HBox fx:id="headerRow" alignment="CENTER_LEFT" spacing="12">
         <VBox spacing="2">
             <Label text="Interviews" styleClass="content-title"/>
             <Label text="Schedule and manage candidate interviews" styleClass="content-subtitle"/>

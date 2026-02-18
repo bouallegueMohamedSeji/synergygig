@@ -31,17 +31,31 @@ public class ServiceUser implements IService<User> {
 
     @Override
     public void modifier(User user) throws SQLException {
-        String req = "UPDATE users SET email=?, password=?, first_name=?, last_name=?, role=? WHERE id=?";
+        String req = "UPDATE users SET email=?, password=?, first_name=?, last_name=?, role=?, avatar_path=? WHERE id=?";
         PreparedStatement ps = connection.prepareStatement(req);
         ps.setString(1, user.getEmail());
         ps.setString(2, user.getPassword());
         ps.setString(3, user.getFirstName());
         ps.setString(4, user.getLastName());
         ps.setString(5, user.getRole());
-        ps.setInt(6, user.getId());
+        ps.setString(6, user.getAvatarPath());
+        ps.setInt(7, user.getId());
         ps.executeUpdate();
         ps.close();
         System.out.println("✅ User updated: " + user.getEmail());
+    }
+
+    /**
+     * Update only the avatar path for a user.
+     */
+    public void updateAvatar(int userId, String avatarPath) throws SQLException {
+        String req = "UPDATE users SET avatar_path=? WHERE id=?";
+        PreparedStatement ps = connection.prepareStatement(req);
+        ps.setString(1, avatarPath);
+        ps.setInt(2, userId);
+        ps.executeUpdate();
+        ps.close();
+        System.out.println("✅ Avatar updated for user id=" + userId);
     }
 
     @Override
@@ -68,7 +82,9 @@ public class ServiceUser implements IService<User> {
                     rs.getString("first_name"),
                     rs.getString("last_name"),
                     rs.getString("role"),
-                    rs.getTimestamp("created_at"));
+                    rs.getTimestamp("created_at"),
+                    rs.getString("avatar_path"),
+                    rs.getString("face_encoding"));
             users.add(user);
         }
         rs.close();
@@ -96,7 +112,9 @@ public class ServiceUser implements IService<User> {
                     rs.getString("first_name"),
                     rs.getString("last_name"),
                     rs.getString("role"),
-                    rs.getTimestamp("created_at"));
+                    rs.getTimestamp("created_at"),
+                    rs.getString("avatar_path"),
+                    rs.getString("face_encoding"));
         }
         rs.close();
         ps.close();
@@ -150,11 +168,52 @@ public class ServiceUser implements IService<User> {
                     rs.getString("first_name"),
                     rs.getString("last_name"),
                     rs.getString("role"),
-                    rs.getTimestamp("created_at"));
+                    rs.getTimestamp("created_at"),
+                    rs.getString("avatar_path"),
+                    rs.getString("face_encoding"));
             users.add(user);
         }
         rs.close();
         ps.close();
         return users;
+    }
+
+    /**
+     * Update face encoding for a user.
+     */
+    public void updateFaceEncoding(int userId, String faceEncoding) throws SQLException {
+        String req = "UPDATE users SET face_encoding=? WHERE id=?";
+        PreparedStatement ps = connection.prepareStatement(req);
+        ps.setString(1, faceEncoding);
+        ps.setInt(2, userId);
+        ps.executeUpdate();
+        ps.close();
+        System.out.println("\u2705 Face encoding updated for user id=" + userId);
+    }
+
+    /**
+     * Get a user by ID.
+     */
+    public User getById(int userId) throws SQLException {
+        String req = "SELECT * FROM users WHERE id=?";
+        PreparedStatement ps = connection.prepareStatement(req);
+        ps.setInt(1, userId);
+        ResultSet rs = ps.executeQuery();
+        User user = null;
+        if (rs.next()) {
+            user = new User(
+                    rs.getInt("id"),
+                    rs.getString("email"),
+                    rs.getString("password"),
+                    rs.getString("first_name"),
+                    rs.getString("last_name"),
+                    rs.getString("role"),
+                    rs.getTimestamp("created_at"),
+                    rs.getString("avatar_path"),
+                    rs.getString("face_encoding"));
+        }
+        rs.close();
+        ps.close();
+        return user;
     }
 }

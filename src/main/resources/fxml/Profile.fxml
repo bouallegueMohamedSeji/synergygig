@@ -2,7 +2,9 @@
 
 <?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.*?>
 
 <ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="controllers.ProfileController"
@@ -27,12 +29,26 @@
                 <Label text="Your identity at a glance" styleClass="dashboard-card-description"/>
             </VBox>
             <VBox styleClass="dashboard-card-content" spacing="16" alignment="CENTER">
-                <!-- Large Avatar -->
-                <VBox styleClass="avatar-circle" alignment="CENTER"
-                      minWidth="72" minHeight="72" maxWidth="72" maxHeight="72">
-                    <Label fx:id="profileAvatarInitial" text="U" styleClass="avatar-initial"
-                           style="-fx-font-size: 28; -fx-font-weight: 700;"/>
-                </VBox>
+                <!-- Avatar with image support (shadcn-style) -->
+                <StackPane alignment="CENTER" minWidth="80" minHeight="80" maxWidth="80" maxHeight="80">
+                    <!-- Fallback: initial letter circle -->
+                    <VBox styleClass="avatar-circle" alignment="CENTER"
+                          minWidth="80" minHeight="80" maxWidth="80" maxHeight="80">
+                        <Label fx:id="profileAvatarInitial" text="U" styleClass="avatar-initial"
+                               style="-fx-font-size: 28; -fx-font-weight: 700;"/>
+                    </VBox>
+                    <!-- Avatar image (clipped to circle) -->
+                    <ImageView fx:id="profileAvatarImage" fitWidth="80" fitHeight="80"
+                               preserveRatio="false" visible="false" managed="false">
+                        <clip>
+                            <Circle radius="40" centerX="40" centerY="40"/>
+                        </clip>
+                    </ImageView>
+                </StackPane>
+
+                <!-- Upload avatar button -->
+                <Button text="Upload Photo" onAction="#handleUploadAvatar" styleClass="btn-secondary"
+                        style="-fx-font-size: 11;"/>
 
                 <VBox spacing="4" alignment="CENTER">
                     <Label fx:id="profileFullName" text="Full Name" styleClass="account-name"
@@ -44,13 +60,20 @@
             </VBox>
         </VBox>
 
-        <!-- Account Details Card -->
+        <!-- Account Details Card (with inline edit) -->
         <VBox styleClass="dashboard-card" HBox.hgrow="ALWAYS" spacing="0" minWidth="280">
-            <VBox styleClass="dashboard-card-header" spacing="2">
-                <Label text="Account Details" styleClass="dashboard-card-title"/>
-                <Label text="Your account information" styleClass="dashboard-card-description"/>
-            </VBox>
-            <VBox styleClass="dashboard-card-content" spacing="12">
+            <HBox styleClass="dashboard-card-header" spacing="2" alignment="CENTER_LEFT">
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label text="Account Details" styleClass="dashboard-card-title"/>
+                    <Label text="Your account information" styleClass="dashboard-card-description"/>
+                </VBox>
+                <!-- Edit pen button -->
+                <Button fx:id="editToggleBtn" text="&#x270F;" onAction="#handleToggleEdit"
+                        styleClass="btn-icon" style="-fx-font-size: 15;"/>
+            </HBox>
+
+            <!-- === VIEW MODE === -->
+            <VBox fx:id="viewModePane" styleClass="dashboard-card-content" spacing="12">
                 <HBox spacing="8" alignment="CENTER_LEFT">
                     <Label text="&#x1F464;" style="-fx-font-size: 16;"/>
                     <VBox spacing="2" HBox.hgrow="ALWAYS">
@@ -100,52 +123,104 @@
                     </VBox>
                 </HBox>
             </VBox>
+
+            <!-- === EDIT MODE (hidden by default) === -->
+            <VBox fx:id="editModePane" styleClass="dashboard-card-content" spacing="16"
+                  visible="false" managed="false">
+
+                <!-- First Name field -->
+                <VBox spacing="4" styleClass="field-group">
+                    <Label text="First Name" styleClass="field-label"/>
+                    <TextField fx:id="firstNameField" styleClass="field-input" promptText="Enter first name"/>
+                    <Label fx:id="firstNameError" styleClass="field-error" text="" managed="false" visible="false"/>
+                </VBox>
+
+                <!-- Last Name field -->
+                <VBox spacing="4" styleClass="field-group">
+                    <Label text="Last Name" styleClass="field-label"/>
+                    <TextField fx:id="lastNameField" styleClass="field-input" promptText="Enter last name"/>
+                    <Label fx:id="lastNameError" styleClass="field-error" text="" managed="false" visible="false"/>
+                </VBox>
+
+                <!-- Email field -->
+                <VBox spacing="4" styleClass="field-group">
+                    <Label text="Email Address" styleClass="field-label"/>
+                    <TextField fx:id="emailField" styleClass="field-input" promptText="Enter email address"/>
+                    <Label fx:id="emailError" styleClass="field-error" text="" managed="false" visible="false"/>
+                </VBox>
+
+                <!-- Password field -->
+                <VBox spacing="4" styleClass="field-group">
+                    <Label text="New Password" styleClass="field-label"/>
+                    <PasswordField fx:id="passwordField" styleClass="field-input"
+                                   promptText="Leave empty to keep current"/>
+                    <Label styleClass="field-description" text="Only fill this if you want to change your password."/>
+                </VBox>
+
+                <!-- Role (read-only) -->
+                <VBox spacing="4" styleClass="field-group">
+                    <Label text="Role" styleClass="field-label"/>
+                    <TextField fx:id="roleField" styleClass="field-input-disabled" editable="false"/>
+                    <Label styleClass="field-description" text="Role cannot be changed from this page."/>
+                </VBox>
+
+                <!-- Status message -->
+                <Label fx:id="statusLabel" styleClass="success-label" text="" managed="false" visible="false"/>
+
+                <!-- Action buttons -->
+                <HBox spacing="12" alignment="CENTER_RIGHT">
+                    <Button fx:id="cancelEditBtn" text="Cancel" onAction="#handleCancelEdit"
+                            styleClass="btn-secondary" prefWidth="120"/>
+                    <Button fx:id="saveEditBtn" text="Save Changes" onAction="#handleSave"
+                            styleClass="btn-primary" prefWidth="160"/>
+                </HBox>
+            </VBox>
         </VBox>
 
     </HBox>
 
-    <!-- Edit Profile Card -->
+    <!-- Biometric Face ID Card -->
     <VBox styleClass="dashboard-card" spacing="0">
         <VBox styleClass="dashboard-card-header" spacing="2">
-            <Label text="Edit Profile" styleClass="dashboard-card-title"/>
-            <Label text="Update your personal information" styleClass="dashboard-card-description"/>
+            <Label text="Biometric Authentication" styleClass="dashboard-card-title"/>
+            <Label text="Use your face to log in securely" styleClass="dashboard-card-description"/>
         </VBox>
-        <VBox styleClass="dashboard-card-content" spacing="16">
-            <HBox spacing="16">
-                <VBox spacing="6" styleClass="input-group" HBox.hgrow="ALWAYS">
-                    <Label text="First Name" styleClass="input-label"/>
-                    <TextField fx:id="firstNameField" styleClass="input-field"/>
+        <VBox styleClass="dashboard-card-content" spacing="16" alignment="CENTER_LEFT">
+
+            <!-- Face ID status -->
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <StackPane alignment="CENTER" minWidth="48" minHeight="48"
+                           maxWidth="48" maxHeight="48" styleClass="face-id-icon-circle">
+                    <Label text="&#x1F9D1;" style="-fx-font-size: 24;"/>
+                </StackPane>
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label fx:id="faceIdStatusLabel" text="Face ID not enrolled"
+                           styleClass="account-name" style="-fx-font-size: 14;"/>
+                    <Label fx:id="faceIdDescLabel"
+                           text="Register your face for passwordless login"
+                           styleClass="account-email"/>
                 </VBox>
-                <VBox spacing="6" styleClass="input-group" HBox.hgrow="ALWAYS">
-                    <Label text="Last Name" styleClass="input-label"/>
-                    <TextField fx:id="lastNameField" styleClass="input-field"/>
-                </VBox>
+                <Label fx:id="faceIdBadge" text="OFF" styleClass="face-id-badge-off"/>
             </HBox>
 
-            <HBox spacing="16">
-                <VBox spacing="6" styleClass="input-group" HBox.hgrow="ALWAYS">
-                    <Label text="Email Address" styleClass="input-label"/>
-                    <TextField fx:id="emailField" styleClass="input-field"/>
-                </VBox>
-                <VBox spacing="6" styleClass="input-group" HBox.hgrow="ALWAYS">
-                    <Label text="New Password" styleClass="input-label"/>
-                    <PasswordField fx:id="passwordField" promptText="Leave empty to keep current"
-                                   styleClass="input-field"/>
-                </VBox>
+            <Separator styleClass="card-separator"/>
+
+            <!-- Actions -->
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Button fx:id="enrollFaceBtn" text="&#x1F4F7;  Enroll Face"
+                        onAction="#handleEnrollFace"
+                        styleClass="btn-primary" prefWidth="180"/>
+                <Button fx:id="removeFaceBtn" text="Remove"
+                        onAction="#handleRemoveFace"
+                        styleClass="btn-secondary" prefWidth="120"
+                        managed="false" visible="false"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="Test Setup" onAction="#handleTestFaceSetup"
+                        styleClass="btn-secondary" style="-fx-font-size: 11;" prefWidth="100"/>
             </HBox>
 
-            <VBox spacing="6" styleClass="input-group">
-                <Label text="Role" styleClass="input-label"/>
-                <TextField fx:id="roleField" styleClass="input-field" editable="false"
-                           style="-fx-opacity: 0.6;"/>
-            </VBox>
-
-            <Label fx:id="statusLabel" styleClass="success-label" text="" managed="false" visible="false"/>
-
-            <HBox spacing="12" alignment="CENTER_RIGHT">
-                <Button text="Save Changes" onAction="#handleSave" styleClass="btn-primary"
-                        prefWidth="180"/>
-            </HBox>
+            <Label fx:id="faceStatusMsg" text="" styleClass="success-label"
+                   managed="false" visible="false"/>
         </VBox>
     </VBox>
 

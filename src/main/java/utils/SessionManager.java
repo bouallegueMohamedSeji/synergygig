@@ -10,6 +10,8 @@ public class SessionManager {
 
     private static SessionManager instance;
     private User currentUser;
+    private Runnable onAvatarChanged;
+    private boolean darkTheme = true;
 
     private SessionManager() {
     }
@@ -31,6 +33,7 @@ public class SessionManager {
 
     public void logout() {
         this.currentUser = null;
+        this.onAvatarChanged = null;
     }
 
     public boolean isLoggedIn() {
@@ -39,5 +42,27 @@ public class SessionManager {
 
     public String getCurrentRole() {
         return currentUser != null ? currentUser.getRole() : null;
+    }
+
+    /** Register a callback that fires when the avatar is updated. */
+    public void setOnAvatarChanged(Runnable callback) {
+        this.onAvatarChanged = callback;
+    }
+
+    /** Notify listeners that the avatar has changed. */
+    public void fireAvatarChanged() {
+        if (onAvatarChanged != null) {
+            onAvatarChanged.run();
+        }
+    }
+
+    // ── Theme State ──
+
+    public boolean isDarkTheme() {
+        return darkTheme;
+    }
+
+    public void setDarkTheme(boolean dark) {
+        this.darkTheme = dark;
     }
 }

@@ -8,11 +8,13 @@
 <HBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="controllers.TitleBarController"
       styleClass="title-bar" alignment="CENTER_LEFT" spacing="10"
-      onMousePressed="#handleMousePressed" onMouseDragged="#handleMouseDragged">
+      onMousePressed="#handleMousePressed" onMouseDragged="#handleMouseDragged"
+      onMouseClicked="#handleMouseClicked">
 
     <Label text="SynergyGig" styleClass="window-title"/>
     <Region HBox.hgrow="ALWAYS" />
     <Button text="—" onAction="#minimize" styleClass="window-btn"/>
-    <Button text="X" onAction="#close" styleClass="window-btn, window-btn-close"/>
+    <Button fx:id="maximizeBtn" text="☐" onAction="#maximize" styleClass="window-btn"/>
+    <Button text="✕" onAction="#close" styleClass="window-btn, window-btn-close"/>
 
 </HBox>
