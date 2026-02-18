@@ -26,7 +26,10 @@
                 <ComboBox fx:id="typeComboBox" prefWidth="270.0" promptText="Select Type" />
                 
                 <Label text="URL / Link" />
-                <TextField fx:id="urlField" promptText="Enter resource URL" />
+                <HBox spacing="5.0">
+                    <TextField fx:id="urlField" promptText="Enter resource URL or Browse..." HBox.hgrow="ALWAYS"/>
+                    <Button text="Browse" onAction="#handleBrowseFile"/>
+                </HBox>
                 
                 <HBox spacing="10.0" alignment="CENTER_RIGHT">
                     <Button fx:id="btnClear" mnemonicParsing="false" onAction="#clearForm" text="Clear" />

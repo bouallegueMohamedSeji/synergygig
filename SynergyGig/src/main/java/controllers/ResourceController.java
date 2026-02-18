@@ -151,6 +151,16 @@ public class ResourceController {
         String type = typeComboBox.getValue();
         String url = urlField.getText().trim();
 
+        // Auto-convert local paths (e.g., "C:\Users\...") to file URIs
+        if (url.matches("^[a-zA-Z]:\\\\.*") || url.startsWith("\\\\")) {
+            try {
+                url = java.nio.file.Paths.get(url).toUri().toString();
+            } catch (Exception e) {
+                // If conversion fails, keep original (will likely fail later or be invalid)
+                System.err.println("Failed to convert path to URI: " + e.getMessage());
+            }
+        }
+
         if (selectedCourse == null || type == null || url.isEmpty()) {
             statusLabel.setText("All fields are required.");
             statusLabel.setStyle("-fx-text-fill: red;");
@@ -216,6 +226,27 @@ public class ResourceController {
         selectedResource = null;
         resourceTable.getSelectionModel().clearSelection();
         statusLabel.setText("");
+    }
+
+    @FXML
+    private void handleBrowseFile() {
+        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+        fileChooser.setTitle("Select Resource File");
+
+        // Add filters if needed, e.g. PDF and Video
+        fileChooser.getExtensionFilters().addAll(
+                new javafx.stage.FileChooser.ExtensionFilter("All Files", "*.*"),
+                new javafx.stage.FileChooser.ExtensionFilter("PDF Documents", "*.pdf"),
+                new javafx.stage.FileChooser.ExtensionFilter("Videos", "*.mp4", "*.mkv", "*.avi"));
+
+        // Show open dialog
+        if (urlField.getScene() != null) {
+            java.io.File file = fileChooser.showOpenDialog(urlField.getScene().getWindow());
+            if (file != null) {
+                // Convert to URI and set text
+                urlField.setText(file.toURI().toString());
+            }
+        }
     }
 
     private void showError(String message) {
