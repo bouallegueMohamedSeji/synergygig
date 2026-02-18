@@ -9,6 +9,8 @@ import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
+import tn.esprit.synergygig.utils.DatabaseSetup;
+
 public class MainApp extends Application {
 
         private double xOffset = 0;
@@ -16,6 +18,8 @@ public class MainApp extends Application {
 
         @Override
         public void start(Stage stage) throws Exception {
+                // Run Database Setup and Seeding
+                DatabaseSetup.main(null);
 
                 // 1️⃣ D'abord Atlantafx
                 Application.setUserAgentStylesheet(new PrimerLight().getUserAgentStylesheet());
@@ -31,6 +35,9 @@ public class MainApp extends Application {
                 // Load CSS
                 String css = getClass().getResource("/tn/esprit/synergygig/gui/app.css").toExternalForm();
                 scene.getStylesheets().add(css);
+                
+                String dashboardCss = getClass().getResource("/tn/esprit/synergygig/gui/dashboard.css").toExternalForm();
+                scene.getStylesheets().add(dashboardCss);
 
                 // Set stage style to transparent
                 stage.initStyle(StageStyle.TRANSPARENT);

@@ -2,30 +2,67 @@
 
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.shape.SVGPath?>
 
 <HBox spacing="15"
       alignment="CENTER_RIGHT"
-      style="-fx-background-color: #121826;
-             -fx-padding: 12;
-             -fx-border-color: #ddd;
-             -fx-border-width: 0 0 1 0;"
+      styleClass="header-bar"
       xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="tn.esprit.synergygig.controllers.HeaderController">
 
-    <Label text="SynergyGig Dashboard"
-           style="-fx-font-size: 16;
-              -fx-font-weight: bold;
-              -fx-text-fill: white;"
-           HBox.hgrow="ALWAYS"/>
+    <!-- LEFT SIDE: Toggle + Logo -->
+    <HBox alignment="CENTER_LEFT" spacing="15" HBox.hgrow="ALWAYS">
+        <Button fx:id="toggleBtn" text="☰" onAction="#toggleSidebar"
+                styleClass="header-icon-button" style="-fx-font-size: 20;"/>
 
-    <Button text="🔔" style="-fx-background-color: transparent; -fx-text-fill: white; -fx-font-size: 16; -fx-cursor: hand;"/>
+        <ImageView fx:id="logoImage" fitHeight="40" preserveRatio="true">
+            <image>
+                <Image url="@images/anaslogo1.png"/>
+            </image>
+        </ImageView>
+
+        <Label text="SynergyGig Dashboard"
+               styleClass="header-text"/>
+    </HBox>
+
+    <!-- RIGHT SIDE: Toggle + User Profile -->
+    <HBox alignment="CENTER_RIGHT" spacing="15">
+        <!-- Day/Night Toggle -->
+        <!-- Advanced Day/Night Toggle -->
+        
+        <StackPane fx:id="toggleContainer" styleClass="toggleWrapper" onMouseClicked="#toggleTheme">
+            <Pane fx:id="toggleTrack" styleClass="toggle" prefWidth="54" prefHeight="30">
+                <Label text="AM" styleClass="toggle-text-am" layoutX="8" layoutY="8" style="-fx-font-size: 8px;"/>
+                <Label text="PM" styleClass="toggle-text-pm" layoutX="32" layoutY="8" style="-fx-font-size: 8px;"/>
+
+                <!-- Stars -->
+                <Circle fx:id="star1" styleClass="star" radius="1.0" layoutX="27" layoutY="6"/>
+                <Circle fx:id="star2" styleClass="star" radius="0.8" layoutX="23" layoutY="11"/>
+                <Circle fx:id="star3" styleClass="star" radius="1.0" layoutX="30" layoutY="16"/>
+                <Circle fx:id="star4" styleClass="star" radius="0.6" layoutX="13" layoutY="10"/>
+                <Circle fx:id="star5" styleClass="star" radius="0.8" layoutX="16" layoutY="19"/>
+                <Circle fx:id="star6" styleClass="star" radius="0.6" layoutX="23" layoutY="21"/>
+
+                <!-- Handler -->
+                <Pane fx:id="toggleHandler" prefWidth="26" prefHeight="26" layoutX="2" layoutY="2" styleClass="toggle__handler">
+                     <children>
+                         <!-- Craters -->
+                         <Circle fx:id="crater1" styleClass="crater" radius="1.2" layoutX="6" layoutY="11"/>
+                         <Circle fx:id="crater2" styleClass="crater" radius="1.8" layoutX="13" layoutY="17"/>
+                         <Circle fx:id="crater3" styleClass="crater" radius="2.4" layoutX="15" layoutY="6"/>
+                     </children>
+                </Pane>
+            </Pane>
+        </StackPane>
+
+        <Button text="🔔" styleClass="header-icon-button" style="-fx-font-size: 16;"/>
     
-    <HBox fx:id="userBox" alignment="CENTER" spacing="10" onMouseClicked="#handleProfileClick" style="-fx-cursor: hand;">
-        <Label fx:id="userNameLabel" text="User"
-               style="-fx-font-size: 16;
-                  -fx-font-weight: bold;
-                  -fx-text-fill: white;"
-               />
-        <!-- Optional: Add Avatar ImageView here -->
+        <HBox fx:id="userBox" alignment="CENTER" spacing="10" onMouseClicked="#handleProfileClick" style="-fx-cursor: hand;">
+            <Label fx:id="userNameLabel" text="User"
+                   styleClass="header-text" style="-fx-font-size: 16;"/>
+        </HBox>
     </HBox>
 </HBox>

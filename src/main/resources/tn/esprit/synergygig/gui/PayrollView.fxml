@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="tn.esprit.synergygig.controllers.PayrollController"
+      spacing="20" style="-fx-padding: 30;">
+
+    <Label text="Payroll Management" style="-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: white;"/>
+
+    <VBox fx:id="generatePanel" spacing="10" style="-fx-background-color: rgba(255,255,255,0.05); -fx-padding: 15; -fx-background-radius: 10;">
+        <Label text="Generate Payroll" style="-fx-text-fill: white; -fx-font-weight: bold;"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <ComboBox fx:id="userCombo" promptText="Select Employee" prefWidth="200"/>
+            <ComboBox fx:id="monthCombo" promptText="Select Month" prefWidth="150"/>
+            <TextField fx:id="yearField" promptText="Year" styleClass="text-field" prefWidth="80"/>
+        </HBox>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+             <TextField fx:id="baseSalaryField" promptText="Base Salary" styleClass="text-field"/>
+             <TextField fx:id="bonusField" promptText="Bonus" styleClass="text-field"/>
+             <Button text="Generate &amp; Save" onAction="#generatePayroll" styleClass="action-btn"/>
+        </HBox>
+    </VBox>
+
+    <TableView fx:id="payrollTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="colUser" text="Employee"/>
+            <TableColumn fx:id="colMonth" text="Month"/>
+            <TableColumn fx:id="colYear" text="Year"/>
+            <TableColumn fx:id="colHours" text="Total Hours"/>
+            <TableColumn fx:id="colRate" text="Hourly Rate"/>
+            <TableColumn fx:id="colBase" text="Base Salary"/>
+            <TableColumn fx:id="colBonus" text="Bonus"/>
+            <TableColumn fx:id="colDeductions" text="Deductions"/>
+            <TableColumn fx:id="colNet" text="Net Salary"/>
+        </columns>
+        <columnResizePolicy>
+            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+        </columnResizePolicy>
+    </TableView>
+
+</VBox>

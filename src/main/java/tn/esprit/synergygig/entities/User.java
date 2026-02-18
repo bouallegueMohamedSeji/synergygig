@@ -10,25 +10,46 @@ public class User {
     private String email;
     private String password;
     private Role role;
+    private Department department;
+    private String activeGigsSummary;
     private Timestamp createdAt;
+
+    private Double hourlyRate = 0.0;
+    private Double monthlySalary = 0.0;
 
     public User() {
     }
 
     public User(String fullName, String email, String password, Role role) {
+        this(fullName, email, password, role, 0.0, 0.0);
+    }
+
+    public User(String fullName, String email, String password, Role role, Double hourlyRate) {
+        this(fullName, email, password, role, hourlyRate, 0.0);
+    }
+
+    public User(String fullName, String email, String password, Role role, Double hourlyRate, Double monthlySalary) {
         this.fullName = fullName;
         this.email = email;
         this.password = password;
         this.role = role;
+        this.hourlyRate = hourlyRate;
+        this.monthlySalary = monthlySalary;
     }
 
     public User(int id, String fullName, String email, String password, Role role, Timestamp createdAt) {
+        this(id, fullName, email, password, role, createdAt, 0.0, 0.0);
+    }
+
+    public User(int id, String fullName, String email, String password, Role role, Timestamp createdAt, Double hourlyRate, Double monthlySalary) {
         this.id = id;
         this.fullName = fullName;
         this.email = email;
         this.password = password;
         this.role = role;
         this.createdAt = createdAt;
+        this.hourlyRate = hourlyRate;
+        this.monthlySalary = monthlySalary;
     }
 
     public int getId() {
@@ -77,6 +98,38 @@ public class User {
 
     public void setCreatedAt(Timestamp createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Department getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(Department department) {
+        this.department = department;
+    }
+
+    public String getActiveGigsSummary() {
+        return activeGigsSummary;
+    }
+
+    public void setActiveGigsSummary(String activeGigsSummary) {
+        this.activeGigsSummary = activeGigsSummary;
+    }
+
+    public Double getHourlyRate() {
+        return hourlyRate;
+    }
+
+    public void setHourlyRate(Double hourlyRate) {
+        this.hourlyRate = hourlyRate;
+    }
+
+    public Double getMonthlySalary() {
+        return monthlySalary;
+    }
+
+    public void setMonthlySalary(Double monthlySalary) {
+        this.monthlySalary = monthlySalary;
     }
 
     @Override

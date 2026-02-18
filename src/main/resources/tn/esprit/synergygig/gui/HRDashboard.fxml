@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.synergygig.controllers.HRDashboardController">
+    
+    <VBox spacing="20" style="-fx-padding: 30;">
+        <Label text="HR Administration Overview" styleClass="dashboard-title"/>
+        
+        <HBox spacing="20">
+            <VBox styleClass="stat-card" onMouseClicked="#navigateToDepartments" style="-fx-padding: 20; -fx-background-radius: 10;">
+                <Label text="Total Departments" styleClass="stat-card-title"/>
+                <Label fx:id="totalDepartments" text="0" styleClass="stat-card-value"/>
+            </VBox>
+             <VBox styleClass="stat-card" onMouseClicked="#navigateToAttendance" style="-fx-padding: 20; -fx-background-radius: 10;">
+                <Label text="Present Today" styleClass="stat-card-title"/>
+                <Label fx:id="presentToday" text="0" styleClass="stat-card-value, success"/>
+            </VBox>
+             <VBox styleClass="stat-card" onMouseClicked="#navigateToLeaves" style="-fx-padding: 20; -fx-background-radius: 10;">
+                <Label text="Pending Leaves" styleClass="stat-card-title"/>
+                <Label fx:id="pendingLeaves" text="0" styleClass="stat-card-value, warning"/>
+            </VBox>
+        </HBox>
+        
+        <!-- Add charts later -->
+        
+    </VBox>
+</StackPane>

@@ -1,0 +1,18 @@
+/* Day/Night Toggle */
+.toggle-container {
+    -fx-cursor: hand;
+    -fx-alignment: center-left;
+    -fx-padding: 0 5;
+}
+
+.toggle-background {
+    -fx-background-color: #83d8ff;
+    -fx-background-radius: 30;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 5, 0, 0, 2);
+}
+
+.toggle-circle {
+    -fx-fill: #ffcf96;
+    -fx-stroke: none;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 2, 0, 0, 1);
+}

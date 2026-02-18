@@ -1,101 +1,619 @@
-/* =====================================================
-   🌑 ROOT
-   ===================================================== */
-.dashboard-root {
-    -fx-background-color:#121826;
-    -fx-padding: 30;
+@import 'space-button.css';
+@import 'styles_steam.css';
+@import 'toggle-switch.css';
+
+/* Global Settings */
+.root {
+    /* Fallback default variables (Dark Theme by default) */
+    -fx-base-background: #0A090C;
+    -fx-sidebar-background: #0D0A0B;
+    -fx-text-base: #FFFFFF;
+    -fx-text-secondary: #B0BEC5;
+    -fx-accent-color: #90DDF0;
+    -fx-accent-dark: #2C666E;
+    -fx-card-background: linear-gradient(to bottom right, #07393C, #2C666E);
+    -fx-table-header-color: #07393C;
+    -fx-table-row-odd: #1a1a1a;
+    -fx-table-row-even: #0A090C;
+    -fx-table-selection: #2C666E;
+
+    -fx-background-color: -fx-base-background;
+    -fx-font-family: 'Segoe UI', sans-serif;
 }
 
-/* =====================================================
-   🏷️ TITLE
-   ===================================================== */
-.dashboard-title {
+/* Sidebar Styles */
+.sidebar {
+    -fx-background-color: -fx-sidebar-background;
+    -fx-padding: 20;
+    -fx-pref-width: 250;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.1), 10, 0, 0, 0);
+}
+
+.app-title {
+    -fx-text-fill: -fx-text-base;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-padding: 0 0 30 0;
+    -fx-alignment: center;
+}
+
+.nav-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 16px;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 12 20;
+    -fx-cursor: hand;
+    -fx-background-radius: 5;
+}
+
+.nav-btn:hover {
+    -fx-background-color: rgba(128, 128, 128, 0.1);
+    -fx-text-fill: -fx-text-base;
+}
+
+.nav-btn.active {
+    -fx-background-color: -fx-accent-dark;
     -fx-text-fill: white;
-    -fx-font-size: 26px;
+    /* Keep white for active button for contrast on dark accent */
+    -fx-font-weight: bold;
+    -fx-border-color: -fx-accent-color;
+    -fx-border-width: 0 0 0 4;
+}
+
+/* Dashboard Cards */
+.stat-card {
+    -fx-background-color: -fx-card-background;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 10, 0, 0, 5);
+    -fx-cursor: hand;
+    -fx-min-width: 200;
+}
+
+.stat-card:hover {
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+/* General Content Area */
+.content-area {
+    -fx-background-color: -fx-base-background;
+    -fx-padding: 20;
+}
+
+/* Table View Styling */
+.table-view {
+    -fx-background-color: transparent;
+    -fx-base: -fx-base-background;
+    -fx-control-inner-background: -fx-base-background;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: -fx-table-header-color;
+    -fx-background-radius: 5 5 0 0;
+    -fx-background-insets: 0;
+}
+
+.table-view .column-header,
+.table-view .filler {
+    -fx-background-color: transparent;
+    -fx-size: 35;
+    -fx-border-width: 0;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: white;
+    /* Headers usually readable on dark/accent colors */
+    -fx-font-weight: bold;
+    -fx-alignment: center-left;
+}
+
+.table-row-cell {
+    -fx-background-color: -fx-table-row-even;
+    -fx-text-background-color: -fx-text-base;
+    -fx-border-color: transparent transparent rgba(128, 128, 128, 0.2) transparent;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: -fx-table-row-odd;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: -fx-table-selection;
+    -fx-text-background-color: -fx-text-base;
+}
+
+/* HR TopBar Styles */
+.hr-topbar {
+    -fx-background-color: -fx-sidebar-background;
+    -fx-padding: 10 20;
+    -fx-border-color: rgba(128, 128, 128, 0.2);
+    -fx-border-width: 0 0 1 0;
+}
+
+.hr-title {
+    -fx-text-fill: -fx-text-base;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-padding: 0 20 0 0;
+}
+
+/* Space Button Style Integration */
+.hr-nav-btn {
+    /* Re-applying space-button styles ensures they are present even if import fails or overrides occur */
+    -fx-background-color:
+        linear-gradient(to bottom right, #ffdb3b 10%, #fe53bb 45%, #8f51ea 67%, #0044ff 87%),
+        linear-gradient(to bottom, #212121, #212121);
+    -fx-background-insets: 0, 2;
+    -fx-background-radius: 50;
+    -fx-text-fill: white !important;
+    -fx-font-family: "Arial";
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-padding: 10 25;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(254, 83, 186, 0.5), 15, 0, 0, 0);
+    -fx-min-height: 40;
+}
+
+.hr-nav-btn:hover {
+    -fx-scale-x: 1.1;
+    -fx-scale-y: 1.1;
+    -fx-effect: dropshadow(gaussian, rgba(142, 81, 234, 0.8), 20, 0, 0, 0);
+}
+
+.hr-nav-btn.active {
+    -fx-background-insets: 0, 1;
+    -fx-effect: none;
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+    -fx-text-fill: white;
+}
+
+/* Global Text Style */
+.label,
+.button,
+.text-field,
+.text-area,
+.table-cell {
+    -fx-text-fill: -fx-text-base;
+}
+
+.text-field,
+.text-area {
+    -fx-background-color: -fx-secondary-background;
+    -fx-prompt-text-fill: -fx-text-secondary;
+    -fx-border-color: rgba(128, 128, 128, 0.3);
+    -fx-border-radius: 3;
+}
+
+.toggle-container {
+    -fx-cursor: hand;
+    -fx-alignment: center-left;
+    -fx-padding: 0 5;
+}
+
+.toggle-background {
+    -fx-background-color: -fx-accent-color;
+    -fx-background-radius: 30;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 5, 0, 0, 2);
+}
+
+.header-bar {
+    -fx-background-color: -fx-sidebar-background;
+    -fx-padding: 12;
+    -fx-border-color: rgba(128, 128, 128, 0.2);
+    -fx-border-width: 0 0 1 0;
+}
+
+.header-text {
+    -fx-text-fill: -fx-text-base;
+    -fx-font-size: 18px;
     -fx-font-weight: bold;
 }
 
-/* =====================================================
-   🧱 CARD BASE
-   ===================================================== */
-.stat-card {
-    -fx-background-radius: 18;
-    -fx-padding: 24;
-    -fx-min-height: 160;
-    -fx-pref-height: 160;
-
-    /* ⚠️ UNE SEULE COULEUR PAR DÉFAUT */
-    -fx-background-color: #2b2f36;
-
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 25, 0.3, 0, 8);
+.header-icon-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-base;
     -fx-cursor: hand;
 }
 
-/* =====================================================
-   🎨 COULEURS DES CARTES (UNE SEULE COUCHE)
-   ===================================================== */
-
-/* 🟢 PUBLISHED — VERT NÉON */
-.stat-published {
-    -fx-background-color: red;
-}
-
-/* 🔵 IN PROGRESS — BLEU */
-.stat-progress {
-    -fx-background-color: linear-gradient(to right, #2196f3, #64b5f6);
-}
-
-/* ⚪ DRAFT — GRIS */
-.stat-draft {
-    -fx-background-color: linear-gradient(to right, #424242, #757575);
-}
-
-/* 🟠 TOTAL — ORANGE (si tu veux encore l’utiliser) */
-.stat-total {
-    -fx-background-color: linear-gradient(to right, #ff9800, #ffb74d);
-}
-
-/* =====================================================
-   ✏️ TEXT
-   ===================================================== */
-.stat-title {
-    -fx-text-fill: #cfd8dc;
-    -fx-font-size: 13px;
-}
-
-.stat-value {
-    -fx-text-fill: white;
-    -fx-font-size: 38px;
+/* Standardized Typography Classes */
+.dashboard-title {
+    -fx-font-size: 24px;
     -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-base;
 }
 
-/* =====================================================
-   ✨ HOVER
-   ===================================================== */
-.stat-card:hover {
-    -fx-translate-y: -6;
-    -fx-effect: dropshadow(gaussian, rgba(0,255,200,0.7), 35, 0.4, 0, 0);
-}
-
-/* =====================================================
-   📊 CHARTS
-   ===================================================== */
-.chart-title {
-    -fx-text-fill: white;
-    -fx-font-size: 16px;
+.section-title {
+    -fx-font-size: 20px;
     -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-base;
 }
 
-.chart {
+.stat-card-title {
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 14px;
+}
+
+.stat-card-value {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-base;
+}
+
+.stat-card-value.success {
+    -fx-text-fill: #4caf50;
+}
+
+.stat-card-value.warning {
+    -fx-text-fill: #ff9800;
+}
+
+/* Utility Classes */
+.text-black {
+    -fx-text-fill: black !important;
+    /* Force black text */
+    -fx-fill: black !important;
+}
+
+.action-btn-dark {
+    -fx-background-color: #2b2b2b;
+    /* Dark Gray/Black to match ComboBox */
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+    -fx-padding: 8 15;
+}
+
+.action-btn-dark:hover {
+    -fx-background-color: #3b3b3b;
+}
+
+/* Fix ComboBox Visibility */
+.combo-box .list-cell {
+    -fx-text-fill: white;
+    -fx-background-color: #2b2b2b;
+}
+
+.combo-box .list-view {
+    -fx-background-color: #2b2b2b;
+    -fx-border-color: #3b3b3b;
+}
+
+.combo-box-popup .list-view .list-cell:filled:selected,
+.combo-box-popup .list-view .list-cell:filled:hover {
+    -fx-background-color: -fx-accent-color;
+    -fx-text-fill: white;
+}
+
+/* Custom Search Bar Styles */
+.InputContainer {
+    -fx-pref-width: 210px;
+    -fx-pref-height: 50px;
+    -fx-alignment: center;
+    -fx-background-color: linear-gradient(to bottom, rgb(227, 213, 255), rgb(255, 231, 231));
+    -fx-background-radius: 30px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.075), 10, 0, 2, 2);
+    -fx-padding: 5;
+}
+
+.input {
+    -fx-pref-width: 200px;
+    -fx-pref-height: 40px;
+    -fx-background-color: rgb(255, 255, 255);
+    -fx-background-radius: 30px;
+    -fx-padding: 0 0 0 15px;
+    -fx-text-fill: rgb(19, 19, 19);
+    -fx-font-size: 13.4px;
+    -fx-prompt-text-fill: gray;
+}
+
+
+/* Context Menu Styling to fix visibility */
+/* Context Menu Styling to fix visibility */
+.context-menu {
+    -fx-background-color: -fx-secondary-background;
+    -fx-border-color: rgba(128, 128, 128, 0.2);
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 10, 0, 0, 2);
+    -fx-padding: 0;
+}
+
+.menu-item {
+    -fx-padding: 8 12;
     -fx-background-color: transparent;
 }
 
-.chart-plot-background {
-    -fx-background-color: transparent;
+.menu-item .label {
+    -fx-text-fill: -fx-text-base;
 }
-/* ============================
-   TEST FORCE
-   ============================ */
-.stat-published {
-    -fx-background-color: red;
+
+.menu-item:focused {
+    -fx-background-color: -fx-accent-color;
+}
+
+.menu-item:focused .label {
+    -fx-text-fill: white;
+}
+
+/* Custom 'Space' Button Style adapted for JavaFX */
+.space-btn {
+    /* Layer 1: The Gradient Border */
+    /* Layer 2: The Dark Background (#212121) */
+    -fx-background-color:
+        linear-gradient(to bottom right, #ffdb3b 10%, #fe53bb 45%, #8f51ea 67%, #0044ff 87%),
+        #212121;
+
+    /* Insets to create the border effect (4px transparent border simulated) */
+    -fx-background-insets: 0, 4;
+
+    -fx-background-radius: 5em, 5em;
+    /* 5rem -> 5em approx */
+
+    -fx-text-fill: white;
+    -fx-font-family: "Arial";
+    /* Fallback for 'Avalors Personal Use' */
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-alignment: center;
+    -fx-cursor: hand;
+    -fx-padding: 10 20;
+    -fx-min-width: 200px;
+    -fx-min-height: 45px;
+
+    /* Glow effect simulation */
+    -fx-effect: dropshadow(three-pass-box, rgba(254, 83, 186, 0.3), 20, 0, 0, 0);
+}
+
+.space-btn:hover {
+    -fx-scale-x: 1.05;
+    -fx-scale-y: 1.05;
+    /* On hover, make the glow stronger/different color to mimic the animation start */
+    -fx-effect: dropshadow(three-pass-box, rgba(142, 81, 234, 0.6), 30, 0, 0, 0);
+}
+
+.space-btn:pressed {
+    -fx-scale-x: 0.95;
+    -fx-scale-y: 0.95;
+    -fx-background-insets: 0, 2;
+    /* Shrink border slightly on press */
+    -fx-effect: none;
+}
+
+/* =========================================
+   SIDEBAR (Shadcn Style)
+   ========================================= */
+.sidebar {
+    -fx-background-color: -fx-sidebar-background;
+    /* Zinc-950 */
+    -fx-border-color: #27272a;
+    /* Zinc-800 */
+    -fx-border-width: 0 1 0 0;
+}
+
+.sidebar-collapsed {
+    -fx-min-width: 70;
+    -fx-pref-width: 70;
+}
+
+.sidebar-brand {
+    -fx-text-fill: -fx-text-base;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-font-family: "Segoe UI", "Inter", sans-serif;
+}
+
+.sidebar-toggle-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #a1a1aa;
+    /* Zinc-400 */
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+
+.sidebar-toggle-btn:hover {
+    -fx-text-fill: white;
+    -fx-background-color: #27272a;
+    -fx-background-radius: 4;
+}
+
+.sidebar-separator {
+    -fx-background-color: #27272a;
+    -fx-opacity: 0.5;
+}
+
+.sidebar-section-label {
+    -fx-text-fill: -fx-text-secondary;
+    /* Zinc-500 */
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 10 10 5 10;
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+/* Custom Sidebar Button Style (User Requested) */
+.sidebar-item {
+    -fx-background-color:
+        /* Layer 1: Outer Border/Bg */
+        radial-gradient(focus-angle 0deg, focus-distance 0%, center 80% 0%, radius 200px, #ffffff, #181b1b),
+        /* Layer 2: Blob (Bottom Left Glow) */
+        radial-gradient(focus-angle 0deg, focus-distance 0%, center 0% 100%, radius 100px, rgba(63, 233, 255, 0.4), rgba(0, 0, 255, 0.2), transparent),
+        /* Layer 3: Inner Background (Dark) */
+        radial-gradient(focus-angle 0deg, focus-distance 0%, center 80% 0%, radius 200px, rgba(119, 119, 119, 0.2), #0f1111);
+
+    -fx-background-insets: 0, 2, 2;
+    -fx-background-radius: 16, 14, 14;
+    -fx-padding: 12 20;
+
+    -fx-text-fill: white;
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-alignment: CENTER_LEFT;
+    -fx-cursor: hand;
+
+    /* Outer Glow */
+    -fx-effect: dropshadow(three-pass-box, rgba(255, 255, 255, 0.1), 10, 0, 0, 0);
+}
+
+.sidebar-item:hover {
+    /* Enhance glow on hover */
+    -fx-effect: dropshadow(three-pass-box, rgba(63, 233, 255, 0.5), 15, 0, 0, 0);
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+/* Red / Danger Version for Logout */
+.sidebar-item-danger {
+    -fx-background-color:
+        /* Outer */
+        radial-gradient(focus-angle 0deg, focus-distance 0%, center 80% 0%, radius 200px, #ffffff, #1b1818),
+        /* Blob (Red) */
+        radial-gradient(focus-angle 0deg, focus-distance 0%, center 0% 100%, radius 100px, rgba(255, 63, 63, 0.4), rgba(255, 0, 0, 0.2), transparent),
+        /* Inner */
+        radial-gradient(focus-angle 0deg, focus-distance 0%, center 80% 0%, radius 200px, rgba(119, 119, 119, 0.2), #110f0f);
+
+    -fx-background-insets: 0, 2, 2;
+    -fx-background-radius: 16, 14, 14;
+    -fx-padding: 12 20;
+
+    -fx-text-fill: #ffcccc;
+    -fx-font-family: "Segoe UI", sans-serif;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-alignment: CENTER_LEFT;
+    -fx-cursor: hand;
+
+    -fx-effect: dropshadow(three-pass-box, rgba(255, 0, 0, 0.1), 10, 0, 0, 0);
+}
+
+.sidebar-item-danger:hover {
+    -fx-effect: dropshadow(three-pass-box, rgba(255, 63, 63, 0.5), 15, 0, 0, 0);
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+/* Custom DatePicker Styling (Clean & Icon-only look) */
+.custom-date-picker {
+    -fx-background-color: transparent;
+    -fx-background-radius: 20;
+    -fx-border-color: rgba(128, 128, 128, 0.3);
+    -fx-border-radius: 20;
+    -fx-border-width: 1;
+    -fx-pref-width: 250;
+    -fx-padding: 0;
+}
+
+.custom-date-picker .text-field {
+    -fx-background-color: white;
+    -fx-background-radius: 20 0 0 20;
+    -fx-border-width: 0;
+    -fx-pref-height: 45px;
+    -fx-padding: 0 15;
+    -fx-text-fill: #333333;
+    -fx-prompt-text-fill: #999999;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+}
+
+.custom-date-picker .arrow-button {
+    -fx-background-color: white;
+    -fx-background-radius: 0 20 20 0;
+    -fx-border-width: 0 0 0 1;
+    -fx-border-color: #e0e0e0;
+    -fx-cursor: hand;
+    -fx-padding: 0 15;
+}
+
+.custom-date-picker .arrow-button .arrow {
+    -fx-background-color: #333333;
+}
+
+/* Hover State */
+.custom-date-picker:hover {
+    -fx-border-color: -fx-accent-color;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.1), 5, 0, 0, 1);
+}
+
+/* Calendar Popup Styling */
+.date-picker-popup {
+    -fx-background-color: white;
+    -fx-background-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.15), 10, 0, 0, 5);
+    -fx-border-color: transparent;
+}
+
+.date-picker-popup .month-year-pane {
+    -fx-background-color: white;
+    -fx-padding: 10;
+}
+
+.date-picker-popup .spinner .label {
+    -fx-text-fill: #333333;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.date-picker-popup .day-cell {
+    -fx-background-color: white;
+    -fx-text-fill: #333333;
+    -fx-border-color: transparent;
+}
+
+.date-picker-popup .day-cell:hover {
+    -fx-background-color: #f0f0f0;
+    -fx-background-radius: 15;
+}
+
+.date-picker-popup .selected {
+    -fx-background-color: -fx-accent-color;
+    -fx-text-fill: white;
+    -fx-background-radius: 15;
+    -fx-font-weight: bold;
+}
+
+
+/* =========================================
+   HAMBURGER ANIMATION STYLES
+   ========================================= */
+.hamburger-container {
+    -fx-cursor: hand;
+    -fx-padding: 0;
+}
+
+.hamburger-line {
+    -fx-background-color: white;
+    -fx-background-radius: 5;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 2, 0, 0, 0);
+}
+
+.hamburger-container:hover .hamburger-line {
+    -fx-background-color: -fx-accent-color;
+}
+
+/* User Role Label */
+.user-role {
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 11px;
+    -fx-font-weight: normal;
+}
+
+/* Floating Sidebar Effect (Update existing .sidebar) */
+.sidebar {
+    -fx-background-color: -fx-sidebar-background;
+    -fx-background-radius: 0 15 15 0;
+    /* Rounded on right side */
+    -fx-border-color: rgba(128, 128, 128, 0.2);
+    -fx-border-width: 0 1 0 0;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.25), 15, 0, 5, 0);
+    -fx-padding: 10;
+}
+
+/* Ensure header text is aligned */
+.sidebar-header {
+    -fx-padding: 15 0 15 5;
 }

@@ -1,0 +1,24 @@
+.root {
+    /* BLACK THEME PALETTE */
+    -fx-base-background: #0A090C;
+    /* Main Background */
+    -fx-secondary-background: #0D0A0B;
+    /* Secondary/Panel Background */
+    -fx-accent-color: #90DDF0;
+    /* Bright Blue Accent */
+    -fx-accent-dark: #2C666E;
+    /* Darker Teal Accent */
+
+    -fx-text-base: #FFFFFF;
+    /* White Text */
+    -fx-text-secondary: #B0BEC5;
+    /* Dimmed Text */
+
+    -fx-card-background: linear-gradient(to bottom right, #07393C, #2C666E);
+    -fx-sidebar-background: #0D0A0B;
+
+    -fx-table-header-color: #07393C;
+    -fx-table-row-odd: #1a1a1a;
+    -fx-table-row-even: #0A090C;
+    -fx-table-selection: #2C666E;
+}

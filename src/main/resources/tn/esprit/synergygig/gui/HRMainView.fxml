@@ -1,0 +1,34 @@
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Button?>
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="tn.esprit.synergygig.controllers.HRMainController"
+            stylesheets="@dashboard.css">
+    
+    <!-- Top Navbar for HR -->
+    <top>
+        <HBox styleClass="hr-topbar" spacing="15" alignment="CENTER_LEFT">
+            <Label text="SynergyGig HR" styleClass="hr-title"/>
+            
+            <HBox spacing="10" HBox.hgrow="ALWAYS" alignment="CENTER_LEFT">
+                <Button fx:id="btnOverview" text="📊 Overview" styleClass="hr-nav-btn" onAction="#showOverview"/>
+                <Button fx:id="btnDepartments" text="🏢 Departments" styleClass="hr-nav-btn" onAction="#showDepartments"/>
+                <Button fx:id="btnAttendance" text="📅 Attendance" styleClass="hr-nav-btn" onAction="#showAttendance"/>
+                <Button fx:id="btnLeaves" text="✈️ Leaves" styleClass="hr-nav-btn" onAction="#showLeaves"/>
+                <Button fx:id="btnPayroll" text="💰 Payroll" styleClass="hr-nav-btn" onAction="#showPayroll"/>
+                <Button fx:id="btnUsers" text="👥 Users" styleClass="hr-nav-btn" onAction="#showUsers"/>
+            </HBox>
+        </HBox>
+    </top>
+
+    <!-- Main Content Area -->
+    <center>
+        <StackPane fx:id="contentArea" styleClass="content-area">
+            <!-- Default View -->
+            <fx:include source="HRDashboard.fxml"/>
+        </StackPane>
+    </center>
+</BorderPane>

@@ -1,0 +1,38 @@
+/* HR TopBar Styles */
+.hr-topbar {
+    -fx-background-color: #283593;
+    /* Dark Indigo */
+    -fx-padding: 10 20;
+    -fx-border-color: #5c6bc0;
+    -fx-border-width: 0 0 1 0;
+}
+
+.hr-title {
+    -fx-text-fill: white;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-padding: 0 20 0 0;
+}
+
+.hr-nav-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #e8eaf6;
+    -fx-font-size: 14px;
+    -fx-padding: 8 15;
+    -fx-cursor: hand;
+    -fx-background-radius: 20;
+    -fx-border-color: transparent;
+    -fx-border-radius: 20;
+}
+
+.hr-nav-btn:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.15);
+    -fx-text-fill: white;
+}
+
+.hr-nav-btn.active {
+    -fx-background-color: #e8eaf6;
+    -fx-text-fill: #1a237e;
+    /* Dark Blue Text */
+    -fx-font-weight: bold;
+}

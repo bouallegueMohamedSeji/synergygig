@@ -45,7 +45,6 @@
             <Button fx:id="likeButton" mnemonicParsing="false" onMouseClicked="#toggleLike" style="-fx-background-color: transparent; -fx-text-fill: #888888; -fx-cursor: hand;" text="👍 Like" />
             <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-text-fill: #888888; -fx-cursor: hand;" text="💬 Comment" />
             <Region HBox.hgrow="ALWAYS" />
-            <Button fx:id="deleteButton" mnemonicParsing="false" onMouseClicked="#deleteForum" style="-fx-background-color: transparent; -fx-text-fill: #ef4444; -fx-cursor: hand; -fx-font-weight: bold;" text="🗑 Delete" visible="false" managed="false"/>
             <Button mnemonicParsing="false" style="-fx-background-color: transparent; -fx-text-fill: #396afc; -fx-font-weight: bold; -fx-cursor: hand;" text="Read More →" />
          </children>
       </HBox>

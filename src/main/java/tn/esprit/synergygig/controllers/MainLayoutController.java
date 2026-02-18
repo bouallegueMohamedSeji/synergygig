@@ -12,20 +12,6 @@ import java.io.IOException;
 
 public class MainLayoutController {
 
-    private static MainLayoutController instance;
-
-    public MainLayoutController() {
-        instance = this;
-    }
-
-    public static MainLayoutController getInstance() {
-        return instance;
-    }
-
-    public void navigate(String viewName) {
-        loadCenter(viewName);
-    }
-
     @FXML
     private BorderPane centerContainer;
 
@@ -47,6 +33,9 @@ public class MainLayoutController {
         showDashboard(); // vue par défaut
     }
 
+    // ===== SIDEBAR TOGGLE =====
+    private SidebarController sidebarController; // Reference to the controller
+
     // ===== LOAD SIDEBAR =====
     private void loadSidebar() {
         try {
@@ -56,13 +45,29 @@ public class MainLayoutController {
             Node sidebar = loader.load();
 
             // 🔥 Donner accès au MainLayout depuis la Sidebar
-            SidebarController controller = loader.getController();
-            controller.setMainLayoutController(this);
+            sidebarController = loader.getController();
+            sidebarController.setMainLayoutController(this);
 
             sidebarContainer.setCenter(sidebar);
 
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    public void toggleSidebar() {
+        if (sidebarController != null) {
+            sidebarController.toggleSidebar();
+            
+            // Adjust container width if needed, but SidebarController handles properties of the root VBox.
+            // However, sidebarContainer (BorderPane) might need its left area width adjusted?
+            // Actually, if sidebarRoot changes prefWidth, and it's inside sidebarContainer center,
+            // sidebarContainer is a BorderPane in LEFT of root. 
+            // The constraint might be on the sidebarContainer itself.
+            // Let's check MainLayout.fxml.
+            // MainLayout.fxml: <BorderPane fx:id="sidebarContainer"/> inside <left>.
+            // If sidebar changes size, the BorderPane (sidebarContainer) should adapt if it doesn't have fixed size.
+            // SidebarController sets prefWidth on sidebarRoot.
         }
     }
 
@@ -113,6 +118,10 @@ public class MainLayoutController {
         loadCenter("ForumsView.fxml");
     }
 
+    public void showHR() {
+        loadCenter("HRMainView.fxml");
+    }
+
     private RootLayoutController rootLayoutController;
 
     public void setRootLayoutController(RootLayoutController rootLayoutController) {
@@ -140,5 +149,4 @@ public class MainLayoutController {
             }
         }
     }
-
 }

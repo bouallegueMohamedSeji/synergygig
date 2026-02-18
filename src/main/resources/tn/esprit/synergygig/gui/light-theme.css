@@ -1,0 +1,25 @@
+.root {
+    /* WHITE THEME PALETTE */
+    -fx-base-background: #F0EDEE;
+    /* Main Background */
+    -fx-secondary-background: #FFFFFF;
+    /* Secondary/Panel Background */
+    -fx-accent-color: #DE95A2;
+    /* Pinkish Accent */
+    -fx-accent-dark: #613039;
+    /* Dark Red/Brown Accent */
+
+    -fx-text-base: #330811;
+    /* Dark Red/Black Text */
+    -fx-text-secondary: #613039;
+    /* Secondary Text */
+
+    -fx-card-background: linear-gradient(to bottom right, #DE95A2, #613039);
+    -fx-sidebar-background: #FFFFFF;
+
+    -fx-table-header-color: #DE95A2;
+    -fx-table-row-odd: #FFFFFF;
+    -fx-table-row-even: #F0EDEE;
+    -fx-table-selection: #F8C3CD;
+    /* Lighter Pink Selection */
+}

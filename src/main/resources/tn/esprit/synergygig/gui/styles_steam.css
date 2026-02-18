@@ -1,0 +1,11 @@
+/* Steam Effect */
+.steam-border {
+    -fx-padding: 3;
+    /* Border width */
+    -fx-background-color: transparent;
+}
+
+.steam-background {
+    -fx-background-color: linear-gradient(to bottom right, #fb0094, #0000ff, #00ff00, #ffff00, #ff0000, #fb0094, #0000ff, #00ff00, #ffff00, #ff0000);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.8), 20, 0, 0, 0);
+}
