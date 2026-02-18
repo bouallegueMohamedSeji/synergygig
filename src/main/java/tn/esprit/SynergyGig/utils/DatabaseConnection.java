@@ -6,15 +6,16 @@ import java.sql.SQLException;
 
 public class DatabaseConnection {
 
-    private static DatabaseConnection instance;
+    private static DatabaseConnection instance;   //instance unique
     private Connection connection;
 
     private final String URL = "jdbc:mysql://localhost:3306/gestion_rh";
     private final String USER = "root";
     private final String PASSWORD = "";
 
-    private DatabaseConnection() {
+    private DatabaseConnection() { //constructeur prive
         try {
+            //etablir la connexion
             connection = DriverManager.getConnection(URL, USER, PASSWORD);
             System.out.println("✅ Connexion à la base de données réussie");
         } catch (SQLException e) {
@@ -23,7 +24,7 @@ public class DatabaseConnection {
         }
     }
 
-    public static DatabaseConnection getInstance() {
+    public static DatabaseConnection getInstance() { // methode statique  permet d acceder a l instance unique
         if (instance == null) {
             instance = new DatabaseConnection();
         }
