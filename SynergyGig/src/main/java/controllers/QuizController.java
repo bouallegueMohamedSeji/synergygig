@@ -146,7 +146,13 @@ public class QuizController {
 
                 @Override
                 public Course fromString(String string) {
-                    return null;
+                    if (string == null || string.isEmpty()) {
+                        return null;
+                    }
+                    return courseComboBox.getItems().stream()
+                            .filter(course -> course.getTitle().equalsIgnoreCase(string))
+                            .findFirst()
+                            .orElse(null);
                 }
             });
 

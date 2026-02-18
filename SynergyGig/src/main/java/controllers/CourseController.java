@@ -142,7 +142,13 @@ public class CourseController {
 
                 @Override
                 public Skill fromString(String string) {
-                    return null;
+                    if (string == null || string.isEmpty()) {
+                        return null;
+                    }
+                    return skillComboBox.getItems().stream()
+                            .filter(skill -> skill.getName().equalsIgnoreCase(string))
+                            .findFirst()
+                            .orElse(null);
                 }
             });
 
