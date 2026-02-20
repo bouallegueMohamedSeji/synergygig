@@ -1269,3 +1269,6 @@
     -fx-border-color: #dc2626;
     -fx-text-fill: #dc2626;
 }
+
+/* ─── Video Call Popup (light theme keeps dark since it's a separate window) ─── */
+/* The video popup intentionally stays dark for cinematic look */

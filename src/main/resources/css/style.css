@@ -2099,3 +2099,48 @@
 .screen-sharing-active:hover {
     -fx-background-color: rgba(220, 38, 38, 0.3);
 }
+
+/* ═══════════════════════════════════════════
+   VIDEO CALL POPUP — Control Buttons
+   ═══════════════════════════════════════════ */
+
+.video-popup-btn {
+    -fx-background-color: rgba(255, 255, 255, 0.12);
+    -fx-text-fill: white;
+    -fx-background-radius: 50;
+    -fx-border-radius: 50;
+    -fx-border-color: rgba(255, 255, 255, 0.2);
+    -fx-border-width: 1;
+    -fx-min-width: 48;
+    -fx-min-height: 48;
+    -fx-max-width: 48;
+    -fx-max-height: 48;
+    -fx-font-size: 18;
+    -fx-cursor: hand;
+    -fx-padding: 0;
+}
+
+.video-popup-btn:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.22);
+}
+
+.video-popup-btn-active {
+    -fx-background-color: rgba(220, 38, 38, 0.25);
+    -fx-border-color: #ef4444;
+}
+
+.video-popup-btn-active:hover {
+    -fx-background-color: rgba(220, 38, 38, 0.4);
+}
+
+.video-popup-end-btn {
+    -fx-background-color: #dc2626;
+    -fx-text-fill: white;
+    -fx-border-color: #ef4444;
+    -fx-min-width: 60;
+    -fx-max-width: 60;
+}
+
+.video-popup-end-btn:hover {
+    -fx-background-color: #ef4444;
+}

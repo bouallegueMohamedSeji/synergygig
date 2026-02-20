@@ -67,12 +67,14 @@
                         <Label fx:id="roomMembersLabel" text="" styleClass="chat-room-subtitle"/>
                     </VBox>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Button fx:id="btnVideoCall" text="📹" onAction="#handleStartVideoCall"
-                            styleClass="call-btn video-call-btn" visible="false" managed="false"
-                            style="-fx-font-size: 16; -fx-min-width: 36; -fx-min-height: 36;"/>
-                    <Button fx:id="btnCall" text="📞" onAction="#handleStartCall"
-                            styleClass="call-btn" visible="false" managed="false"
-                            style="-fx-font-size: 16; -fx-min-width: 36; -fx-min-height: 36;"/>
+                    <HBox spacing="8" alignment="CENTER_RIGHT">
+                        <Button fx:id="btnVideoCall" text="📹" onAction="#handleStartVideoCall"
+                                styleClass="call-btn video-call-btn" visible="false" managed="false"
+                                style="-fx-font-size: 14; -fx-min-width: 34; -fx-min-height: 34; -fx-max-width: 34; -fx-max-height: 34; -fx-padding: 0;"/>
+                        <Button fx:id="btnCall" text="📞" onAction="#handleStartCall"
+                                styleClass="call-btn" visible="false" managed="false"
+                                style="-fx-font-size: 14; -fx-min-width: 34; -fx-min-height: 34; -fx-max-width: 34; -fx-max-height: 34; -fx-padding: 0;"/>
+                    </HBox>
                     <MenuButton fx:id="chatMenuBtn" text="⋮" styleClass="chat-kebab-btn" visible="false" managed="false">
                         <items>
                             <MenuItem fx:id="deleteChatItem" text="Delete Chat" onAction="#handleDeleteRoom"

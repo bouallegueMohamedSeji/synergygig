@@ -95,7 +95,12 @@ public class ChatController {
     private Timeline activeCallPoller = null;
     private VBox incomingCallOverlay = null;
     @FXML private Button btnScreenShare;
-    private javafx.stage.Stage screenShareViewer = null;
+    private javafx.stage.Stage videoCallStage = null;
+    private ImageView remoteVideoView = null;
+    private Label videoCallNameLabel = null;
+    private Label videoCallTimerLabel = null;
+    private Button videoMuteBtn = null;
+    private Button videoScreenShareBtn = null;
 
     private static final String IMAGE_PREFIX = "[IMAGE]";
     private static final String IMAGE_SUFFIX = "[/IMAGE]";
@@ -1479,8 +1484,13 @@ public class ChatController {
             long elapsed = (System.currentTimeMillis() - callStartTime) / 1000;
             long min = elapsed / 60;
             long sec = elapsed % 60;
+            String timeStr = String.format("%02d:%02d", min, sec);
             if (callTimerLabel != null) {
-                callTimerLabel.setText(String.format("%02d:%02d", min, sec));
+                callTimerLabel.setText(timeStr);
+            }
+            // Sync video popup timer
+            if (videoCallTimerLabel != null) {
+                videoCallTimerLabel.setText(timeStr);
             }
         }));
         callTimer.setCycleCount(Animation.INDEFINITE);
@@ -1514,13 +1524,19 @@ public class ChatController {
         if (pendingVideoCall) {
             pendingVideoCall = false;
             Platform.runLater(() -> {
+                // Open the Messenger-style video call popup immediately
+                openVideoCallPopup();
                 screenShareService.startCapture();
                 if (btnScreenShare != null) {
                     btnScreenShare.setText("⏹");
                     if (!btnScreenShare.getStyleClass().contains("screen-sharing-active"))
                         btnScreenShare.getStyleClass().add("screen-sharing-active");
                 }
-                showToast("Video Call", "Sharing your screen (" + screenShareService.getResolution().label + ")");
+                if (videoScreenShareBtn != null) {
+                    videoScreenShareBtn.setText("⏹");
+                    if (!videoScreenShareBtn.getStyleClass().contains("video-popup-btn-active"))
+                        videoScreenShareBtn.getStyleClass().add("video-popup-btn-active");
+                }
             });
         }
     }
@@ -1567,46 +1583,149 @@ public class ChatController {
 
     /** Handle incoming screen share frame from remote participant. */
     private void handleRemoteFrame(Image frame) {
-        if (screenShareViewer == null || !screenShareViewer.isShowing()) {
-            openScreenShareViewer();
+        if (videoCallStage == null || !videoCallStage.isShowing()) {
+            openVideoCallPopup();
         }
-        javafx.scene.Node content = screenShareViewer.getScene().getRoot();
-        if (content instanceof StackPane) {
-            StackPane root = (StackPane) content;
-            if (!root.getChildren().isEmpty() && root.getChildren().get(0) instanceof ImageView) {
-                ((ImageView) root.getChildren().get(0)).setImage(frame);
+        if (remoteVideoView != null) {
+            remoteVideoView.setImage(frame);
+        }
+    }
+
+    /**
+     * Open a Messenger-style video call popup window.
+     * Dark floating window with: remote video stream, caller info bar,
+     * and bottom control bar (mute, screen share, end call).
+     */
+    private void openVideoCallPopup() {
+        if (videoCallStage != null && videoCallStage.isShowing()) return;
+
+        // ─── Remote video display ───
+        remoteVideoView = new ImageView();
+        remoteVideoView.setPreserveRatio(true);
+        remoteVideoView.setSmooth(true);
+
+        // ─── Top info bar: caller name + timer ───
+        String otherName = "Call";
+        if (currentRoom != null && currentRoom.isPrivate()) {
+            User other = getOtherUser(currentRoom);
+            if (other != null) otherName = other.getFirstName() + " " + other.getLastName();
+        }
+
+        videoCallNameLabel = new Label(otherName);
+        videoCallNameLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;");
+
+        videoCallTimerLabel = new Label("00:00");
+        videoCallTimerLabel.setStyle("-fx-text-fill: #A0A0B0; -fx-font-size: 13;");
+
+        HBox topBar = new HBox(12);
+        topBar.setAlignment(Pos.CENTER_LEFT);
+        topBar.setStyle("-fx-background-color: rgba(10,9,12,0.85); -fx-padding: 12 16 12 16;");
+        Region topSpacer = new Region();
+        HBox.setHgrow(topSpacer, Priority.ALWAYS);
+
+        Label liveLabel = new Label("\u25cf LIVE");
+        liveLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 11; -fx-font-weight: bold;");
+
+        topBar.getChildren().addAll(videoCallNameLabel, videoCallTimerLabel, topSpacer, liveLabel);
+
+        // ─── Center: video stream area ───
+        StackPane videoArea = new StackPane(remoteVideoView);
+        videoArea.setStyle("-fx-background-color: #111111;");
+        VBox.setVgrow(videoArea, Priority.ALWAYS);
+
+        // Placeholder text when no video yet
+        Label waitingLabel = new Label("Waiting for screen share...");
+        waitingLabel.setStyle("-fx-text-fill: #555555; -fx-font-size: 14;");
+        videoArea.getChildren().add(waitingLabel);
+        waitingLabel.setMouseTransparent(true);
+
+        // Hide placeholder once we get a frame
+        remoteVideoView.imageProperty().addListener((obs, old, img) -> {
+            if (img != null) waitingLabel.setVisible(false);
+        });
+
+        // Bind video to fill the area
+        remoteVideoView.fitWidthProperty().bind(videoArea.widthProperty().subtract(8));
+        remoteVideoView.fitHeightProperty().bind(videoArea.heightProperty().subtract(8));
+
+        // ─── Bottom control bar ───
+        videoMuteBtn = new Button("\uD83C\uDF99");
+        videoMuteBtn.getStyleClass().addAll("video-popup-btn");
+        videoMuteBtn.setOnAction(e -> {
+            boolean muted = audioCallService.toggleMute();
+            videoMuteBtn.setText(muted ? "\uD83D\uDD07" : "\uD83C\uDF99");
+            videoMuteBtn.getStyleClass().removeAll("video-popup-btn-active");
+            if (muted) videoMuteBtn.getStyleClass().add("video-popup-btn-active");
+            // Sync the in-chat mute button
+            if (btnMute != null) {
+                btnMute.setText(muted ? "\uD83D\uDD07" : "\uD83C\uDF99");
+                btnMute.getStyleClass().removeAll("call-muted", "call-unmuted");
+                btnMute.getStyleClass().add(muted ? "call-muted" : "call-unmuted");
             }
-        }
+        });
+
+        videoScreenShareBtn = new Button("\uD83D\uDDA5");
+        videoScreenShareBtn.getStyleClass().addAll("video-popup-btn");
+        videoScreenShareBtn.setOnAction(e -> {
+            handleToggleScreenShare();
+            // Sync button state
+            if (screenShareService.isCapturing()) {
+                videoScreenShareBtn.setText("\u23f9");
+                if (!videoScreenShareBtn.getStyleClass().contains("video-popup-btn-active"))
+                    videoScreenShareBtn.getStyleClass().add("video-popup-btn-active");
+            } else {
+                videoScreenShareBtn.setText("\uD83D\uDDA5");
+                videoScreenShareBtn.getStyleClass().remove("video-popup-btn-active");
+            }
+        });
+
+        Button videoEndBtn = new Button("\u260E");
+        videoEndBtn.getStyleClass().addAll("video-popup-btn", "video-popup-end-btn");
+        videoEndBtn.setOnAction(e -> handleEndCall());
+
+        HBox controlBar = new HBox(20);
+        controlBar.setAlignment(Pos.CENTER);
+        controlBar.setStyle("-fx-background-color: rgba(10,9,12,0.9); -fx-padding: 14 20 14 20;");
+        controlBar.getChildren().addAll(videoMuteBtn, videoScreenShareBtn, videoEndBtn);
+
+        // ─── Assemble layout ───
+        VBox root = new VBox();
+        root.setStyle("-fx-background-color: #0A090C;");
+        root.getChildren().addAll(topBar, videoArea, controlBar);
+
+        javafx.scene.Scene scene = new javafx.scene.Scene(root, 800, 520);
+        scene.setFill(javafx.scene.paint.Color.BLACK);
+
+        // Load stylesheet
+        try {
+            String css = getClass().getResource("/css/style.css").toExternalForm();
+            scene.getStylesheets().add(css);
+            if (!SessionManager.getInstance().isDarkTheme()) {
+                String lightCss = getClass().getResource("/css/light-theme.css").toExternalForm();
+                scene.getStylesheets().add(lightCss);
+            }
+        } catch (Exception ignored) {}
+
+        videoCallStage = new javafx.stage.Stage();
+        videoCallStage.setTitle("Video Call — " + otherName);
+        videoCallStage.initStyle(javafx.stage.StageStyle.DECORATED);
+        videoCallStage.setScene(scene);
+        videoCallStage.setMinWidth(480);
+        videoCallStage.setMinHeight(360);
+        videoCallStage.setOnCloseRequest(e -> {
+            // Don't end the call, just close the video popup
+            videoCallStage = null;
+            remoteVideoView = null;
+        });
+        videoCallStage.show();
     }
 
-    /** Open a popup window showing the remote screen share stream. */
-    private void openScreenShareViewer() {
-        if (screenShareViewer != null && screenShareViewer.isShowing()) return;
-
-        screenShareViewer = new javafx.stage.Stage();
-        screenShareViewer.setTitle("Screen Share — Remote");
-        screenShareViewer.initStyle(javafx.stage.StageStyle.DECORATED);
-
-        ImageView iv = new ImageView();
-        iv.setPreserveRatio(true);
-        iv.setSmooth(true);
-        iv.fitWidthProperty().bind(screenShareViewer.widthProperty().subtract(24));
-        iv.fitHeightProperty().bind(screenShareViewer.heightProperty().subtract(24));
-
-        StackPane root = new StackPane(iv);
-        root.setStyle("-fx-background-color: #0A090C; -fx-padding: 12;");
-
-        javafx.scene.Scene scene = new javafx.scene.Scene(root, 960, 540);
-        screenShareViewer.setScene(scene);
-        screenShareViewer.setOnCloseRequest(e -> screenShareViewer = null);
-        screenShareViewer.show();
-    }
-
-    /** Close the screen share viewer popup. */
-    private void closeScreenShareViewer() {
-        if (screenShareViewer != null) {
-            screenShareViewer.close();
-            screenShareViewer = null;
+    /** Close the video call popup. */
+    private void closeVideoCallPopup() {
+        if (videoCallStage != null) {
+            videoCallStage.close();
+            videoCallStage = null;
+            remoteVideoView = null;
         }
     }
 
@@ -1625,7 +1744,7 @@ public class ChatController {
         SoundManager.getInstance().play(SoundManager.CALL_ENDED);
         audioCallService.stop();
         screenShareService.disconnect();
-        closeScreenShareViewer();
+        closeVideoCallPopup();
         activeCall = null;
         pendingVideoCall = false;
 
@@ -1659,7 +1778,7 @@ public class ChatController {
             serviceCall.endCall(activeCall.getId());
         }
         cleanupActiveCall();
-        closeScreenShareViewer();
+        closeVideoCallPopup();
         if (scheduler != null) scheduler.shutdown();
     }
 }
