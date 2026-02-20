@@ -65,6 +65,8 @@ public class ChatController {
     @FXML private VBox chatContentBox;       // main chat area (header + messages + input)
     @FXML private Label onlineStatusDot;     // green/gray dot in header
     @FXML private Button btnCall;            // call button in header
+    @FXML private Button btnVideoCall;       // video call button in header
+    private boolean pendingVideoCall = false; // auto-start screen share on connect
     @FXML private HBox activeCallBar;        // active call overlay bar
     @FXML private Label callTimerLabel;      // call duration label
     @FXML private Button btnMute;            // mute toggle
@@ -1258,6 +1260,17 @@ public class ChatController {
         boolean show = currentRoom != null && currentRoom.isPrivate() && !isAIRoom;
         btnCall.setVisible(show);
         btnCall.setManaged(show);
+        if (btnVideoCall != null) {
+            btnVideoCall.setVisible(show);
+            btnVideoCall.setManaged(show);
+        }
+    }
+
+    /** Initiate a video call (auto-starts screen share once connected). */
+    @FXML
+    private void handleStartVideoCall() {
+        pendingVideoCall = true;
+        handleStartCall();
     }
 
     /** Initiate a call to the other user in the current private chat. */
@@ -1496,6 +1509,20 @@ public class ChatController {
         screenShareService.connect(callId, me.getId(), this::handleRemoteFrame, () -> {
             System.out.println("[ScreenShare] Video relay disconnected");
         });
+
+        // Auto-start screen sharing if this was a video call
+        if (pendingVideoCall) {
+            pendingVideoCall = false;
+            Platform.runLater(() -> {
+                screenShareService.startCapture();
+                if (btnScreenShare != null) {
+                    btnScreenShare.setText("⏹");
+                    if (!btnScreenShare.getStyleClass().contains("screen-sharing-active"))
+                        btnScreenShare.getStyleClass().add("screen-sharing-active");
+                }
+                showToast("Video Call", "Sharing your screen (" + screenShareService.getResolution().label + ")");
+            });
+        }
     }
 
     /** Called when the WebSocket disconnects unexpectedly. */
@@ -1600,6 +1627,7 @@ public class ChatController {
         screenShareService.disconnect();
         closeScreenShareViewer();
         activeCall = null;
+        pendingVideoCall = false;
 
         if (activeCallPoller != null) {
             activeCallPoller.stop();

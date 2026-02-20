@@ -1491,6 +1491,15 @@
     -fx-background-color: rgba(44, 102, 110, 0.5);
 }
 
+.video-call-btn {
+    -fx-background-color: rgba(34, 197, 94, 0.2);
+    -fx-border-color: #22c55e;
+}
+
+.video-call-btn:hover {
+    -fx-background-color: rgba(34, 197, 94, 0.45);
+}
+
 /* ═══════════════════════════════════════════
    ACTIVE CALL BAR
    ═══════════════════════════════════════════ */

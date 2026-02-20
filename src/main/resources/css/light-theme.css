@@ -1245,6 +1245,15 @@
    SCREEN SHARE BUTTON — Light Theme
    ═══════════════════════════════════════════ */
 
+.video-call-btn {
+    -fx-background-color: rgba(34, 128, 60, 0.1);
+    -fx-border-color: #22803c;
+}
+
+.video-call-btn:hover {
+    -fx-background-color: rgba(34, 128, 60, 0.25);
+}
+
 .call-screen-share-btn {
     -fx-background-color: rgba(97, 48, 57, 0.08);
     -fx-text-fill: #613039;
