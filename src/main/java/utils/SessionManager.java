@@ -1,6 +1,7 @@
 package utils;
 
 import entities.User;
+import services.ServiceUser;
 
 /**
  * Singleton to track the currently logged-in user across all controllers.
@@ -29,9 +30,15 @@ public class SessionManager {
 
     public void setCurrentUser(User user) {
         this.currentUser = user;
+        if (user != null) {
+            try { new ServiceUser().setOnlineStatus(user.getId(), true); } catch (Exception ignored) {}
+        }
     }
 
     public void logout() {
+        if (currentUser != null) {
+            try { new ServiceUser().setOnlineStatus(currentUser.getId(), false); } catch (Exception ignored) {}
+        }
         this.currentUser = null;
         this.onAvatarChanged = null;
     }

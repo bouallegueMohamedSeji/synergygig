@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<HBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="controllers.SettingsController"
+      styleClass="settings-root"
+      spacing="0" prefWidth="680" prefHeight="520">
+
+    <!-- ═══ Left Sidebar ═══ -->
+    <VBox styleClass="settings-sidebar" spacing="4" prefWidth="180" minWidth="180" maxWidth="180">
+        <padding><Insets top="16" right="8" bottom="16" left="8"/></padding>
+
+        <Label text="SETTINGS" styleClass="settings-sidebar-title"/>
+
+        <Button fx:id="btnVoiceVideo" text="🎤  Voice &amp; Video"
+                onAction="#showVoiceVideo"
+                styleClass="settings-nav-btn" maxWidth="1.7976931348623157E308"/>
+
+        <Button fx:id="btnNotifications" text="🔔  Notifications"
+                onAction="#showNotifications"
+                styleClass="settings-nav-btn" maxWidth="1.7976931348623157E308"/>
+    </VBox>
+
+    <!-- ═══ Right Content ═══ -->
+    <StackPane fx:id="settingsContent" HBox.hgrow="ALWAYS"
+               styleClass="settings-content-area">
+        <padding><Insets top="24" right="28" bottom="24" left="28"/></padding>
+
+        <!-- ── Voice & Video Panel ── -->
+        <VBox fx:id="voiceVideoPanel" spacing="18" visible="true" managed="true">
+
+            <Label text="Voice &amp; Video" styleClass="settings-panel-title"/>
+            <Separator styleClass="settings-separator"/>
+
+            <!-- Microphone -->
+            <VBox spacing="6">
+                <Label text="INPUT DEVICE" styleClass="settings-section-label"/>
+                <ComboBox fx:id="micCombo" maxWidth="1.7976931348623157E308"
+                          promptText="Select Microphone" styleClass="settings-combo"/>
+            </VBox>
+
+            <VBox spacing="4">
+                <Label text="INPUT VOLUME" styleClass="settings-section-label"/>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Slider fx:id="micVolumeSlider" min="0" max="1.0" value="1.0"
+                            HBox.hgrow="ALWAYS" styleClass="settings-slider"/>
+                    <Label fx:id="micVolumeLabel" text="100%" styleClass="settings-volume-label"
+                           minWidth="42"/>
+                </HBox>
+            </VBox>
+
+            <!-- Mic Test -->
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Button fx:id="btnMicTest" text="🎙 Mic Test" onAction="#handleMicTest"
+                        styleClass="settings-btn"/>
+                <HBox fx:id="micLevelContainer" alignment="CENTER_LEFT" spacing="2"
+                      HBox.hgrow="ALWAYS"/>
+            </HBox>
+
+            <Separator styleClass="settings-separator"/>
+
+            <!-- Speaker -->
+            <VBox spacing="6">
+                <Label text="OUTPUT DEVICE" styleClass="settings-section-label"/>
+                <ComboBox fx:id="speakerCombo" maxWidth="1.7976931348623157E308"
+                          promptText="Select Speaker" styleClass="settings-combo"/>
+            </VBox>
+
+            <VBox spacing="4">
+                <Label text="OUTPUT VOLUME" styleClass="settings-section-label"/>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Slider fx:id="speakerVolumeSlider" min="0" max="1.0" value="1.0"
+                            HBox.hgrow="ALWAYS" styleClass="settings-slider"/>
+                    <Label fx:id="speakerVolumeLabel" text="100%" styleClass="settings-volume-label"
+                           minWidth="42"/>
+                </HBox>
+            </VBox>
+
+            <Separator styleClass="settings-separator"/>
+
+            <!-- Screen Share Settings -->
+            <Label text="Screen Share" style="-fx-text-fill: #EAEAF0; -fx-font-size: 16; -fx-font-weight: 700;"/>
+
+            <VBox spacing="6">
+                <Label text="RESOLUTION" styleClass="settings-section-label"/>
+                <ComboBox fx:id="resolutionCombo" maxWidth="1.7976931348623157E308"
+                          promptText="Select Resolution" styleClass="settings-combo"/>
+            </VBox>
+
+            <VBox spacing="4">
+                <Label text="FRAME RATE" styleClass="settings-section-label"/>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Slider fx:id="fpsSlider" min="1" max="30" value="10" blockIncrement="1"
+                            HBox.hgrow="ALWAYS" styleClass="settings-slider"/>
+                    <Label fx:id="fpsLabel" text="10 fps" styleClass="settings-volume-label"
+                           minWidth="50"/>
+                </HBox>
+            </VBox>
+
+            <VBox spacing="4">
+                <Label text="QUALITY (bandwidth)" styleClass="settings-section-label"/>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Slider fx:id="qualitySlider" min="0.1" max="1.0" value="0.5"
+                            HBox.hgrow="ALWAYS" styleClass="settings-slider"/>
+                    <Label fx:id="qualityLabel" text="50%" styleClass="settings-volume-label"
+                           minWidth="42"/>
+                </HBox>
+            </VBox>
+        </VBox>
+
+        <!-- ── Notifications Panel ── -->
+        <VBox fx:id="notificationsPanel" spacing="16" visible="false" managed="false">
+
+            <Label text="Notifications &amp; Sounds" styleClass="settings-panel-title"/>
+            <Separator styleClass="settings-separator"/>
+
+            <!-- Master toggle & volume -->
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Label text="🔊" style="-fx-font-size: 18;"/>
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label text="Enable Sounds" styleClass="settings-toggle-label"/>
+                    <Label text="Play sound effects for app events" styleClass="settings-toggle-desc"/>
+                </VBox>
+                <CheckBox fx:id="chkSoundsEnabled" styleClass="settings-checkbox"/>
+            </HBox>
+
+            <VBox spacing="4">
+                <Label text="MASTER VOLUME" styleClass="settings-section-label"/>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <Slider fx:id="masterVolumeSlider" min="0" max="1.0" value="0.7"
+                            HBox.hgrow="ALWAYS" styleClass="settings-slider"/>
+                    <Label fx:id="masterVolumeLabel" text="70%" styleClass="settings-volume-label"
+                           minWidth="42"/>
+                </HBox>
+            </VBox>
+
+            <Separator styleClass="settings-separator"/>
+
+            <!-- Per-sound toggles (populated programmatically) -->
+            <Label text="SOUND EVENTS" styleClass="settings-section-label"/>
+            <ScrollPane fitToWidth="true" styleClass="settings-sound-scroll"
+                        hbarPolicy="NEVER" VBox.vgrow="ALWAYS">
+                <content>
+                    <VBox fx:id="soundTogglesContainer" spacing="8">
+                        <padding><Insets top="4" right="4" bottom="4" left="0"/></padding>
+                    </VBox>
+                </content>
+            </ScrollPane>
+        </VBox>
+
+    </StackPane>
+</HBox>

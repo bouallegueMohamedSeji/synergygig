@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="controllers.VoiceSettingsController"
+      styleClass="voice-settings"
+      spacing="18" prefWidth="440" prefHeight="480">
+    <padding><Insets top="24" right="28" bottom="24" left="28"/></padding>
+
+    <!-- Title -->
+    <Label text="Voice &amp; Video" styleClass="voice-settings-title"/>
+    <Separator/>
+
+    <!-- Microphone Section -->
+    <VBox spacing="6">
+        <Label text="INPUT DEVICE" styleClass="voice-settings-section"/>
+        <ComboBox fx:id="micCombo" maxWidth="1.7976931348623157E308"
+                  promptText="Select Microphone" styleClass="voice-combo"/>
+    </VBox>
+
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <VBox spacing="4" HBox.hgrow="ALWAYS">
+            <Label text="INPUT VOLUME" styleClass="voice-settings-section"/>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Slider fx:id="micVolumeSlider" min="0" max="1.0" value="1.0"
+                        HBox.hgrow="ALWAYS" styleClass="voice-slider"/>
+                <Label fx:id="micVolumeLabel" text="100%" styleClass="voice-volume-label"
+                       minWidth="42"/>
+            </HBox>
+        </VBox>
+    </HBox>
+
+    <!-- Mic Test -->
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <Button fx:id="btnMicTest" text="Mic Test" onAction="#handleMicTest"
+                styleClass="voice-btn"/>
+        <HBox fx:id="micLevelContainer" alignment="CENTER_LEFT" spacing="2"
+              HBox.hgrow="ALWAYS"/>
+    </HBox>
+
+    <Separator/>
+
+    <!-- Speaker Section -->
+    <VBox spacing="6">
+        <Label text="OUTPUT DEVICE" styleClass="voice-settings-section"/>
+        <ComboBox fx:id="speakerCombo" maxWidth="1.7976931348623157E308"
+                  promptText="Select Speaker" styleClass="voice-combo"/>
+    </VBox>
+
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <VBox spacing="4" HBox.hgrow="ALWAYS">
+            <Label text="OUTPUT VOLUME" styleClass="voice-settings-section"/>
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Slider fx:id="speakerVolumeSlider" min="0" max="1.0" value="1.0"
+                        HBox.hgrow="ALWAYS" styleClass="voice-slider"/>
+                <Label fx:id="speakerVolumeLabel" text="100%" styleClass="voice-volume-label"
+                       minWidth="42"/>
+            </HBox>
+        </VBox>
+    </HBox>
+</VBox>

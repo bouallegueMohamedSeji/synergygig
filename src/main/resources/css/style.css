@@ -956,6 +956,39 @@
     -fx-font-style: italic;
 }
 
+/* ── Search-results dropdown ── */
+.search-results-dropdown {
+    -fx-background-color: #18171C;
+    -fx-border-color: #2A2930;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 4;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 14, 0, 0, 4);
+}
+.search-result-item {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12;
+    -fx-cursor: hand;
+}
+.search-result-item:hover {
+    -fx-background-color: rgba(44, 102, 110, 0.15);
+}
+.search-result-name {
+    -fx-text-fill: #F0EDEE;
+    -fx-font-size: 13;
+    -fx-font-weight: 600;
+}
+.search-result-email {
+    -fx-text-fill: #6B6B78;
+    -fx-font-size: 11;
+}
+.search-result-avatar {
+    -fx-text-fill: #90DDF0;
+    -fx-font-weight: 700;
+    -fx-font-size: 14;
+}
+
 /* ---------- CUSTOM WINDOW ---------- */
 .window-root {
     -fx-background-color: #0A090C;
@@ -1335,4 +1368,725 @@
 
 .auth-link:hover {
     -fx-text-fill: #B8E8F7;
+}
+
+.auth-link-subtle {
+    -fx-background-color: transparent;
+    -fx-text-fill: #6B6B78;
+    -fx-font-size: 11;
+    -fx-padding: 2 0;
+    -fx-cursor: hand;
+}
+
+.auth-link-subtle:hover {
+    -fx-text-fill: #90DDF0;
+    -fx-underline: true;
+}
+
+/* ═══════════════════════════════════════════
+   CHAT TEXTAREA
+   ═══════════════════════════════════════════ */
+
+.chat-textarea {
+    -fx-background-color: #16151A;
+    -fx-text-fill: #EAEAF0;
+    -fx-prompt-text-fill: #6B6B78;
+    -fx-border-color: #2C2C3A;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 10 12;
+    -fx-font-size: 13;
+    -fx-pref-height: 56;
+    -fx-min-height: 40;
+    -fx-max-height: 120;
+}
+
+.chat-textarea:focused {
+    -fx-border-color: #90DDF0;
+    -fx-effect: dropshadow(gaussian, rgba(144, 221, 240, 0.08), 6, 0, 0, 0);
+}
+
+.chat-textarea .content {
+    -fx-background-color: #16151A;
+}
+
+/* ═══════════════════════════════════════════
+   ROOM CELL SUBTITLE
+   ═══════════════════════════════════════════ */
+
+.room-cell-name {
+    -fx-text-fill: #EAEAF0;
+    -fx-font-size: 13;
+    -fx-font-weight: 600;
+}
+
+.room-cell-subtitle {
+    -fx-text-fill: #6B6B78;
+    -fx-font-size: 11;
+}
+
+/* ═══════════════════════════════════════════
+   EMPTY STATE
+   ═══════════════════════════════════════════ */
+
+.chat-empty-state {
+    -fx-background-color: #0E0D10;
+}
+
+.empty-state-avatar-circle {
+    -fx-fill: #1E1E2C;
+    -fx-stroke: #2C2C3A;
+    -fx-stroke-width: 2;
+}
+
+.empty-state-title {
+    -fx-text-fill: #EAEAF0;
+    -fx-font-size: 18;
+    -fx-font-weight: 700;
+}
+
+.empty-state-subtitle {
+    -fx-text-fill: #6B6B78;
+    -fx-font-size: 13;
+    -fx-text-alignment: center;
+}
+
+/* ═══════════════════════════════════════════
+   TOAST NOTIFICATION
+   ═══════════════════════════════════════════ */
+
+.toast-notification {
+    -fx-background-color: #1A1A2E;
+    -fx-background-radius: 12;
+    -fx-border-color: #2C666E;
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 16, 0, 0, 4);
+}
+
+.toast-title {
+    -fx-text-fill: #EAEAF0;
+    -fx-font-size: 13;
+    -fx-font-weight: 700;
+}
+
+.toast-body {
+    -fx-text-fill: #A0A0B0;
+    -fx-font-size: 12;
+}
+
+/* ═══════════════════════════════════════════
+   CALL BUTTON
+   ═══════════════════════════════════════════ */
+
+.call-btn {
+    -fx-background-color: rgba(44, 102, 110, 0.25);
+    -fx-background-radius: 50;
+    -fx-border-color: #2C666E;
+    -fx-border-radius: 50;
+    -fx-cursor: hand;
+}
+
+.call-btn:hover {
+    -fx-background-color: rgba(44, 102, 110, 0.5);
+}
+
+/* ═══════════════════════════════════════════
+   ACTIVE CALL BAR
+   ═══════════════════════════════════════════ */
+
+.active-call-bar {
+    -fx-background-color: linear-gradient(to right, #0d3320, #1a4a35, #0d3320);
+    -fx-border-color: #22c55e;
+    -fx-border-width: 0 0 2 0;
+    -fx-effect: dropshadow(gaussian, rgba(34, 197, 94, 0.15), 12, 0, 0, -3);
+}
+
+.call-bar-label {
+    -fx-text-fill: #4ade80;
+    -fx-font-size: 13;
+    -fx-font-weight: 700;
+}
+
+.call-timer-label {
+    -fx-text-fill: #A0A0B0;
+    -fx-font-size: 13;
+    -fx-font-family: "Consolas", monospace;
+}
+
+.call-mute-btn {
+    -fx-background-color: rgba(44, 102, 110, 0.25);
+    -fx-background-radius: 50;
+    -fx-border-color: #2C666E;
+    -fx-border-radius: 50;
+    -fx-min-width: 34;
+    -fx-min-height: 34;
+    -fx-cursor: hand;
+}
+
+.call-mute-btn:hover {
+    -fx-background-color: rgba(44, 102, 110, 0.5);
+}
+
+.call-muted {
+    -fx-background-color: rgba(239, 68, 68, 0.25);
+    -fx-border-color: #ef4444;
+}
+
+.call-end-btn {
+    -fx-min-width: 60;
+    -fx-min-height: 30;
+    -fx-font-size: 12;
+}
+
+/* ═══════════════════════════════════════════
+   CALL OVERLAY (incoming / outgoing)
+   ═══════════════════════════════════════════ */
+
+.call-overlay {
+    -fx-background-color: linear-gradient(to bottom, rgba(10, 9, 12, 0.97), rgba(22, 21, 26, 0.97));
+    -fx-background-radius: 20;
+    -fx-border-color: rgba(44, 102, 110, 0.6);
+    -fx-border-radius: 20;
+    -fx-border-width: 1;
+    -fx-padding: 40;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.8), 32, 0, 0, 12);
+}
+
+.call-overlay-name {
+    -fx-text-fill: #EAEAF0;
+    -fx-font-size: 18;
+    -fx-font-weight: 700;
+}
+
+.call-overlay-status {
+    -fx-text-fill: #90DDF0;
+    -fx-font-size: 14;
+}
+
+.call-overlay-btn {
+    -fx-min-width: 110;
+    -fx-min-height: 42;
+    -fx-font-size: 14;
+    -fx-font-weight: 700;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 6, 0, 0, 2);
+}
+
+.btn-success {
+    -fx-background-color: #16a34a;
+    -fx-text-fill: white;
+    -fx-border-color: #22c55e;
+}
+
+.btn-success:hover {
+    -fx-background-color: #22c55e;
+}
+
+.btn-danger {
+    -fx-background-color: #dc2626;
+    -fx-text-fill: white;
+    -fx-border-color: #ef4444;
+}
+
+.btn-danger:hover {
+    -fx-background-color: #ef4444;
+}
+
+/* ═══════════════════════════════════════════
+   VOICE SETTINGS DIALOG
+   ═══════════════════════════════════════════ */
+
+.voice-settings-dialog-pane {
+    -fx-background-color: #0A090C;
+    -fx-border-color: #2C2C3A;
+    -fx-border-width: 1;
+}
+
+.voice-settings-dialog-pane > .button-bar {
+    -fx-background-color: #0A090C;
+}
+
+.voice-settings-dialog-pane > .button-bar > .container > .button {
+    -fx-background-color: rgba(44, 102, 110, 0.25);
+    -fx-text-fill: #EAEAF0;
+    -fx-border-color: #2C666E;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.voice-settings {
+    -fx-background-color: #0A090C;
+}
+
+.voice-settings-title {
+    -fx-text-fill: #EAEAF0;
+    -fx-font-size: 20;
+    -fx-font-weight: 700;
+}
+
+.voice-settings-section {
+    -fx-text-fill: #7A7A8E;
+    -fx-font-size: 11;
+    -fx-font-weight: 700;
+}
+
+.voice-combo {
+    -fx-background-color: #16151A;
+    -fx-border-color: #2C2C3A;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: #EAEAF0;
+    -fx-padding: 6 12;
+}
+
+.voice-combo .list-cell {
+    -fx-text-fill: #EAEAF0;
+    -fx-background-color: transparent;
+}
+
+.voice-combo .combo-box-popup .list-view {
+    -fx-background-color: #16151A;
+    -fx-border-color: #2C2C3A;
+}
+
+.voice-combo .combo-box-popup .list-cell {
+    -fx-background-color: #16151A;
+    -fx-text-fill: #EAEAF0;
+    -fx-padding: 6 12;
+}
+
+.voice-combo .combo-box-popup .list-cell:hover,
+.voice-combo .combo-box-popup .list-cell:focused {
+    -fx-background-color: rgba(44, 102, 110, 0.3);
+}
+
+.voice-slider .track {
+    -fx-background-color: #2C2C3A;
+    -fx-pref-height: 6;
+    -fx-background-radius: 3;
+}
+
+.voice-slider .colored-track {
+    -fx-background-color: #2C666E;
+    -fx-background-radius: 3;
+}
+
+.voice-slider .thumb {
+    -fx-background-color: #90DDF0;
+    -fx-background-radius: 50;
+    -fx-padding: 7;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 4, 0, 0, 1);
+}
+
+.voice-volume-label {
+    -fx-text-fill: #A0A0B0;
+    -fx-font-size: 12;
+    -fx-font-weight: 700;
+}
+
+.voice-btn {
+    -fx-background-color: rgba(44, 102, 110, 0.25);
+    -fx-text-fill: #EAEAF0;
+    -fx-border-color: #2C666E;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 20;
+    -fx-font-size: 13;
+    -fx-font-weight: 700;
+    -fx-cursor: hand;
+}
+
+.voice-btn:hover {
+    -fx-background-color: rgba(44, 102, 110, 0.5);
+}
+
+.mic-test-active {
+    -fx-background-color: rgba(239, 68, 68, 0.25);
+    -fx-border-color: #ef4444;
+}
+
+/* ═══════════════════════════════════════════
+   GLOBAL INCOMING CALL TOAST (top-right)
+   ═══════════════════════════════════════════ */
+
+.incoming-call-toast {
+    -fx-background-color: rgba(10, 9, 12, 0.96);
+    -fx-background-radius: 16;
+    -fx-border-color: #2C666E;
+    -fx-border-radius: 16;
+    -fx-border-width: 1;
+    -fx-padding: 20;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.7), 24, 0, 0, 8);
+}
+
+.call-toast-name {
+    -fx-text-fill: #EAEAF0;
+    -fx-font-size: 16;
+    -fx-font-weight: 700;
+}
+
+.call-toast-status {
+    -fx-text-fill: #90DDF0;
+    -fx-font-size: 13;
+}
+
+/* ═══════════════════════════════════════════
+   GLOBAL ACTIVE CALL BAR (bottom dock)
+   ═══════════════════════════════════════════ */
+
+.global-call-bar {
+    -fx-background-color: linear-gradient(to right, #1a3a2a, #0f2a1f);
+    -fx-border-color: #2C666E;
+    -fx-border-width: 1 0 0 0;
+    -fx-border-radius: 10 10 0 0;
+    -fx-background-radius: 10 10 0 0;
+}
+
+/* ═══════════════════════════════════════════
+   IMAGE MESSAGES
+   ═══════════════════════════════════════════ */
+
+.msg-image {
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 8, 0, 0, 2);
+}
+
+.msg-image:hover {
+    -fx-effect: dropshadow(gaussian, rgba(44, 102, 110, 0.6), 14, 0, 0, 2);
+}
+
+/* ═══════════════════════════════════════════
+   CHAT ATTACH BUTTON
+   ═══════════════════════════════════════════ */
+
+.chat-attach-btn {
+    -fx-background-color: rgba(44, 102, 110, 0.15);
+    -fx-border-color: #2C666E;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-text-fill: #90DDF0;
+    -fx-cursor: hand;
+}
+
+.chat-attach-btn:hover {
+    -fx-background-color: rgba(44, 102, 110, 0.4);
+    -fx-border-color: #90DDF0;
+}
+
+/* ═══════════════════════════════════════════
+   SETTINGS DIALOG (Sidebar Layout)
+   ═══════════════════════════════════════════ */
+
+.settings-dialog-pane {
+    -fx-background-color: #0A090C;
+    -fx-border-color: #2C2C3A;
+    -fx-border-width: 1;
+}
+
+.settings-dialog-pane > .button-bar {
+    -fx-background-color: #0A090C;
+}
+
+.settings-dialog-pane > .button-bar > .container > .button {
+    -fx-background-color: rgba(44, 102, 110, 0.25);
+    -fx-text-fill: #EAEAF0;
+    -fx-border-color: #2C666E;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.settings-root {
+    -fx-background-color: #0A090C;
+}
+
+/* ── Sidebar ── */
+.settings-sidebar {
+    -fx-background-color: #0E0D11;
+    -fx-border-color: #2C2C3A;
+    -fx-border-width: 0 1 0 0;
+}
+
+.settings-sidebar-title {
+    -fx-text-fill: #7A7A8E;
+    -fx-font-size: 11;
+    -fx-font-weight: 700;
+    -fx-padding: 4 8 12 8;
+}
+
+.settings-nav-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #A0A0B0;
+    -fx-font-size: 13;
+    -fx-font-weight: 600;
+    -fx-padding: 10 14;
+    -fx-background-radius: 8;
+    -fx-alignment: CENTER_LEFT;
+    -fx-cursor: hand;
+}
+
+.settings-nav-btn:hover {
+    -fx-background-color: rgba(44, 102, 110, 0.15);
+    -fx-text-fill: #EAEAF0;
+}
+
+.settings-nav-active {
+    -fx-background-color: rgba(44, 102, 110, 0.3);
+    -fx-text-fill: #90DDF0;
+}
+
+.settings-nav-active:hover {
+    -fx-background-color: rgba(44, 102, 110, 0.35);
+    -fx-text-fill: #90DDF0;
+}
+
+/* ── Content Area ── */
+.settings-content-area {
+    -fx-background-color: #0A090C;
+}
+
+.settings-panel-title {
+    -fx-text-fill: #EAEAF0;
+    -fx-font-size: 20;
+    -fx-font-weight: 700;
+}
+
+.settings-separator {
+    -fx-background-color: #2C2C3A;
+    -fx-border-color: #2C2C3A;
+}
+
+.settings-section-label {
+    -fx-text-fill: #7A7A8E;
+    -fx-font-size: 11;
+    -fx-font-weight: 700;
+}
+
+.settings-combo {
+    -fx-background-color: #16151A;
+    -fx-border-color: #2C2C3A;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: #EAEAF0;
+    -fx-padding: 6 12;
+}
+
+.settings-combo .list-cell {
+    -fx-text-fill: #EAEAF0;
+    -fx-background-color: transparent;
+}
+
+.settings-combo .combo-box-popup .list-view {
+    -fx-background-color: #16151A;
+    -fx-border-color: #2C2C3A;
+}
+
+.settings-combo .combo-box-popup .list-cell {
+    -fx-background-color: #16151A;
+    -fx-text-fill: #EAEAF0;
+    -fx-padding: 6 12;
+}
+
+.settings-combo .combo-box-popup .list-cell:hover,
+.settings-combo .combo-box-popup .list-cell:focused {
+    -fx-background-color: rgba(44, 102, 110, 0.3);
+}
+
+.settings-slider .track {
+    -fx-background-color: #2C2C3A;
+    -fx-pref-height: 6;
+    -fx-background-radius: 3;
+}
+
+.settings-slider .colored-track {
+    -fx-background-color: #2C666E;
+    -fx-background-radius: 3;
+}
+
+.settings-slider .thumb {
+    -fx-background-color: #90DDF0;
+    -fx-background-radius: 50;
+    -fx-padding: 7;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 4, 0, 0, 1);
+}
+
+.settings-volume-label {
+    -fx-text-fill: #A0A0B0;
+    -fx-font-size: 12;
+    -fx-font-weight: 700;
+}
+
+.settings-btn {
+    -fx-background-color: rgba(44, 102, 110, 0.25);
+    -fx-text-fill: #EAEAF0;
+    -fx-border-color: #2C666E;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 20;
+    -fx-font-size: 13;
+    -fx-font-weight: 700;
+    -fx-cursor: hand;
+}
+
+.settings-btn:hover {
+    -fx-background-color: rgba(44, 102, 110, 0.5);
+}
+
+/* ── Notification sound toggles ── */
+.settings-toggle-label {
+    -fx-text-fill: #EAEAF0;
+    -fx-font-size: 14;
+    -fx-font-weight: 600;
+}
+
+.settings-toggle-desc {
+    -fx-text-fill: #7A7A8E;
+    -fx-font-size: 12;
+}
+
+.settings-checkbox {
+    -fx-text-fill: #EAEAF0;
+}
+
+.settings-checkbox .box {
+    -fx-background-color: #16151A;
+    -fx-border-color: #2C666E;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 3;
+}
+
+.settings-checkbox:selected .box {
+    -fx-background-color: #2C666E;
+    -fx-border-color: #90DDF0;
+}
+
+.settings-checkbox:selected .mark {
+    -fx-background-color: #EAEAF0;
+}
+
+.settings-sound-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.settings-sound-scroll .viewport {
+    -fx-background-color: transparent;
+}
+
+.settings-sound-row {
+    -fx-background-color: rgba(22, 21, 26, 0.5);
+    -fx-background-radius: 8;
+    -fx-border-color: #2C2C3A;
+    -fx-border-radius: 8;
+}
+
+.settings-sound-row:hover {
+    -fx-background-color: rgba(44, 102, 110, 0.1);
+    -fx-border-color: rgba(44, 102, 110, 0.3);
+}
+
+.settings-sound-label {
+    -fx-text-fill: #EAEAF0;
+    -fx-font-size: 13;
+}
+
+.settings-preview-btn {
+    -fx-background-color: rgba(44, 102, 110, 0.2);
+    -fx-text-fill: #90DDF0;
+    -fx-border-color: #2C666E;
+    -fx-border-radius: 50;
+    -fx-background-radius: 50;
+    -fx-min-width: 30;
+    -fx-min-height: 30;
+    -fx-max-width: 30;
+    -fx-max-height: 30;
+    -fx-font-size: 12;
+    -fx-cursor: hand;
+    -fx-padding: 0;
+}
+
+.settings-preview-btn:hover {
+    -fx-background-color: rgba(44, 102, 110, 0.5);
+}
+
+/* ═══════════════════════════════════════════
+   FILE MESSAGE CARDS
+   ═══════════════════════════════════════════ */
+
+.msg-file-card {
+    -fx-background-color: rgba(22, 21, 26, 0.8);
+    -fx-border-color: #2C2C3A;
+    -fx-border-radius: 12;
+    -fx-background-radius: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 4, 0, 0, 1);
+    -fx-cursor: hand;
+}
+
+.msg-file-card:hover {
+    -fx-background-color: rgba(44, 102, 110, 0.15);
+    -fx-border-color: rgba(44, 102, 110, 0.4);
+}
+
+.msg-file-name {
+    -fx-text-fill: #EAEAF0;
+    -fx-font-size: 13;
+    -fx-font-weight: 600;
+}
+
+.msg-file-size {
+    -fx-text-fill: #7A7A8E;
+    -fx-font-size: 11;
+}
+
+.msg-file-download-btn {
+    -fx-background-color: rgba(44, 102, 110, 0.25);
+    -fx-text-fill: #90DDF0;
+    -fx-border-color: #2C666E;
+    -fx-border-radius: 50;
+    -fx-background-radius: 50;
+    -fx-min-width: 34;
+    -fx-min-height: 34;
+    -fx-max-width: 34;
+    -fx-max-height: 34;
+    -fx-font-size: 14;
+    -fx-cursor: hand;
+    -fx-padding: 0;
+}
+
+.msg-file-download-btn:hover {
+    -fx-background-color: rgba(44, 102, 110, 0.5);
+}
+
+/* ═══════════════════════════════════════════
+   SCREEN SHARE BUTTON (in call bar)
+   ═══════════════════════════════════════════ */
+
+.call-screen-share-btn {
+    -fx-background-color: rgba(44, 102, 110, 0.2);
+    -fx-text-fill: #90DDF0;
+    -fx-border-color: #2C666E;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-min-width: 36;
+    -fx-min-height: 36;
+    -fx-cursor: hand;
+}
+
+.call-screen-share-btn:hover {
+    -fx-background-color: rgba(44, 102, 110, 0.4);
+}
+
+.screen-sharing-active {
+    -fx-background-color: rgba(220, 38, 38, 0.15);
+    -fx-border-color: #ef4444;
+    -fx-text-fill: #ef4444;
+}
+
+.screen-sharing-active:hover {
+    -fx-background-color: rgba(220, 38, 38, 0.3);
 }

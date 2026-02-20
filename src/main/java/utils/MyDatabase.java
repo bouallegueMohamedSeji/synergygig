@@ -6,19 +6,22 @@ import java.sql.SQLException;
 
 public class MyDatabase {
 
-    private static final String URL = "jdbc:mysql://localhost:3306/finale_synergygig";
-    private static final String USER = "root";
-    private static final String PASSWORD = "";
-
     private Connection connection;
     private static MyDatabase instance;
 
     private MyDatabase() {
+        String url = AppConfig.getDbUrl();
+        String user = AppConfig.getDbUser();
+        String password = AppConfig.getDbPassword();
+
         try {
-            connection = DriverManager.getConnection(URL, USER, PASSWORD);
-            System.out.println("✅ Database connection established");
+            connection = DriverManager.getConnection(url, user, password);
+            System.out.println("✅ Database connection established (" + AppConfig.getMode() + " mode, user=" + user + ")");
         } catch (SQLException e) {
             System.err.println("❌ Database connection failed: " + e.getMessage());
+            System.err.println("   URL: " + url + "  User: " + user);
+            System.err.println("   If remote mode, make sure the SSH tunnel is running:");
+            System.err.println("   ssh -L 3306:localhost:3306 -N " + AppConfig.getServerSshUser() + "@" + AppConfig.getServerHost());
         }
     }
 

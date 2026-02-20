@@ -191,26 +191,36 @@ public class AdminUsersController {
 
         roleRow.getChildren().addAll(roleCombo, applyBtn);
 
-        // Delete button
-        Button deleteBtn = new Button("Delete User");
-        deleteBtn.getStyleClass().addAll("btn-primary");
-        deleteBtn.setStyle("-fx-background-color: linear-gradient(to right, #dc2626, #b91c1c); -fx-padding: 8 0;");
-        deleteBtn.setMaxWidth(Double.MAX_VALUE);
+        // Status badge
+        boolean active = user.isActive();
+        Label statusBadge = new Label(active ? "● Active" : "● Frozen");
+        statusBadge.setStyle(active
+                ? "-fx-text-fill: #4ade80; -fx-font-size: 11; -fx-font-weight: 600;"
+                : "-fx-text-fill: #f87171; -fx-font-size: 11; -fx-font-weight: 600;");
 
-        deleteBtn.setOnAction(e -> {
+        // Freeze / Activate toggle button
+        Button toggleBtn = new Button(active ? "Freeze Account" : "Activate Account");
+        toggleBtn.getStyleClass().addAll("btn-primary");
+        toggleBtn.setStyle(active
+                ? "-fx-background-color: linear-gradient(to right, #dc2626, #b91c1c); -fx-padding: 8 0;"
+                : "-fx-background-color: linear-gradient(to right, #16a34a, #15803d); -fx-padding: 8 0;");
+        toggleBtn.setMaxWidth(Double.MAX_VALUE);
+
+        toggleBtn.setOnAction(e -> {
             int currentUserId = SessionManager.getInstance().getCurrentUser().getId();
             if (user.getId() == currentUserId) {
-                showAlert("Warning", "You cannot delete your own account.");
+                showAlert("Warning", "You cannot freeze your own account.");
                 return;
             }
 
+            String action = user.isActive() ? "Freeze" : "Activate";
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                    "Delete " + user.getFirstName() + " " + user.getLastName() + "?",
+                    action + " " + user.getFirstName() + " " + user.getLastName() + "?",
                     ButtonType.YES, ButtonType.NO);
             confirm.showAndWait().ifPresent(response -> {
                 if (response == ButtonType.YES) {
                     try {
-                        serviceUser.supprimer(user.getId());
+                        serviceUser.toggleActive(user.getId(), !user.isActive());
                         refreshUsers();
                     } catch (SQLException ex) {
                         showAlert("Error", ex.getMessage());
@@ -219,7 +229,7 @@ public class AdminUsersController {
             });
         });
 
-        content.getChildren().addAll(avatarRow, sep, idRow, sep2, roleRow, deleteBtn);
+        content.getChildren().addAll(avatarRow, sep, idRow, statusBadge, sep2, roleRow, toggleBtn);
 
         card.getChildren().addAll(header, content);
         return card;

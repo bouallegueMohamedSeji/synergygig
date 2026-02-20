@@ -1,5 +1,6 @@
 package controllers;
 
+import com.google.gson.JsonObject;
 import entities.User;
 import javafx.animation.FadeTransition;
 import javafx.collections.FXCollections;
@@ -14,6 +15,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -22,6 +24,8 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
 import services.ServiceUser;
+import utils.AppConfig;
+import utils.EmailService;
 import utils.SparkleCanvas;
 import utils.SpotlightBorder;
 import utils.ThemeSwipeHelper;
@@ -136,7 +140,24 @@ public class SignupController {
             User newUser = new User(email, password, firstName, lastName, role);
             serviceUser.ajouter(newUser);
 
-            showAlert("Account Created", "Your account has been created successfully!\nPlease sign in.", "success");
+            // Send verification email asynchronously
+            new Thread(() -> {
+                try {
+                    JsonObject verif = serviceUser.requestVerification(email);
+                    if (verif != null && verif.has("token")) {
+                        String token = verif.get("token").getAsString();
+                        String baseUrl = AppConfig.get("rest.base_url", "https://rest.benzaitsue.work.gd/api");
+                        String verifyUrl = baseUrl.replace("/api", "") + "/api/auth/verify/" + token;
+                        EmailService.sendVerificationEmail(email, firstName, verifyUrl);
+                    }
+                } catch (Exception ex) {
+                    System.err.println("Failed to send verification email: " + ex.getMessage());
+                }
+            }).start();
+
+            showAlert("Verify Your Email",
+                    "We sent a verification link to\n" + email
+                    + "\n\nPlease check your inbox and verify\nbefore signing in.", "info");
             showLogin();
 
         } catch (SQLException e) {
@@ -173,46 +194,49 @@ public class SignupController {
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.initStyle(StageStyle.TRANSPARENT);
 
-        String iconSymbol = type.equals("success") ? "\u2713" : "\u26A0";
-        String iconColor  = type.equals("success") ? "#34d399" : "#f87171";
+        String iconSymbol, iconColor;
+        switch (type) {
+            case "success": iconSymbol = "\u2713"; iconColor = "#34d399"; break;
+            case "info":    iconSymbol = "\u2709"; iconColor = "#90DDF0"; break;
+            default:        iconSymbol = "\u26A0"; iconColor = "#f87171"; break;
+        }
 
         Label icon = new Label(iconSymbol);
-        icon.setStyle("-fx-font-size: 28; -fx-text-fill: " + iconColor + "; -fx-font-weight: bold;");
+        icon.setStyle("-fx-font-size: 22; -fx-text-fill: " + iconColor + "; -fx-font-weight: bold;");
         StackPane iconCircle = new StackPane(icon);
         iconCircle.setStyle("-fx-background-color: " + iconColor + "20; -fx-background-radius: 50; "
-                + "-fx-min-width: 52; -fx-min-height: 52; -fx-max-width: 52; -fx-max-height: 52;");
+                + "-fx-min-width: 44; -fx-min-height: 44; -fx-max-width: 44; -fx-max-height: 44;");
         iconCircle.setAlignment(Pos.CENTER);
 
         Label titleLbl = new Label(title);
-        titleLbl.setStyle("-fx-text-fill: #F0EDEE; -fx-font-size: 17; -fx-font-weight: bold;");
+        titleLbl.setStyle("-fx-text-fill: #F0EDEE; -fx-font-size: 14; -fx-font-weight: bold;");
 
         Label msgLbl = new Label(content);
-        msgLbl.setStyle("-fx-text-fill: #9E9EA8; -fx-font-size: 13; -fx-line-spacing: 3;");
+        msgLbl.setStyle("-fx-text-fill: #9E9EA8; -fx-font-size: 12; -fx-line-spacing: 2;");
         msgLbl.setWrapText(true);
-        msgLbl.setMaxWidth(320);
+        msgLbl.setMaxWidth(260);
 
         Button ok = new Button("Got it");
         String btnN = "-fx-background-color: linear-gradient(to right,#07393C,#2C666E); -fx-text-fill:#F0EDEE; "
-                + "-fx-font-size:13; -fx-font-weight:600; -fx-background-radius:8; -fx-padding:8 32; -fx-cursor:hand; "
-                + "-fx-effect:dropshadow(gaussian,rgba(44,102,110,0.3),10,0,0,2);";
+                + "-fx-font-size:12; -fx-font-weight:600; -fx-background-radius:8; -fx-padding:7 28; -fx-cursor:hand;";
         String btnH = "-fx-background-color: linear-gradient(to right,#2C666E,#90DDF0); -fx-text-fill:#0A090C; "
-                + "-fx-font-size:13; -fx-font-weight:600; -fx-background-radius:8; -fx-padding:8 32; -fx-cursor:hand; "
-                + "-fx-effect:dropshadow(gaussian,rgba(144,221,240,0.35),16,0,0,2);";
+                + "-fx-font-size:12; -fx-font-weight:600; -fx-background-radius:8; -fx-padding:7 28; -fx-cursor:hand;";
         ok.setStyle(btnN);
         ok.setOnMouseEntered(e -> ok.setStyle(btnH));
         ok.setOnMouseExited(e -> ok.setStyle(btnN));
 
-        VBox card = new VBox(16, iconCircle, titleLbl, msgLbl, ok);
+        VBox card = new VBox(10, iconCircle, titleLbl, msgLbl, ok);
         card.setAlignment(Pos.CENTER);
-        card.setPadding(new Insets(30, 36, 24, 36));
-        card.setMaxWidth(420);
-        card.setStyle("-fx-background-color: #14131A; -fx-background-radius: 16; "
-                + "-fx-border-color: #1C1B22; -fx-border-radius: 16; -fx-border-width: 1; "
-                + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 30, 0, 0, 10);");
+        card.setPadding(new Insets(20, 24, 16, 24));
+        card.setMaxWidth(300);
+        card.setMaxHeight(Region.USE_PREF_SIZE);
+        card.setStyle("-fx-background-color: #14131A; -fx-background-radius: 14; "
+                + "-fx-border-color: #1C1B22; -fx-border-radius: 14; -fx-border-width: 1; "
+                + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 24, 0, 0, 8);");
 
         StackPane root = new StackPane(card);
         root.setStyle("-fx-background-color: rgba(0,0,0,0.55);");
-        root.setPadding(new Insets(40));
+        root.setAlignment(Pos.CENTER);
         root.setOnMouseClicked(e -> { if (e.getTarget() == root) closeDialog(dialog, root); });
 
         Scene scene = new Scene(root);
@@ -225,7 +249,6 @@ public class SignupController {
 
         root.setOpacity(0);
         ok.setOnAction(e -> closeDialog(dialog, root));
-
         dialog.show();
         FadeTransition fadeIn = new FadeTransition(Duration.millis(200), root);
         fadeIn.setToValue(1);

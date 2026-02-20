@@ -21,8 +21,12 @@ public class MainFX extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        // Start the AI assistant Python service in the background
-        startAIService();
+        // Start the AI assistant Python service in the background (local mode only)
+        if (!utils.AppConfig.isRemote()) {
+            startAIService();
+        } else {
+            System.out.println("[AI Service] Remote mode — skipping local Python start (using " + utils.AppConfig.getAiBaseUrl() + ")");
+        }
 
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Login.fxml"));
         Parent root = loader.load();

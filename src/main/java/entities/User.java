@@ -13,6 +13,9 @@ public class User {
     private Timestamp createdAt;
     private String avatarPath;
     private String faceEncoding;
+    private boolean isOnline = false;
+    private boolean isVerified = true; // default true for backward compat
+    private boolean isActive = true;   // freeze/unfreeze support
 
     // Default constructor
     public User() {
@@ -137,6 +140,30 @@ public class User {
 
     public void setFaceEncoding(String faceEncoding) {
         this.faceEncoding = faceEncoding;
+    }
+
+    public boolean isVerified() {
+        return isVerified;
+    }
+
+    public void setVerified(boolean verified) {
+        isVerified = verified;
+    }
+
+    public boolean isOnline() {
+        return isOnline;
+    }
+
+    public void setOnline(boolean online) {
+        isOnline = online;
+    }
+
+    public boolean isActive() {
+        return isActive;
+    }
+
+    public void setActive(boolean active) {
+        isActive = active;
     }
 
     public boolean hasFaceEnrolled() {

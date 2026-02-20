@@ -823,3 +823,440 @@
 .auth-link:hover {
     -fx-text-fill: #DE95A2;
 }
+
+/* ═══════════════════════════════════════════
+   VOICE SETTINGS DIALOG — Light Theme
+   ═══════════════════════════════════════════ */
+
+.voice-settings-dialog-pane {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0D6D8;
+    -fx-border-width: 1;
+}
+
+.voice-settings-dialog-pane > .button-bar {
+    -fx-background-color: #FFFFFF;
+}
+
+.voice-settings-dialog-pane > .button-bar > .container > .button {
+    -fx-background-color: rgba(97, 48, 57, 0.08);
+    -fx-text-fill: #4A3F42;
+    -fx-border-color: #E0D6D8;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.voice-settings-dialog-pane > .button-bar > .container > .button:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.15);
+    -fx-border-color: #613039;
+}
+
+.voice-settings {
+    -fx-background-color: #FFFFFF;
+}
+
+.voice-settings-title {
+    -fx-text-fill: #0D0A0B;
+}
+
+.voice-settings-section {
+    -fx-text-fill: #8A7C7F;
+}
+
+.voice-combo {
+    -fx-background-color: #F5F0F1;
+    -fx-border-color: #E0D6D8;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-text-fill: #0D0A0B;
+}
+
+.voice-combo .list-cell {
+    -fx-text-fill: #0D0A0B;
+    -fx-background-color: transparent;
+}
+
+.voice-combo .combo-box-popup .list-view {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0D6D8;
+}
+
+.voice-combo .combo-box-popup .list-cell {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #0D0A0B;
+}
+
+.voice-combo .combo-box-popup .list-cell:hover,
+.voice-combo .combo-box-popup .list-cell:focused {
+    -fx-background-color: rgba(97, 48, 57, 0.08);
+}
+
+.voice-slider .track {
+    -fx-background-color: #E0D6D8;
+}
+
+.voice-slider .colored-track {
+    -fx-background-color: #613039;
+}
+
+.voice-slider .thumb {
+    -fx-background-color: #DE95A2;
+    -fx-effect: dropshadow(gaussian, rgba(97, 48, 57, 0.25), 4, 0, 0, 1);
+}
+
+.voice-volume-label {
+    -fx-text-fill: #4A3F42;
+}
+
+.voice-btn {
+    -fx-background-color: rgba(97, 48, 57, 0.08);
+    -fx-text-fill: #613039;
+    -fx-border-color: #E0D6D8;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.voice-btn:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.18);
+    -fx-border-color: #613039;
+}
+
+.mic-test-active {
+    -fx-background-color: rgba(220, 38, 38, 0.1);
+    -fx-border-color: #dc2626;
+}
+
+/* ═══════════════════════════════════════════
+   CALL UI — Light Theme
+   ═══════════════════════════════════════════ */
+
+.active-call-bar {
+    -fx-background-color: linear-gradient(to right, #e8f5e9, #c8e6c9, #e8f5e9);
+    -fx-border-color: #66bb6a;
+    -fx-effect: dropshadow(gaussian, rgba(102, 187, 106, 0.1), 8, 0, 0, -2);
+}
+
+.call-bar-label {
+    -fx-text-fill: #2e7d32;
+}
+
+.call-timer-label {
+    -fx-text-fill: #4A3F42;
+}
+
+.call-mute-btn {
+    -fx-background-color: rgba(97, 48, 57, 0.08);
+    -fx-border-color: #E0D6D8;
+}
+
+.call-mute-btn:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.18);
+}
+
+.call-muted {
+    -fx-background-color: rgba(220, 38, 38, 0.1);
+    -fx-border-color: #dc2626;
+}
+
+.call-overlay {
+    -fx-background-color: linear-gradient(to bottom, rgba(255, 255, 255, 0.97), rgba(245, 240, 241, 0.97));
+    -fx-border-color: rgba(97, 48, 57, 0.3);
+    -fx-effect: dropshadow(gaussian, rgba(51, 11, 17, 0.15), 32, 0, 0, 12);
+}
+
+.call-overlay-name {
+    -fx-text-fill: #0D0A0B;
+}
+
+.call-overlay-status {
+    -fx-text-fill: #613039;
+}
+
+.incoming-call-toast {
+    -fx-background-color: rgba(255, 255, 255, 0.97);
+    -fx-border-color: rgba(97, 48, 57, 0.3);
+    -fx-effect: dropshadow(gaussian, rgba(51, 11, 17, 0.15), 24, 0, 0, 8);
+}
+
+.call-toast-name {
+    -fx-text-fill: #0D0A0B;
+}
+
+.call-toast-status {
+    -fx-text-fill: #613039;
+}
+
+.global-call-bar {
+    -fx-background-color: linear-gradient(to right, #e8f5e9, #c8e6c9, #e8f5e9);
+    -fx-border-color: #66bb6a;
+}
+
+/* ═══════════════════════════════════════════
+   IMAGE MESSAGES + ATTACH — Light Theme
+   ═══════════════════════════════════════════ */
+
+.msg-image {
+    -fx-effect: dropshadow(gaussian, rgba(51, 11, 17, 0.15), 8, 0, 0, 2);
+}
+
+.msg-image:hover {
+    -fx-effect: dropshadow(gaussian, rgba(97, 48, 57, 0.35), 14, 0, 0, 2);
+}
+
+.chat-attach-btn {
+    -fx-background-color: rgba(97, 48, 57, 0.06);
+    -fx-border-color: #E0D6D8;
+    -fx-text-fill: #613039;
+}
+
+.chat-attach-btn:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.15);
+    -fx-border-color: #613039;
+}
+
+/* ═══════════════════════════════════════════
+   SETTINGS DIALOG (Sidebar Layout) — Light Theme
+   ═══════════════════════════════════════════ */
+
+.settings-dialog-pane {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0D6D8;
+    -fx-border-width: 1;
+}
+
+.settings-dialog-pane > .button-bar {
+    -fx-background-color: #FFFFFF;
+}
+
+.settings-dialog-pane > .button-bar > .container > .button {
+    -fx-background-color: rgba(97, 48, 57, 0.08);
+    -fx-text-fill: #4A3F42;
+    -fx-border-color: #E0D6D8;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.settings-root {
+    -fx-background-color: #FFFFFF;
+}
+
+/* ── Sidebar ── */
+.settings-sidebar {
+    -fx-background-color: #F5F0F1;
+    -fx-border-color: #E0D6D8;
+    -fx-border-width: 0 1 0 0;
+}
+
+.settings-sidebar-title {
+    -fx-text-fill: #8A7C7F;
+}
+
+.settings-nav-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #4A3F42;
+}
+
+.settings-nav-btn:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.08);
+    -fx-text-fill: #0D0A0B;
+}
+
+.settings-nav-active {
+    -fx-background-color: rgba(97, 48, 57, 0.12);
+    -fx-text-fill: #613039;
+}
+
+.settings-nav-active:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.18);
+    -fx-text-fill: #613039;
+}
+
+/* ── Content Area ── */
+.settings-content-area {
+    -fx-background-color: #FFFFFF;
+}
+
+.settings-panel-title {
+    -fx-text-fill: #0D0A0B;
+}
+
+.settings-separator {
+    -fx-background-color: #E0D6D8;
+    -fx-border-color: #E0D6D8;
+}
+
+.settings-section-label {
+    -fx-text-fill: #8A7C7F;
+}
+
+.settings-combo {
+    -fx-background-color: #F5F0F1;
+    -fx-border-color: #E0D6D8;
+    -fx-text-fill: #0D0A0B;
+}
+
+.settings-combo .list-cell {
+    -fx-text-fill: #0D0A0B;
+    -fx-background-color: transparent;
+}
+
+.settings-combo .combo-box-popup .list-view {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0D6D8;
+}
+
+.settings-combo .combo-box-popup .list-cell {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #0D0A0B;
+}
+
+.settings-combo .combo-box-popup .list-cell:hover,
+.settings-combo .combo-box-popup .list-cell:focused {
+    -fx-background-color: rgba(97, 48, 57, 0.08);
+}
+
+.settings-slider .track {
+    -fx-background-color: #E0D6D8;
+}
+
+.settings-slider .colored-track {
+    -fx-background-color: #613039;
+}
+
+.settings-slider .thumb {
+    -fx-background-color: #DE95A2;
+    -fx-effect: dropshadow(gaussian, rgba(97, 48, 57, 0.25), 4, 0, 0, 1);
+}
+
+.settings-volume-label {
+    -fx-text-fill: #4A3F42;
+}
+
+.settings-btn {
+    -fx-background-color: rgba(97, 48, 57, 0.08);
+    -fx-text-fill: #613039;
+    -fx-border-color: #E0D6D8;
+}
+
+.settings-btn:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.18);
+    -fx-border-color: #613039;
+}
+
+/* ── Notification sound toggles ── */
+.settings-toggle-label {
+    -fx-text-fill: #0D0A0B;
+}
+
+.settings-toggle-desc {
+    -fx-text-fill: #8A7C7F;
+}
+
+.settings-checkbox {
+    -fx-text-fill: #0D0A0B;
+}
+
+.settings-checkbox .box {
+    -fx-background-color: #F5F0F1;
+    -fx-border-color: #E0D6D8;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.settings-checkbox:selected .box {
+    -fx-background-color: #613039;
+    -fx-border-color: #DE95A2;
+}
+
+.settings-checkbox:selected .mark {
+    -fx-background-color: #FFFFFF;
+}
+
+.settings-sound-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.settings-sound-scroll .viewport {
+    -fx-background-color: transparent;
+}
+
+.settings-sound-row {
+    -fx-background-color: rgba(245, 240, 241, 0.6);
+    -fx-border-color: #E0D6D8;
+}
+
+.settings-sound-row:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.05);
+    -fx-border-color: rgba(97, 48, 57, 0.2);
+}
+
+.settings-sound-label {
+    -fx-text-fill: #0D0A0B;
+}
+
+.settings-preview-btn {
+    -fx-background-color: rgba(97, 48, 57, 0.08);
+    -fx-text-fill: #613039;
+    -fx-border-color: #E0D6D8;
+}
+
+.settings-preview-btn:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.2);
+    -fx-border-color: #613039;
+}
+
+/* ═══════════════════════════════════════════
+   FILE MESSAGE CARDS — Light Theme
+   ═══════════════════════════════════════════ */
+
+.msg-file-card {
+    -fx-background-color: rgba(245, 240, 241, 0.8);
+    -fx-border-color: #E0D6D8;
+}
+
+.msg-file-card:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.06);
+    -fx-border-color: rgba(97, 48, 57, 0.25);
+}
+
+.msg-file-name {
+    -fx-text-fill: #0D0A0B;
+}
+
+.msg-file-size {
+    -fx-text-fill: #8A7C7F;
+}
+
+.msg-file-download-btn {
+    -fx-background-color: rgba(97, 48, 57, 0.08);
+    -fx-text-fill: #613039;
+    -fx-border-color: #E0D6D8;
+}
+
+.msg-file-download-btn:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.2);
+    -fx-border-color: #613039;
+}
+
+/* ═══════════════════════════════════════════
+   SCREEN SHARE BUTTON — Light Theme
+   ═══════════════════════════════════════════ */
+
+.call-screen-share-btn {
+    -fx-background-color: rgba(97, 48, 57, 0.08);
+    -fx-text-fill: #613039;
+    -fx-border-color: #E0D6D8;
+}
+
+.call-screen-share-btn:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.18);
+}
+
+.screen-sharing-active {
+    -fx-background-color: rgba(220, 38, 38, 0.1);
+    -fx-border-color: #dc2626;
+    -fx-text-fill: #dc2626;
+}

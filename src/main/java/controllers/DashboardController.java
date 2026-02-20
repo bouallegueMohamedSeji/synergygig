@@ -1,5 +1,6 @@
 package controllers;
 
+import entities.Call;
 import entities.User;
 import entities.Interview;
 import javafx.animation.Interpolator;
@@ -7,6 +8,7 @@ import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Bounds;
@@ -25,11 +27,14 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import services.ServiceCall;
 import services.ServiceUser;
 import services.ServiceInterview;
 import services.ServiceChatRoom;
 import services.ServiceMessage;
+import utils.AudioCallService;
 import utils.SessionManager;
+import utils.SoundManager;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -38,6 +43,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.*;
 
 public class DashboardController {
 
@@ -123,6 +129,17 @@ public class DashboardController {
     private ServiceInterview serviceInterview = new ServiceInterview();
     private ServiceChatRoom serviceChatRoom = new ServiceChatRoom();
     private ServiceMessage serviceMessage = new ServiceMessage();
+    private ServiceCall serviceCall = new ServiceCall();
+
+    // Global incoming call state
+    private ScheduledExecutorService incomingCallPoller;
+    private VBox incomingCallToast;
+    private Call pendingIncomingCall;
+    private AudioCallService audioCallService = new AudioCallService();
+    private Call globalActiveCall;
+    private Timeline callTimerTimeline;
+    private Timeline globalCallStatusPoller;
+    private long globalCallStart;
 
     @FXML
     public void initialize() {
@@ -190,6 +207,9 @@ public class DashboardController {
                 }
             }
         });
+
+        // Start global incoming call poller
+        startIncomingCallPoller();
     }
 
     /**
@@ -415,7 +435,7 @@ public class DashboardController {
         profileItem.setOnAction(e -> showProfile());
 
         MenuItem settingsItem = new MenuItem("⚙  Settings");
-        settingsItem.setOnAction(e -> showPlaceholder("Settings", "Settings will be implemented soon."));
+        settingsItem.setOnAction(e -> showVoiceSettings());
 
         MenuItem logoutItem = new MenuItem("🚪  Log out");
         logoutItem.setOnAction(e -> handleLogout());
@@ -452,6 +472,7 @@ public class DashboardController {
         }
         SessionManager.getInstance().setDarkTheme(isDarkTheme);
         slide.play();
+        SoundManager.getInstance().play(SoundManager.THEME_TOGGLE);
     }
 
     // ========== Navigation Methods ==========
@@ -535,6 +556,7 @@ public class DashboardController {
 
     @FXML
     private void handleLogout() {
+        stopIncomingCallPoller();
         SessionManager.getInstance().logout();
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Login.fxml"));
@@ -549,5 +571,244 @@ public class DashboardController {
         } catch (IOException e) {
             System.err.println("Failed to logout: " + e.getMessage());
         }
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  SETTINGS DIALOG (Voice & Video + Notifications)
+    // ════════════════════════════════════════════════════════
+
+    private void showVoiceSettings() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Settings.fxml"));
+            Parent settingsRoot = loader.load();
+            SettingsController ctrl = loader.getController();
+
+            Dialog<Void> dialog = new Dialog<>();
+            dialog.setTitle("Settings");
+            dialog.getDialogPane().setContent(settingsRoot);
+            dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+            dialog.getDialogPane().getStylesheets().add(
+                    getClass().getResource("/css/style.css").toExternalForm());
+            if (!isDarkTheme) {
+                dialog.getDialogPane().getStylesheets().add(
+                        getClass().getResource(LIGHT_THEME_PATH).toExternalForm());
+            }
+            dialog.getDialogPane().getStyleClass().add("settings-dialog-pane");
+
+            // Cleanup mic test on close
+            dialog.setOnCloseRequest(e -> ctrl.cleanup());
+            dialog.showAndWait();
+        } catch (IOException e) {
+            System.err.println("Failed to open settings: " + e.getMessage());
+        }
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  GLOBAL INCOMING CALL NOTIFICATION (top-right toast)
+    // ════════════════════════════════════════════════════════
+
+    private void startIncomingCallPoller() {
+        incomingCallPoller = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "global-call-poller");
+            t.setDaemon(true);
+            return t;
+        });
+
+        incomingCallPoller.scheduleAtFixedRate(() -> {
+            try {
+                User user = SessionManager.getInstance().getCurrentUser();
+                if (user == null) return;
+
+                // Don't poll if we already have a call active or toast showing
+                if (globalActiveCall != null || pendingIncomingCall != null) return;
+
+                Call incoming = serviceCall.getIncomingCall(user.getId());
+                if (incoming != null) {
+                    pendingIncomingCall = incoming;
+                    Platform.runLater(() -> {
+                        SoundManager.getInstance().playLoop(SoundManager.INCOMING_CALL);
+                        showGlobalIncomingCallToast(incoming);
+                    });
+                }
+            } catch (Exception e) {
+                // Silently ignore polling errors
+            }
+        }, 1, 2, TimeUnit.SECONDS);
+    }
+
+    private void stopIncomingCallPoller() {
+        if (incomingCallPoller != null && !incomingCallPoller.isShutdown()) {
+            incomingCallPoller.shutdownNow();
+        }
+    }
+
+    private void showGlobalIncomingCallToast(Call call) {
+        // Resolve caller name
+        String callerName = "Unknown";
+        try {
+            List<User> users = serviceUser.recuperer();
+            for (User u : users) {
+                if (u.getId() == call.getCallerId()) {
+                    callerName = u.getFirstName() + " " + u.getLastName();
+                    break;
+                }
+            }
+        } catch (Exception ignored) {}
+
+        // Build toast UI
+        VBox toast = new VBox(8);
+        toast.getStyleClass().add("incoming-call-toast");
+        toast.setAlignment(Pos.CENTER);
+        toast.setMaxWidth(300);
+        toast.setMaxHeight(140);
+
+        Label icon = new Label("\uD83D\uDCDE"); // 📞
+        icon.setStyle("-fx-font-size: 28;");
+
+        Label nameLbl = new Label(callerName);
+        nameLbl.getStyleClass().add("call-toast-name");
+
+        Label statusLbl = new Label("Incoming call...");
+        statusLbl.getStyleClass().add("call-toast-status");
+
+        HBox btnRow = new HBox(12);
+        btnRow.setAlignment(Pos.CENTER);
+
+        Button acceptBtn = new Button("Accept");
+        acceptBtn.getStyleClass().addAll("call-overlay-btn", "btn-success");
+
+        Button rejectBtn = new Button("Reject");
+        rejectBtn.getStyleClass().addAll("call-overlay-btn", "btn-danger");
+
+        final String resolvedCallerName = callerName;
+
+        acceptBtn.setOnAction(e -> {
+            SoundManager.getInstance().stopLoop();
+            SoundManager.getInstance().play(SoundManager.CALL_CONNECTED);
+            serviceCall.acceptCall(call.getId());
+            removeCallToast();
+            startGlobalActiveCall(call, resolvedCallerName);
+        });
+
+        rejectBtn.setOnAction(e -> {
+            SoundManager.getInstance().stopLoop();
+            SoundManager.getInstance().play(SoundManager.CALL_ENDED);
+            serviceCall.rejectCall(call.getId());
+            removeCallToast();
+            pendingIncomingCall = null;
+        });
+
+        btnRow.getChildren().addAll(acceptBtn, rejectBtn);
+        toast.getChildren().addAll(icon, nameLbl, statusLbl, btnRow);
+
+        // Position top-right in contentArea
+        StackPane.setAlignment(toast, Pos.TOP_RIGHT);
+        StackPane.setMargin(toast, new Insets(12, 12, 0, 0));
+
+        incomingCallToast = toast;
+        contentArea.getChildren().add(toast);
+    }
+
+    private void removeCallToast() {
+        if (incomingCallToast != null) {
+            contentArea.getChildren().remove(incomingCallToast);
+            incomingCallToast = null;
+        }
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  GLOBAL ACTIVE CALL BAR (bottom of content area)
+    // ════════════════════════════════════════════════════════
+
+    private void startGlobalActiveCall(Call call, String peerName) {
+        globalActiveCall = call;
+        pendingIncomingCall = null;
+        globalCallStart = System.currentTimeMillis();
+
+        User me = SessionManager.getInstance().getCurrentUser();
+        audioCallService.start(call.getId(), me.getId(), () -> {
+            Platform.runLater(() -> endGlobalActiveCall());
+        });
+
+        // Build active call bar
+        HBox callBar = new HBox(12);
+        callBar.getStyleClass().add("global-call-bar");
+        callBar.setAlignment(Pos.CENTER_LEFT);
+        callBar.setPadding(new Insets(8, 16, 8, 16));
+        callBar.setMaxHeight(44);
+        callBar.setMinHeight(44);
+
+        Label callIcon = new Label("📞");
+        callIcon.setStyle("-fx-font-size: 16;");
+
+        Label nameLabel = new Label("In call with " + peerName);
+        nameLabel.getStyleClass().add("call-bar-label");
+
+        Label timerLabel = new Label("00:00");
+        timerLabel.getStyleClass().add("call-timer-label");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        Button muteBtn = new Button("🎤");
+        muteBtn.getStyleClass().add("call-mute-btn");
+        muteBtn.setOnAction(e -> {
+            boolean muted = audioCallService.toggleMute();
+            muteBtn.setText(muted ? "🔇" : "🎤");
+            if (muted) {
+                if (!muteBtn.getStyleClass().contains("call-muted"))
+                    muteBtn.getStyleClass().add("call-muted");
+            } else {
+                muteBtn.getStyleClass().remove("call-muted");
+            }
+        });
+
+        Button endBtn = new Button("End Call");
+        endBtn.getStyleClass().addAll("call-overlay-btn", "btn-danger");
+        endBtn.setOnAction(e -> {
+            serviceCall.endCall(globalActiveCall.getId());
+            endGlobalActiveCall();
+        });
+
+        callBar.getChildren().addAll(callIcon, nameLabel, timerLabel, spacer, muteBtn, endBtn);
+
+        StackPane.setAlignment(callBar, Pos.BOTTOM_CENTER);
+        contentArea.getChildren().add(callBar);
+
+        // Timer
+        callTimerTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            long elapsed = (System.currentTimeMillis() - globalCallStart) / 1000;
+            timerLabel.setText(String.format("%02d:%02d", elapsed / 60, elapsed % 60));
+        }));
+        callTimerTimeline.setCycleCount(Timeline.INDEFINITE);
+        callTimerTimeline.play();
+
+        // Poll call status to detect remote hang-up
+        globalCallStatusPoller = new Timeline(new KeyFrame(Duration.seconds(2), ev -> {
+            if (globalActiveCall == null) return;
+            new Thread(() -> {
+                Call c = serviceCall.getCall(globalActiveCall.getId());
+                if (c != null && (c.isEnded() || "rejected".equals(c.getStatus()) || "missed".equals(c.getStatus()))) {
+                    Platform.runLater(this::endGlobalActiveCall);
+                }
+            }, "global-call-status-check").start();
+        }));
+        globalCallStatusPoller.setCycleCount(Timeline.INDEFINITE);
+        globalCallStatusPoller.play();
+    }
+
+    private void endGlobalActiveCall() {
+        SoundManager.getInstance().stopLoop();
+        SoundManager.getInstance().play(SoundManager.CALL_ENDED);
+        if (callTimerTimeline != null) { callTimerTimeline.stop(); callTimerTimeline = null; }
+        if (globalCallStatusPoller != null) { globalCallStatusPoller.stop(); globalCallStatusPoller = null; }
+        audioCallService.stop();
+        globalActiveCall = null;
+        pendingIncomingCall = null;
+
+        // Remove call bar from contentArea (it's the last child with global-call-bar class)
+        contentArea.getChildren().removeIf(n ->
+                n.getStyleClass().contains("global-call-bar") ||
+                n.getStyleClass().contains("incoming-call-toast"));
     }
 }

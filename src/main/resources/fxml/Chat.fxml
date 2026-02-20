@@ -3,77 +3,128 @@
 <?import javafx.geometry.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Circle?>
 
-<HBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="controllers.ChatController" spacing="0" styleClass="chat-container">
+<StackPane fx:id="chatRootStack" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="controllers.ChatController">
 
-    <!-- Left: Conversations Sidebar -->
-    <VBox spacing="0" styleClass="chat-sidebar" prefWidth="280" minWidth="240">
+    <HBox spacing="0" styleClass="chat-container">
 
-        <!-- Sidebar header -->
-        <HBox alignment="CENTER_LEFT" spacing="10" styleClass="chat-sidebar-header">
-            <padding><Insets top="16" right="14" bottom="12" left="14"/></padding>
-            <Label text="Messages" styleClass="sidebar-section-title" style="-fx-font-size: 16;"/>
-            <Region HBox.hgrow="ALWAYS"/>
-            <Button fx:id="btnNewRoom" text="+" onAction="#handleCreateRoom"
-                    styleClass="btn-small" style="-fx-min-width: 30; -fx-min-height: 30; -fx-font-size: 16;"/>
-        </HBox>
+        <!-- Left: Conversations Sidebar -->
+        <VBox spacing="0" styleClass="chat-sidebar" prefWidth="280" minWidth="240">
 
-        <!-- Search / new room field -->
-        <HBox styleClass="chat-search-box">
-            <padding><Insets top="0" right="14" bottom="10" left="14"/></padding>
-            <TextField fx:id="roomNameField" promptText="Search or create room..."
-                       HBox.hgrow="ALWAYS" styleClass="input-field"
-                       style="-fx-font-size: 12;"/>
-        </HBox>
-
-        <!-- Room list -->
-        <ListView fx:id="roomsList" VBox.vgrow="ALWAYS" styleClass="rooms-list"/>
-    </VBox>
-
-    <!-- Right: Chat Area -->
-    <VBox spacing="0" HBox.hgrow="ALWAYS" styleClass="chat-area">
-
-        <!-- Chat header bar -->
-        <HBox fx:id="chatHeader" alignment="CENTER_LEFT" spacing="12" styleClass="chat-header">
-            <padding><Insets top="12" right="20" bottom="12" left="20"/></padding>
-            <VBox spacing="2">
-                <Label fx:id="currentRoomLabel" text="Select a conversation" styleClass="chat-room-title"/>
-                <Label fx:id="roomMembersLabel" text="" styleClass="chat-room-subtitle"/>
-            </VBox>
-            <Region HBox.hgrow="ALWAYS"/>
-            <MenuButton fx:id="chatMenuBtn" text="⋮" styleClass="chat-kebab-btn" visible="false" managed="false">
-                <items>
-                    <MenuItem fx:id="deleteChatItem" text="Delete Chat" onAction="#handleDeleteRoom"
-                              styleClass="chat-menu-delete"/>
-                </items>
-            </MenuButton>
-        </HBox>
-
-        <!-- Messages scroll area -->
-        <ScrollPane fx:id="messagesScroll" VBox.vgrow="ALWAYS" fitToWidth="true"
-                    styleClass="messages-scroll" hbarPolicy="NEVER">
-            <content>
-                <VBox fx:id="messagesContainer" spacing="4">
-                    <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
-                </VBox>
-            </content>
-        </ScrollPane>
-
-        <!-- Input bar -->
-        <VBox spacing="0" styleClass="chat-input-bar">
-            <padding><Insets top="10" right="20" bottom="12" left="20"/></padding>
-            <HBox spacing="10" alignment="CENTER">
-                <TextField fx:id="messageField" promptText="Type a message..."
-                           HBox.hgrow="ALWAYS" styleClass="input-field chat-input"
-                           onAction="#handleSendMessage"/>
-                <Button fx:id="btnSend" text="Send" onAction="#handleSendMessage" styleClass="btn-primary"
-                        style="-fx-min-width: 70;"/>
+            <!-- Sidebar header -->
+            <HBox alignment="CENTER_LEFT" spacing="10" styleClass="chat-sidebar-header">
+                <padding><Insets top="16" right="14" bottom="12" left="14"/></padding>
+                <Label text="Messages" styleClass="sidebar-section-title" style="-fx-font-size: 16;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="btnNewRoom" text="+" onAction="#handleCreateRoom"
+                        styleClass="btn-small" style="-fx-min-width: 30; -fx-min-height: 30; -fx-font-size: 16;"/>
             </HBox>
-            <Label fx:id="inputErrorLabel" text="" styleClass="chat-input-error-label" managed="false" visible="false">
-                <padding><Insets top="4" left="2"/></padding>
-            </Label>
-        </VBox>
-    </VBox>
 
-</HBox>
+            <!-- Search / new room field -->
+            <HBox styleClass="chat-search-box">
+                <padding><Insets top="0" right="14" bottom="10" left="14"/></padding>
+                <TextField fx:id="roomNameField" promptText="Search people or rooms..."
+                           HBox.hgrow="ALWAYS" styleClass="input-field"
+                           style="-fx-font-size: 12;" onKeyReleased="#handleSearchKey"/>
+            </HBox>
+
+            <!-- Search results dropdown (hidden by default) -->
+            <VBox fx:id="searchResultsBox" visible="false" managed="false" styleClass="search-results-dropdown" maxHeight="200">
+                <padding><Insets top="0" right="8" bottom="8" left="8"/></padding>
+            </VBox>
+
+            <!-- Room list -->
+            <ListView fx:id="roomsList" VBox.vgrow="ALWAYS" styleClass="rooms-list"/>
+        </VBox>
+
+        <!-- Right: Main Panel (StackPane toggles empty state vs chat) -->
+        <StackPane HBox.hgrow="ALWAYS">
+
+            <!-- Empty state (shown when no conversation is selected) -->
+            <VBox fx:id="emptyStateBox" alignment="CENTER" spacing="16" styleClass="chat-empty-state">
+                <StackPane>
+                    <Circle radius="48" styleClass="empty-state-avatar-circle"/>
+                    <Label text="💬" style="-fx-font-size: 38;"/>
+                </StackPane>
+                <Label text="Select a conversation" styleClass="empty-state-title"/>
+                <Label text="Choose a chat from the sidebar or search for someone to message."
+                       styleClass="empty-state-subtitle" wrapText="true" maxWidth="320" alignment="CENTER"/>
+            </VBox>
+
+            <!-- Chat content (hidden until a room is selected) -->
+            <VBox fx:id="chatContentBox" spacing="0" visible="false" managed="false" styleClass="chat-area">
+
+                <!-- Chat header bar -->
+                <HBox fx:id="chatHeader" alignment="CENTER_LEFT" spacing="12" styleClass="chat-header">
+                    <padding><Insets top="12" right="20" bottom="12" left="20"/></padding>
+                    <VBox spacing="2">
+                        <HBox spacing="6" alignment="CENTER_LEFT">
+                            <Label fx:id="onlineStatusDot" text="" visible="false" managed="false"/>
+                            <Label fx:id="currentRoomLabel" text="" styleClass="chat-room-title"/>
+                        </HBox>
+                        <Label fx:id="roomMembersLabel" text="" styleClass="chat-room-subtitle"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button fx:id="btnCall" text="📞" onAction="#handleStartCall"
+                            styleClass="call-btn" visible="false" managed="false"
+                            style="-fx-font-size: 16; -fx-min-width: 36; -fx-min-height: 36;"/>
+                    <MenuButton fx:id="chatMenuBtn" text="⋮" styleClass="chat-kebab-btn" visible="false" managed="false">
+                        <items>
+                            <MenuItem fx:id="deleteChatItem" text="Delete Chat" onAction="#handleDeleteRoom"
+                                      styleClass="chat-menu-delete"/>
+                        </items>
+                    </MenuButton>
+                </HBox>
+
+                <!-- Active call bar (hidden by default) -->
+                <HBox fx:id="activeCallBar" alignment="CENTER" spacing="12" styleClass="active-call-bar"
+                      visible="false" managed="false">
+                    <padding><Insets top="8" right="16" bottom="8" left="16"/></padding>
+                    <Label text="📞" style="-fx-font-size: 16;"/>
+                    <Label text="In call" styleClass="call-bar-label"/>
+                    <Label fx:id="callTimerLabel" text="00:00" styleClass="call-timer-label"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button fx:id="btnScreenShare" text="🖥" onAction="#handleToggleScreenShare"
+                            styleClass="call-screen-share-btn" style="-fx-font-size: 14;"/>
+                    <Button fx:id="btnMute" text="🎙" onAction="#handleToggleMute"
+                            styleClass="call-mute-btn" style="-fx-font-size: 14;"/>
+                    <Button fx:id="btnEndCall" text="End" onAction="#handleEndCall"
+                            styleClass="btn-danger call-end-btn"/>
+                </HBox>
+
+                <!-- Messages scroll area -->
+                <ScrollPane fx:id="messagesScroll" VBox.vgrow="ALWAYS" fitToWidth="true"
+                            styleClass="messages-scroll" hbarPolicy="NEVER">
+                    <content>
+                        <VBox fx:id="messagesContainer" spacing="4">
+                            <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
+                        </VBox>
+                    </content>
+                </ScrollPane>
+
+                <!-- Input bar with TextArea -->
+                <VBox spacing="0" styleClass="chat-input-bar">
+                    <padding><Insets top="10" right="20" bottom="12" left="20"/></padding>
+                    <HBox spacing="10" alignment="BOTTOM_CENTER">
+                        <Button fx:id="btnAttach" text="📎" onAction="#handleAttachImage"
+                                styleClass="chat-attach-btn"
+                                style="-fx-font-size: 16; -fx-min-width: 36; -fx-min-height: 40;"/>
+                        <TextArea fx:id="messageArea" promptText="Type a message... (Shift+Enter for new line)"
+                                  HBox.hgrow="ALWAYS" styleClass="chat-textarea"
+                                  wrapText="true" prefRowCount="2" maxHeight="120"/>
+                        <Button fx:id="btnSend" text="Send" onAction="#handleSendMessage" styleClass="btn-primary"
+                                style="-fx-min-width: 70; -fx-min-height: 40;"/>
+                    </HBox>
+                    <Label fx:id="inputErrorLabel" text="" styleClass="chat-input-error-label" managed="false" visible="false">
+                        <padding><Insets top="4" left="2"/></padding>
+                    </Label>
+                </VBox>
+            </VBox>
+
+        </StackPane>
+
+    </HBox>
+
+</StackPane>

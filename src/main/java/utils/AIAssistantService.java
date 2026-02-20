@@ -25,7 +25,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public class AIAssistantService {
 
-    private static final String BASE_URL = "http://localhost:5000";
+    private static final String BASE_URL = AppConfig.getAiBaseUrl();
     private static final Gson gson = new Gson();
     private static final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
@@ -67,7 +67,7 @@ public class AIAssistantService {
                     }
                 })
                 .exceptionally(ex -> "⚠ Could not reach AI assistant. Make sure the Python service is running.\n"
-                        + "(python/hr_assistant.py on port 5000)");
+                        + "(AI service at " + BASE_URL + ")");
     }
 
     /**
