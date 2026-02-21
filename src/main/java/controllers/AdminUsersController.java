@@ -9,6 +9,8 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import services.ServiceUser;
 import utils.SessionManager;
+import utils.StyledAlert;
+import javafx.stage.Window;
 
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
@@ -214,19 +216,16 @@ public class AdminUsersController {
             }
 
             String action = user.isActive() ? "Freeze" : "Activate";
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                    action + " " + user.getFirstName() + " " + user.getLastName() + "?",
-                    ButtonType.YES, ButtonType.NO);
-            confirm.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.YES) {
-                    try {
-                        serviceUser.toggleActive(user.getId(), !user.isActive());
-                        refreshUsers();
-                    } catch (SQLException ex) {
-                        showAlert("Error", ex.getMessage());
-                    }
+            if (StyledAlert.confirm(adminOwnerWindow(),
+                    action + " User",
+                    action + " " + user.getFirstName() + " " + user.getLastName() + "?")) {
+                try {
+                    serviceUser.toggleActive(user.getId(), !user.isActive());
+                    refreshUsers();
+                } catch (SQLException ex) {
+                    showAlert("Error", ex.getMessage());
                 }
-            });
+            }
         });
 
         content.getChildren().addAll(avatarRow, sep, idRow, statusBadge, sep2, roleRow, toggleBtn);
@@ -235,11 +234,12 @@ public class AdminUsersController {
         return card;
     }
 
+    private Window adminOwnerWindow() {
+        return usersFlowPane != null && usersFlowPane.getScene() != null
+                ? usersFlowPane.getScene().getWindow() : null;
+    }
+
     private void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        StyledAlert.show(adminOwnerWindow(), title, message, "warning");
     }
 }

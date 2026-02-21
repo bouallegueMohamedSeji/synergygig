@@ -33,6 +33,7 @@ public class ServiceCall {
                 obj.get("callee_id").getAsInt(),
                 obj.has("room_id") && !obj.get("room_id").isJsonNull() ? obj.get("room_id").getAsInt() : 0,
                 obj.get("status").getAsString(),
+                obj.has("call_type") && !obj.get("call_type").isJsonNull() ? obj.get("call_type").getAsString() : "audio",
                 startedAt, endedAt, createdAt
         );
     }
@@ -41,16 +42,23 @@ public class ServiceCall {
 
     /** Initiate a new call. Returns the created Call with id. */
     public Call createCall(int callerId, int calleeId, int roomId) {
+        return createCall(callerId, calleeId, roomId, "audio");
+    }
+
+    /** Initiate a new call with type ("audio" or "video"). Returns the created Call with id. */
+    public Call createCall(int callerId, int calleeId, int roomId, String callType) {
         Map<String, Object> body = new HashMap<>();
         body.put("caller_id", callerId);
         body.put("callee_id", calleeId);
         body.put("room_id", roomId);
+        body.put("call_type", callType != null ? callType : "audio");
         JsonElement resp = ApiClient.post("/calls", body);
         if (resp != null && resp.isJsonObject()) {
             JsonObject obj = resp.getAsJsonObject();
             Call call = new Call(callerId, calleeId, roomId);
             call.setId(obj.get("id").getAsInt());
             call.setStatus(obj.get("status").getAsString());
+            call.setCallType(callType != null ? callType : "audio");
             return call;
         }
         return null;

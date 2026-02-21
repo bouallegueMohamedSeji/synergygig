@@ -27,6 +27,7 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import services.ServiceAttendance;
 import services.ServiceCall;
 import services.ServiceUser;
 import services.ServiceInterview;
@@ -35,6 +36,8 @@ import services.ServiceMessage;
 import utils.AudioCallService;
 import utils.SessionManager;
 import utils.SoundManager;
+import utils.WeatherService;
+import controllers.NotificationPanel;
 
 import java.io.IOException;
 import java.sql.SQLException;
@@ -108,6 +111,23 @@ public class DashboardController {
     @FXML private Label statMessages;
     @FXML private Label statPendingInterviews;
 
+    // Interviews card
+    @FXML private VBox interviewCard;
+
+    // Dashboard stat sections (hidden for non-admin)
+    @FXML private HBox statsCardsRow;
+    @FXML private VBox platformOverviewCard;
+
+    // Weather card on dashboard
+    @FXML private VBox weatherCard;
+    @FXML private Label weatherCardEmoji;
+    @FXML private Label weatherCardTitle;
+    @FXML private Label weatherCardSubtitle;
+    @FXML private Label weatherCardTemp;
+    @FXML private Label weatherCardCondition;
+    @FXML private Label weatherCardHumidity;
+    @FXML private Label weatherCardWind;
+
     // Sidebar footer (user card)
     @FXML private Label sidebarUserName;
     @FXML private Label sidebarUserEmail;
@@ -131,6 +151,10 @@ public class DashboardController {
     private ServiceMessage serviceMessage = new ServiceMessage();
     private ServiceCall serviceCall = new ServiceCall();
 
+    // Notification bell
+    @FXML private StackPane notificationBellSlot;
+    private NotificationPanel notificationPanel;
+
     // Global incoming call state
     private ScheduledExecutorService incomingCallPoller;
     private VBox incomingCallToast;
@@ -149,7 +173,7 @@ public class DashboardController {
 
         // Set welcome info
         welcomeLabel.setText("Welcome, " + currentUser.getFirstName());
-        roleLabel.setText(currentUser.getRole().replace("_", " "));
+        roleLabel.setText(formatRoleDisplay(currentUser.getRole()));
 
         // Sidebar user info
         sidebarUserName.setText(currentUser.getFirstName() + " " + currentUser.getLastName());
@@ -160,7 +184,7 @@ public class DashboardController {
         avatarInitial.setText(currentUser.getFirstName().substring(0, 1).toUpperCase());
         accountName.setText(currentUser.getFirstName() + " " + currentUser.getLastName());
         accountEmail.setText(currentUser.getEmail());
-        statRole.setText(currentUser.getRole().replace("_", " "));
+        statRole.setText(formatRoleDisplay(currentUser.getRole()));
         if (currentUser.getCreatedAt() != null) {
             accountCreatedAt.setText(new SimpleDateFormat("MMM dd, yyyy").format(currentUser.getCreatedAt()));
         }
@@ -210,6 +234,22 @@ public class DashboardController {
 
         // Start global incoming call poller
         startIncomingCallPoller();
+
+        // Initialize notification bell
+        notificationPanel = new NotificationPanel();
+        if (notificationBellSlot != null) {
+            notificationBellSlot.getChildren().add(notificationPanel.getNode());
+        }
+        notificationPanel.start(currentUser.getId());
+
+        // Auto check-in attendance on login
+        new Thread(() -> {
+            ServiceAttendance attService = new ServiceAttendance();
+            attService.autoCheckIn(currentUser.getId());
+        }).start();
+
+        // Load weather for dashboard card
+        loadWeatherCard();
     }
 
     /**
@@ -241,6 +281,7 @@ public class DashboardController {
     private void configureRoleAccess(String role) {
         switch (role) {
             case "ADMIN":
+                // Full access to everything
                 showNode(adminGroup);
                 showNode(hrGroup);
                 showNode(btnHrAdmin);
@@ -249,24 +290,35 @@ public class DashboardController {
                 break;
 
             case "HR_MANAGER":
+                // HR dashboard + HR admin + recruitment + projects
                 showNode(hrGroup);
                 showNode(btnHrAdmin);
                 showNode(btnProjects);
                 showNode(btnRecruitment);
                 break;
 
-            case "EMPLOYEE":
-                showNode(btnHrAdmin);
+            case "PROJECT_OWNER":
+                // Projects only (manages projects and reviews tasks)
+                showNode(btnProjects);
+                // Hide admin-level dashboards stats
+                hideNode(statsCardsRow);
+                hideNode(platformOverviewCard);
                 break;
 
-            case "PROJECT_OWNER":
-                showNode(btnHrAdmin);
+            case "EMPLOYEE":
+                // Projects only (sees assigned tasks)
                 showNode(btnProjects);
-                showNode(btnRecruitment);
+                // Hide admin-level dashboard stats
+                hideNode(statsCardsRow);
+                hideNode(platformOverviewCard);
                 break;
 
             case "GIG_WORKER":
-                showNode(btnRecruitment);
+                // Projects only (sees assigned gigs)
+                showNode(btnProjects);
+                // Hide admin-level dashboard stats
+                hideNode(statsCardsRow);
+                hideNode(platformOverviewCard);
                 break;
         }
     }
@@ -274,6 +326,19 @@ public class DashboardController {
     private void showNode(javafx.scene.Node node) {
         node.setManaged(true);
         node.setVisible(true);
+    }
+
+    private void hideNode(javafx.scene.Node node) {
+        if (node != null) {
+            node.setManaged(false);
+            node.setVisible(false);
+        }
+    }
+
+    /** Display-friendly role name (PROJECT_OWNER → Project Manager). */
+    private String formatRoleDisplay(String role) {
+        if ("PROJECT_OWNER".equals(role)) return "PROJECT MANAGER";
+        return role.replace("_", " ");
     }
 
     private void loadDashboardStats() {
@@ -347,6 +412,7 @@ public class DashboardController {
 
     @FXML
     private void toggleSidebar() {
+        SoundManager.getInstance().play(SoundManager.SIDEBAR_TOGGLE);
         sidebarCollapsed = !sidebarCollapsed;
         double target = sidebarCollapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED;
 
@@ -499,7 +565,7 @@ public class DashboardController {
     @FXML
     private void showHrDashboard() {
         setActiveButton(btnHrDashboard);
-        showPlaceholder("HR Dashboard", "HR tools will be implemented by your teammate.");
+        loadContent("/fxml/HRModule.fxml");
     }
 
     @FXML
@@ -514,6 +580,24 @@ public class DashboardController {
         // Linking Interview screen here for now as it's part of the User &
         // Communication module
         loadContent("/fxml/Interview.fxml");
+    }
+
+    @FXML
+    private void showCommunity() {
+        setActiveButton(btnCommunity);
+        loadContent("/fxml/Community.fxml");
+    }
+
+    @FXML
+    private void showProjects() {
+        setActiveButton(btnProjects);
+        loadContent("/fxml/ProjectManagement.fxml");
+    }
+
+    @FXML
+    private void showHrAdmin() {
+        setActiveButton(btnHrAdmin);
+        loadContent("/fxml/HRModule.fxml");
     }
 
     @FXML
@@ -556,7 +640,18 @@ public class DashboardController {
 
     @FXML
     private void handleLogout() {
+        SoundManager.getInstance().play(SoundManager.LOGOUT);
         stopIncomingCallPoller();
+
+        // Auto check-out attendance on logout
+        User logoutUser = SessionManager.getInstance().getCurrentUser();
+        if (logoutUser != null) {
+            new Thread(() -> {
+                ServiceAttendance attService = new ServiceAttendance();
+                attService.autoCheckOut(logoutUser.getId());
+            }).start();
+        }
+
         SessionManager.getInstance().logout();
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Login.fxml"));
@@ -574,6 +669,48 @@ public class DashboardController {
     }
 
     // ════════════════════════════════════════════════════════
+    //  WEATHER DASHBOARD CARD + POPUP
+    // ════════════════════════════════════════════════════════
+
+    private void loadWeatherCard() {
+        Thread t = new Thread(() -> {
+            WeatherService.CurrentWeather w = WeatherService.fetch("Tunis");
+            if (w != null) {
+                Platform.runLater(() -> {
+                    String emoji = WeatherService.mapConditionEmoji(w.condition);
+                    weatherCardEmoji.setText(emoji);
+                    weatherCardTitle.setText("Weather");
+                    weatherCardSubtitle.setText(w.city + ", " + w.country);
+                    weatherCardTemp.setText(w.tempC + "°C");
+                    weatherCardCondition.setText(w.condition);
+                    weatherCardHumidity.setText("💧 " + w.humidity + "%");
+                    weatherCardWind.setText("💨 " + w.windKmph + " km/h");
+                });
+            } else {
+                Platform.runLater(() -> {
+                    weatherCardSubtitle.setText("Unable to load");
+                });
+            }
+        }, "weather-card-loader");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    @FXML
+    private void openWeatherPopup() {
+        SoundManager.getInstance().play(SoundManager.WEATHER_REFRESH);
+        WeatherPopup popup = new WeatherPopup();
+        popup.show(weatherCard);
+    }
+
+    @FXML
+    private void openInterviewCalendar() {
+        SoundManager.getInstance().play(SoundManager.INTERVIEW_SCHEDULED);
+        InterviewCalendarPopup cal = new InterviewCalendarPopup();
+        cal.show(interviewCard);
+    }
+
+    // ════════════════════════════════════════════════════════
     //  SETTINGS DIALOG (Voice & Video + Notifications)
     // ════════════════════════════════════════════════════════
 
@@ -585,14 +722,9 @@ public class DashboardController {
 
             Dialog<Void> dialog = new Dialog<>();
             dialog.setTitle("Settings");
+            utils.DialogHelper.theme(dialog);
             dialog.getDialogPane().setContent(settingsRoot);
-            dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
-            dialog.getDialogPane().getStylesheets().add(
-                    getClass().getResource("/css/style.css").toExternalForm());
-            if (!isDarkTheme) {
-                dialog.getDialogPane().getStylesheets().add(
-                        getClass().getResource(LIGHT_THEME_PATH).toExternalForm());
-            }
+            utils.DialogHelper.hideCloseButton(dialog.getDialogPane());
             dialog.getDialogPane().getStyleClass().add("settings-dialog-pane");
 
             // Cleanup mic test on close
@@ -671,14 +803,22 @@ public class DashboardController {
         Label statusLbl = new Label("Incoming call...");
         statusLbl.getStyleClass().add("call-toast-status");
 
-        HBox btnRow = new HBox(12);
+        HBox btnRow = new HBox(28);
         btnRow.setAlignment(Pos.CENTER);
 
-        Button acceptBtn = new Button("Accept");
-        acceptBtn.getStyleClass().addAll("call-overlay-btn", "btn-success");
+        // Green circular accept button with phone icon
+        Label acceptIcon = new Label("\u260E");
+        acceptIcon.setStyle("-fx-font-size: 24; -fx-text-fill: white;");
+        Button acceptBtn = new Button();
+        acceptBtn.setGraphic(acceptIcon);
+        acceptBtn.getStyleClass().add("call-circle-accept");
 
-        Button rejectBtn = new Button("Reject");
-        rejectBtn.getStyleClass().addAll("call-overlay-btn", "btn-danger");
+        // Red circular reject button with hangup icon
+        Label rejectIcon = new Label("\u260E");
+        rejectIcon.setStyle("-fx-font-size: 24; -fx-text-fill: white; -fx-rotate: 135;");
+        Button rejectBtn = new Button();
+        rejectBtn.setGraphic(rejectIcon);
+        rejectBtn.getStyleClass().add("call-circle-reject");
 
         final String resolvedCallerName = callerName;
 
@@ -770,7 +910,24 @@ public class DashboardController {
             endGlobalActiveCall();
         });
 
-        callBar.getChildren().addAll(callIcon, nameLabel, timerLabel, spacer, muteBtn, endBtn);
+        // Volume slider for speaker during call
+        Label volIcon = new Label("\uD83D\uDD0A");
+        volIcon.setStyle("-fx-font-size: 14; -fx-text-fill: #90DDF0;");
+        javafx.scene.control.Slider volSlider = new javafx.scene.control.Slider(0, 3.0,
+                utils.AudioDeviceManager.getInstance().getSpeakerVolume());
+        volSlider.setMaxWidth(100);
+        volSlider.setPrefWidth(100);
+        volSlider.getStyleClass().add("call-volume-slider");
+        volSlider.valueProperty().addListener((obs, oldV, newV) -> {
+            utils.AudioDeviceManager.getInstance().setSpeakerVolume(newV.doubleValue());
+            if (newV.doubleValue() < 0.01) volIcon.setText("\uD83D\uDD07");
+            else if (newV.doubleValue() < 1.0) volIcon.setText("\uD83D\uDD09");
+            else volIcon.setText("\uD83D\uDD0A");
+        });
+        HBox volBox = new HBox(4, volIcon, volSlider);
+        volBox.setAlignment(Pos.CENTER);
+
+        callBar.getChildren().addAll(callIcon, nameLabel, timerLabel, spacer, volBox, muteBtn, endBtn);
 
         StackPane.setAlignment(callBar, Pos.BOTTOM_CENTER);
         contentArea.getChildren().add(callBar);

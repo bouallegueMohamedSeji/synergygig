@@ -18,6 +18,7 @@ public class AudioCallService {
     // Audio format: 16kHz, 16-bit, mono, signed, little-endian
     private static final AudioFormat AUDIO_FORMAT = new AudioFormat(16000, 16, 1, true, false);
     private static final int BUFFER_SIZE = 640; // 20ms of audio at 16kHz 16-bit mono
+    private static final double NOISE_GATE_THRESHOLD = 120.0; // RMS threshold for noise gate
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean muted = new AtomicBoolean(false);
@@ -117,14 +118,17 @@ public class AudioCallService {
             // Start capture thread — reads mic and sends via WebSocket
             captureThread = new Thread(() -> {
                 byte[] buffer = new byte[BUFFER_SIZE];
+                byte[] silence = new byte[BUFFER_SIZE]; // pre-allocated silence buffer
                 while (running.get()) {
                     int read = micLine.read(buffer, 0, buffer.length);
                     if (read > 0 && !muted.get() && webSocket != null) {
                         // Apply mic volume before sending
                         AudioDeviceManager.applyVolume(buffer, read,
                                 AudioDeviceManager.getInstance().getMicVolume());
+                        // Noise gate: suppress low-level background noise
+                        byte[] toSend = isAboveNoiseGate(buffer, read) ? buffer : silence;
                         try {
-                            webSocket.sendBinary(ByteBuffer.wrap(buffer, 0, read), true).join();
+                            webSocket.sendBinary(ByteBuffer.wrap(toSend, 0, read), true).join();
                         } catch (Exception e) {
                             if (running.get()) {
                                 System.err.println("Send error: " + e.getMessage());
@@ -188,5 +192,20 @@ public class AudioCallService {
 
     public boolean isRunning() {
         return running.get();
+    }
+
+    /**
+     * Noise gate: returns true if the audio buffer's RMS exceeds the threshold.
+     * This suppresses background hiss/static when nobody is speaking.
+     */
+    private static boolean isAboveNoiseGate(byte[] buffer, int length) {
+        long sumSquares = 0;
+        int sampleCount = length / 2;
+        for (int i = 0; i < length - 1; i += 2) {
+            short sample = (short) ((buffer[i] & 0xFF) | (buffer[i + 1] << 8));
+            sumSquares += (long) sample * sample;
+        }
+        double rms = Math.sqrt((double) sumSquares / sampleCount);
+        return rms > NOISE_GATE_THRESHOLD;
     }
 }

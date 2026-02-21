@@ -17,6 +17,11 @@ public class User {
     private boolean isVerified = true; // default true for backward compat
     private boolean isActive = true;   // freeze/unfreeze support
 
+    // HR fields
+    private Integer departmentId;
+    private double hourlyRate = 0.0;
+    private double monthlySalary = 0.0;
+
     // Default constructor
     public User() {
     }
@@ -164,6 +169,35 @@ public class User {
 
     public void setActive(boolean active) {
         isActive = active;
+    }
+
+    // HR field getters/setters
+    public Integer getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(Integer departmentId) {
+        this.departmentId = departmentId;
+    }
+
+    public double getHourlyRate() {
+        return hourlyRate;
+    }
+
+    public void setHourlyRate(double hourlyRate) {
+        this.hourlyRate = hourlyRate;
+    }
+
+    public double getMonthlySalary() {
+        return monthlySalary;
+    }
+
+    public void setMonthlySalary(double monthlySalary) {
+        this.monthlySalary = monthlySalary;
+    }
+
+    public String getFullName() {
+        return firstName + " " + lastName;
     }
 
     public boolean hasFaceEnrolled() {

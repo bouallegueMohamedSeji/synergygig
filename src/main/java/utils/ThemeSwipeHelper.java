@@ -35,11 +35,11 @@ public class ThemeSwipeHelper {
     public static void install(Node target) {
         final double[] dragStartX = {0};
 
-        target.setOnMousePressed(e -> {
+        target.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_PRESSED, e -> {
             dragStartX[0] = e.getSceneX();
         });
 
-        target.setOnMouseReleased(e -> {
+        target.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_RELEASED, e -> {
             double deltaX = e.getSceneX() - dragStartX[0];
 
             if (Math.abs(deltaX) < SWIPE_THRESHOLD) return;

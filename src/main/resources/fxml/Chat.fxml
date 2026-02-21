@@ -113,6 +113,9 @@
                 <VBox spacing="0" styleClass="chat-input-bar">
                     <padding><Insets top="10" right="20" bottom="12" left="20"/></padding>
                     <HBox spacing="10" alignment="BOTTOM_CENTER">
+                        <Button fx:id="btnEmoji" text="😊" onAction="#handleEmojiPicker"
+                                styleClass="chat-attach-btn"
+                                style="-fx-font-size: 16; -fx-min-width: 36; -fx-min-height: 40;"/>
                         <Button fx:id="btnAttach" text="📎" onAction="#handleAttachImage"
                                 styleClass="chat-attach-btn"
                                 style="-fx-font-size: 16; -fx-min-width: 36; -fx-min-height: 40;"/>

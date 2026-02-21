@@ -165,7 +165,12 @@ public class SettingsController {
     private void buildSoundToggles() {
         soundTogglesContainer.getChildren().clear();
 
+        boolean dark = utils.SessionManager.getInstance().isDarkTheme();
+
         for (String key : SoundManager.allSoundKeys()) {
+            VBox rowWrapper = new VBox(4);
+            rowWrapper.setPadding(new Insets(0));
+
             HBox row = new HBox(10);
             row.setAlignment(Pos.CENTER_LEFT);
             row.getStyleClass().add("settings-sound-row");
@@ -202,7 +207,53 @@ public class SettingsController {
                     soundManager.setSoundEnabled(key, n));
 
             row.getChildren().addAll(icon, label, previewBtn, toggle);
-            soundTogglesContainer.getChildren().add(row);
+            rowWrapper.getChildren().add(row);
+
+            // ── Variant picker (only if multiple variants exist) ──
+            if (SoundManager.hasVariants(key)) {
+                HBox variantRow = new HBox(8);
+                variantRow.setAlignment(Pos.CENTER_LEFT);
+                variantRow.setPadding(new Insets(0, 12, 6, 52));
+
+                Label variantLabel = new Label("Sound:");
+                variantLabel.setStyle("-fx-font-size: 11; -fx-text-fill: " + (dark ? "#9E9EA8" : "#8A7C7F") + ";");
+
+                ComboBox<String> variantCombo = new ComboBox<>();
+                variantCombo.getStyleClass().add("settings-variant-combo");
+                variantCombo.setStyle("-fx-font-size: 11; -fx-pref-height: 26;");
+
+                java.util.List<String> variants = SoundManager.getVariants(key);
+                for (String suffix : variants) {
+                    variantCombo.getItems().add(SoundManager.variantLabel(suffix));
+                }
+
+                // Pre-select current variant
+                String currentSuffix = soundManager.getSelectedVariant(key);
+                int idx = variants.indexOf(currentSuffix);
+                variantCombo.getSelectionModel().select(Math.max(0, idx));
+
+                variantCombo.getSelectionModel().selectedIndexProperty().addListener((obs, o, n) -> {
+                    if (n != null && n.intValue() >= 0 && n.intValue() < variants.size()) {
+                        String suffix = variants.get(n.intValue());
+                        soundManager.setSelectedVariant(key, suffix);
+                    }
+                });
+
+                // Preview specific variant
+                Button varPreview = new Button("▶");
+                varPreview.getStyleClass().add("settings-preview-btn");
+                varPreview.setStyle("-fx-font-size: 10; -fx-padding: 2 6;");
+                varPreview.setOnAction(e -> {
+                    int sel = variantCombo.getSelectionModel().getSelectedIndex();
+                    String suffix = (sel >= 0 && sel < variants.size()) ? variants.get(sel) : "";
+                    soundManager.playVariant(key, suffix);
+                });
+
+                variantRow.getChildren().addAll(variantLabel, variantCombo, varPreview);
+                rowWrapper.getChildren().add(variantRow);
+            }
+
+            soundTogglesContainer.getChildren().add(rowWrapper);
         }
     }
 

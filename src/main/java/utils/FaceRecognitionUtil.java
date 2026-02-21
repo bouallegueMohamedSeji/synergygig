@@ -29,6 +29,27 @@ public class FaceRecognitionUtil {
     /** Maximum seconds to wait for a Python process. */
     private static final int TIMEOUT_SECONDS = 60;
 
+    /**
+     * Check whether face recognition is available on this machine.
+     * Returns true only if Python is installed AND the script files exist.
+     */
+    public static boolean isAvailable() {
+        try {
+            // Check Python exists
+            String python = findPythonExecutable();
+            Process p = new ProcessBuilder(python, "--version")
+                    .redirectErrorStream(true).start();
+            boolean finished = p.waitFor(5, TimeUnit.SECONDS);
+            if (!finished || p.exitValue() != 0) return false;
+
+            // Check script exists
+            Path script = getPythonDir().resolve("face_recognition_auth.py");
+            return Files.exists(script);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     // ==================== Public API ====================
 
     /**

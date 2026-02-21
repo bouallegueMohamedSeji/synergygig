@@ -89,11 +89,11 @@ public class AudioDeviceManager {
     }
 
     public double getSpeakerVolume() {
-        return PREFS.getDouble(PREF_SPEAKER_VOL, 0.8);
+        return PREFS.getDouble(PREF_SPEAKER_VOL, 1.5);
     }
 
     public void setSpeakerVolume(double vol) {
-        PREFS.putDouble(PREF_SPEAKER_VOL, Math.max(0, Math.min(1, vol)));
+        PREFS.putDouble(PREF_SPEAKER_VOL, Math.max(0, Math.min(3.0, vol)));
     }
 
     // ═══════════════════════════════════════════
@@ -135,7 +135,7 @@ public class AudioDeviceManager {
                     Mixer mixer = AudioSystem.getMixer(info);
                     if (mixer.isLineSupported(lineInfo)) {
                         SourceDataLine line = (SourceDataLine) mixer.getLine(lineInfo);
-                        line.open(AUDIO_FORMAT, 640 * 4);
+                        line.open(AUDIO_FORMAT, 640 * 8);
                         return line;
                     }
                 }
@@ -144,18 +144,21 @@ public class AudioDeviceManager {
 
         // Fallback to system default
         SourceDataLine line = (SourceDataLine) AudioSystem.getLine(lineInfo);
-        line.open(AUDIO_FORMAT, 640 * 4);
+        line.open(AUDIO_FORMAT, 640 * 8);
         return line;
     }
 
-    /** Apply volume gain to raw audio buffer (in-place). */
+    /** Apply volume gain to raw audio buffer (in-place). Supports amplification > 1.0. */
     public static void applyVolume(byte[] buffer, int length, double volume) {
-        if (volume >= 0.99) return; // no change needed
+        if (volume >= 0.99 && volume <= 1.01) return; // no change needed at ~1.0
         for (int i = 0; i < length - 1; i += 2) {
             short sample = (short) ((buffer[i] & 0xFF) | (buffer[i + 1] << 8));
-            sample = (short) (sample * volume);
-            buffer[i] = (byte) (sample & 0xFF);
-            buffer[i + 1] = (byte) ((sample >> 8) & 0xFF);
+            int amplified = (int) (sample * volume);
+            // Clamp to prevent distortion
+            if (amplified > Short.MAX_VALUE) amplified = Short.MAX_VALUE;
+            else if (amplified < Short.MIN_VALUE) amplified = Short.MIN_VALUE;
+            buffer[i] = (byte) (amplified & 0xFF);
+            buffer[i + 1] = (byte) ((amplified >> 8) & 0xFF);
         }
     }
 

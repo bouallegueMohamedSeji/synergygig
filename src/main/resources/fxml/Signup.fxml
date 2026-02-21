@@ -5,6 +5,7 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
@@ -25,8 +26,12 @@
         <StackPane fx:id="rootStack" styleClass="auth-page">
             <!-- SparkleCanvas added programmatically at index 0 -->
 
+            <ScrollPane fitToWidth="true" fitToHeight="true" hbarPolicy="NEVER" vbarPolicy="NEVER"
+                        style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 0;"
+                        StackPane.alignment="CENTER">
+            <StackPane style="-fx-alignment: center;">
             <VBox alignment="CENTER" spacing="0" maxWidth="460"
-                  StackPane.alignment="CENTER" style="-fx-padding: 30 0 0 0;">
+                  style="-fx-padding: 30 20 30 20; -fx-alignment: center;">
 
                 <!-- Brand above card -->
                 <VBox alignment="CENTER" spacing="6" style="-fx-padding: 0 0 16 0;">
@@ -97,6 +102,8 @@
                     </VBox>
                 </StackPane>
             </VBox>
+            </StackPane>
+            </ScrollPane>
         </StackPane>
     </center>
 </BorderPane>

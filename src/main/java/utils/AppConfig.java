@@ -1,6 +1,7 @@
 package utils;
 
 import java.io.*;
+import java.net.URI;
 import java.util.Properties;
 
 /**
@@ -17,31 +18,61 @@ public class AppConfig {
     }
 
     private static void load() {
-        // Try project root first, then classpath
-        File file = new File(System.getProperty("user.dir"), "config.properties");
-        if (file.exists()) {
-            try (FileInputStream fis = new FileInputStream(file)) {
-                props.load(fis);
-                loaded = true;
-                System.out.println("✅ Config loaded from " + file.getAbsolutePath());
-            } catch (IOException e) {
-                System.err.println("⚠ Failed to read config.properties: " + e.getMessage());
-            }
-        } else {
-            // Try classpath
-            try (InputStream is = AppConfig.class.getResourceAsStream("/config.properties")) {
-                if (is != null) {
-                    props.load(is);
+        // Try multiple locations for config.properties:
+        // 1. Current working directory (project root when running from IDE)
+        // 2. Next to the JAR/exe (jpackage app-image layout)
+        // 3. Classpath (bundled inside the JAR)
+
+        File[] candidates = {
+            new File(System.getProperty("user.dir"), "config.properties"),
+            resolveAppDir("config.properties"),
+        };
+
+        for (File file : candidates) {
+            if (file != null && file.exists()) {
+                try (FileInputStream fis = new FileInputStream(file)) {
+                    props.load(fis);
                     loaded = true;
-                    System.out.println("✅ Config loaded from classpath");
+                    System.out.println("✅ Config loaded from " + file.getAbsolutePath());
+                    return;
+                } catch (IOException e) {
+                    System.err.println("⚠ Failed to read " + file + ": " + e.getMessage());
                 }
-            } catch (IOException e) {
-                // ignore
             }
+        }
+
+        // Fallback: classpath
+        try (InputStream is = AppConfig.class.getResourceAsStream("/config.properties")) {
+            if (is != null) {
+                props.load(is);
+                loaded = true;
+                System.out.println("✅ Config loaded from classpath");
+                return;
+            }
+        } catch (IOException e) {
+            // ignore
         }
 
         if (!loaded) {
             System.out.println("ℹ No config.properties found — using localhost defaults (XAMPP mode)");
+        }
+    }
+
+    /** Resolve a file next to the running JAR or exe (handles jpackage layout). */
+    private static File resolveAppDir(String filename) {
+        try {
+            // For jpackage: the exe is in <app>/SynergyGig.exe, config beside it
+            String appDir = System.getProperty("jpackage.app-path");
+            if (appDir != null) {
+                File dir = new File(appDir).getParentFile();
+                if (dir != null) return new File(dir, filename);
+            }
+            // Fallback: resolve from the JAR/class location
+            File jarFile = new File(AppConfig.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            File dir = jarFile.isDirectory() ? jarFile : jarFile.getParentFile();
+            return new File(dir, filename);
+        } catch (Exception e) {
+            return null;
         }
     }
 

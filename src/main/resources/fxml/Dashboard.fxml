@@ -25,6 +25,7 @@
                 </Button>
                 <Label fx:id="welcomeLabel" text="Welcome" styleClass="topbar-welcome"/>
                 <Region HBox.hgrow="ALWAYS"/>
+                <StackPane fx:id="notificationBellSlot" alignment="CENTER" minWidth="36" minHeight="36"/>
                 <HBox fx:id="themeToggleTrack" styleClass="theme-toggle-track" alignment="CENTER_LEFT"
                       spacing="0" onMouseClicked="#toggleTheme">
                     <padding><Insets top="3" right="3" bottom="3" left="3"/></padding>
@@ -133,7 +134,7 @@
                                 </graphic>
                             </Button>
 
-                            <Button fx:id="btnHrAdmin" onAction="#showPlaceholder"
+                            <Button fx:id="btnHrAdmin" onAction="#showHrAdmin"
                                     styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
                                     managed="false" visible="false">
                                 <graphic>
@@ -144,12 +145,12 @@
                                 </graphic>
                             </Button>
 
-                            <Button fx:id="btnProjects" onAction="#showPlaceholder"
+                            <Button fx:id="btnProjects" onAction="#showProjects"
                                     styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
                                     managed="false" visible="false">
                                 <graphic>
                                     <HBox spacing="10" alignment="CENTER_LEFT">
-                                        <Label text="◈" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="📋" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
                                         <Label text="Projects" styleClass="sidebar-menu-text"/>
                                     </HBox>
                                 </graphic>
@@ -165,11 +166,11 @@
                                 </graphic>
                             </Button>
 
-                            <Button fx:id="btnCommunity" onAction="#showPlaceholder"
+                            <Button fx:id="btnCommunity" onAction="#showCommunity"
                                     styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
                                 <graphic>
                                     <HBox spacing="10" alignment="CENTER_LEFT">
-                                        <Label text="◈" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="🌐" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
                                         <Label text="Community" styleClass="sidebar-menu-text"/>
                                     </HBox>
                                 </graphic>
@@ -228,8 +229,8 @@
                     <Label fx:id="dashboardSubtitle" text="Overview of your workspace" styleClass="content-subtitle"/>
                 </VBox>
 
-                <!-- Stats Cards Row -->
-                <HBox spacing="12" alignment="CENTER_LEFT">
+                <!-- Stats Cards Row (admin/HR only) -->
+                <HBox fx:id="statsCardsRow" spacing="12" alignment="CENTER_LEFT">
                     <!-- Card: Total Users -->
                     <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
                         <HBox alignment="CENTER_LEFT" spacing="0">
@@ -249,7 +250,7 @@
                             <Label text="💼" style="-fx-font-size: 20;"/>
                         </HBox>
                         <Label fx:id="statEmployees" text="0" styleClass="stat-value"/>
-                        <Label fx:id="statEmployeesTrend" text="Employees &amp; project owners" styleClass="stat-trend"/>
+                        <Label fx:id="statEmployeesTrend" text="Employees &amp; project managers" styleClass="stat-trend"/>
                     </VBox>
 
                     <!-- Card: Gig Workers -->
@@ -263,8 +264,9 @@
                         <Label fx:id="statGigWorkersTrend" text="Freelance contributors" styleClass="stat-trend"/>
                     </VBox>
 
-                    <!-- Card: Interviews -->
-                    <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                    <!-- Card: Interviews (clickable → calendar popup) -->
+                    <VBox fx:id="interviewCard" styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8"
+                          onMouseClicked="#openInterviewCalendar" style="-fx-cursor: hand;">
                         <HBox alignment="CENTER_LEFT" spacing="0">
                             <Label text="Interviews" styleClass="stat-label"/>
                             <Region HBox.hgrow="ALWAYS"/>
@@ -272,25 +274,36 @@
                         </HBox>
                         <Label fx:id="statInterviews" text="0" styleClass="stat-value"/>
                         <Label fx:id="statInterviewsTrend" text="Scheduled sessions" styleClass="stat-trend"/>
+                        <Label text="Click to view calendar →" styleClass="weather-card-hint"/>
                     </VBox>
                 </HBox>
 
-                <!-- Two column layout: Quick Actions + Recent Activity -->
+                <!-- Two column layout: Weather + Account -->
                 <HBox spacing="12">
                     
-                    <!-- Quick Actions Card -->
-                    <VBox styleClass="dashboard-card" HBox.hgrow="ALWAYS" spacing="0">
+                    <!-- Weather Card (click to open full popup) -->
+                    <VBox fx:id="weatherCard" styleClass="dashboard-card,weather-dashboard-card" 
+                          HBox.hgrow="ALWAYS" spacing="0" onMouseClicked="#openWeatherPopup"
+                          style="-fx-cursor: hand;">
                         <VBox styleClass="dashboard-card-header" spacing="2">
-                            <Label text="Quick Actions" styleClass="dashboard-card-title"/>
-                            <Label text="Jump to common tasks" styleClass="dashboard-card-description"/>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label fx:id="weatherCardEmoji" text="🌤️" style="-fx-font-size: 20;"/>
+                                <VBox spacing="1">
+                                    <Label fx:id="weatherCardTitle" text="Weather" styleClass="dashboard-card-title"/>
+                                    <Label fx:id="weatherCardSubtitle" text="Loading..." styleClass="dashboard-card-description"/>
+                                </VBox>
+                            </HBox>
                         </VBox>
-                        <VBox styleClass="dashboard-card-content" spacing="8">
-                            <Button text="Open Messages" onAction="#showMessages"
-                                    styleClass="btn-secondary" maxWidth="Infinity"/>
-                            <Button text="Schedule Interview" onAction="#showRecruitment"
-                                    styleClass="btn-secondary" maxWidth="Infinity"/>
-                            <Button text="Edit Profile" onAction="#showProfile"
-                                    styleClass="btn-secondary" maxWidth="Infinity"/>
+                        <VBox styleClass="dashboard-card-content" spacing="6">
+                            <HBox spacing="6" alignment="CENTER_LEFT">
+                                <Label fx:id="weatherCardTemp" text="--°C" styleClass="weather-card-temp"/>
+                                <Label fx:id="weatherCardCondition" text="" styleClass="weather-card-condition"/>
+                            </HBox>
+                            <HBox spacing="12" alignment="CENTER_LEFT">
+                                <Label fx:id="weatherCardHumidity" text="💧 --%" styleClass="weather-card-detail"/>
+                                <Label fx:id="weatherCardWind" text="💨 -- km/h" styleClass="weather-card-detail"/>
+                            </HBox>
+                            <Label text="Click for details →" styleClass="weather-card-hint"/>
                         </VBox>
                     </VBox>
 
@@ -334,8 +347,8 @@
 
                 </HBox>
 
-                <!-- Platform Overview Card -->
-                <VBox styleClass="dashboard-card" spacing="0">
+                <!-- Platform Overview Card (admin/HR only) -->
+                <VBox fx:id="platformOverviewCard" styleClass="dashboard-card" spacing="0">
                     <VBox styleClass="dashboard-card-header" spacing="2">
                         <Label text="Platform Overview" styleClass="dashboard-card-title"/>
                         <Label text="System-wide statistics and activity" styleClass="dashboard-card-description"/>

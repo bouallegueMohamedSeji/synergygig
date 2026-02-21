@@ -8,6 +8,7 @@ public class Call {
     private int calleeId;
     private int roomId;
     private String status; // ringing, active, ended, rejected, missed
+    private String callType; // "audio" or "video"
     private Timestamp startedAt;
     private Timestamp endedAt;
     private Timestamp createdAt;
@@ -19,15 +20,17 @@ public class Call {
         this.calleeId = calleeId;
         this.roomId = roomId;
         this.status = "ringing";
+        this.callType = "audio";
     }
 
-    public Call(int id, int callerId, int calleeId, int roomId, String status,
+    public Call(int id, int callerId, int calleeId, int roomId, String status, String callType,
                 Timestamp startedAt, Timestamp endedAt, Timestamp createdAt) {
         this.id = id;
         this.callerId = callerId;
         this.calleeId = calleeId;
         this.roomId = roomId;
         this.status = status;
+        this.callType = callType != null ? callType : "audio";
         this.startedAt = startedAt;
         this.endedAt = endedAt;
         this.createdAt = createdAt;
@@ -48,6 +51,10 @@ public class Call {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getCallType() { return callType != null ? callType : "audio"; }
+    public void setCallType(String callType) { this.callType = callType; }
+    public boolean isVideoCall() { return "video".equals(callType); }
 
     public Timestamp getStartedAt() { return startedAt; }
     public void setStartedAt(Timestamp startedAt) { this.startedAt = startedAt; }

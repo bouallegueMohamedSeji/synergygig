@@ -53,7 +53,29 @@ public class ServiceUser implements IService<User> {
         if (obj.has("is_active") && !obj.get("is_active").isJsonNull()) {
             user.setActive(obj.get("is_active").getAsBoolean());
         }
+        // HR fields
+        if (obj.has("department_id") && !obj.get("department_id").isJsonNull()) {
+            user.setDepartmentId(obj.get("department_id").getAsInt());
+        }
+        if (obj.has("hourly_rate") && !obj.get("hourly_rate").isJsonNull()) {
+            user.setHourlyRate(obj.get("hourly_rate").getAsDouble());
+        }
+        if (obj.has("monthly_salary") && !obj.get("monthly_salary").isJsonNull()) {
+            user.setMonthlySalary(obj.get("monthly_salary").getAsDouble());
+        }
         return user;
+    }
+
+    /** Populate HR fields from JDBC ResultSet. */
+    private void setHrFields(User user, ResultSet rs) {
+        try {
+            int deptId = rs.getInt("department_id");
+            if (!rs.wasNull()) user.setDepartmentId(deptId);
+            user.setHourlyRate(rs.getDouble("hourly_rate"));
+            user.setMonthlySalary(rs.getDouble("monthly_salary"));
+        } catch (SQLException ignored) {
+            // columns might not exist in some queries
+        }
     }
 
     private List<User> jsonArrayToUsers(JsonElement el) {
@@ -176,6 +198,7 @@ public class ServiceUser implements IService<User> {
                     rs.getTimestamp("created_at"),
                     rs.getString("avatar_path"),
                     rs.getString("face_encoding"));
+            setHrFields(user, rs);
             users.add(user);
         }
         rs.close();
@@ -215,6 +238,7 @@ public class ServiceUser implements IService<User> {
                         rs.getTimestamp("created_at"),
                         rs.getString("avatar_path"),
                         rs.getString("face_encoding"));
+                setHrFields(user, rs);
             }
         }
         rs.close();
@@ -318,6 +342,7 @@ public class ServiceUser implements IService<User> {
                     rs.getTimestamp("created_at"),
                     rs.getString("avatar_path"),
                     rs.getString("face_encoding"));
+            setHrFields(user, rs);
             users.add(user);
         }
         rs.close();

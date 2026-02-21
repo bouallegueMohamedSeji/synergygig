@@ -14,6 +14,9 @@ import services.ServiceInterview;
 import services.ServiceUser;
 import utils.AnimatedButton;
 import utils.SessionManager;
+import utils.StyledAlert;
+import utils.SoundManager;
+import javafx.stage.Window;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -23,6 +26,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map;
 import java.util.stream.Collectors;
 import javafx.scene.control.Alert;
@@ -53,6 +57,7 @@ public class InterviewController {
 
     private ServiceInterview serviceInterview = new ServiceInterview();
     private ServiceUser serviceUser = new ServiceUser();
+    private services.ServiceNotification serviceNotification = new services.ServiceNotification();
     private List<Interview> allInterviews;
     private Interview editingInterview = null; // null = creating new
     private String currentRole = "";
@@ -89,8 +94,14 @@ public class InterviewController {
                     "+ Schedule New", "📅", e -> toggleForm());
             animSchedule.setMinWidth(170);
             animSchedule.setMaxHeight(38);
+
+            StackPane animAiQuestions = AnimatedButton.createSecondary(
+                    "🤖 AI Questions", "💡", e -> showAiQuestionsDialog());
+            animAiQuestions.setMinWidth(150);
+            animAiQuestions.setMaxHeight(38);
+
             if (headerRow != null) {
-                headerRow.getChildren().add(animSchedule);
+                headerRow.getChildren().addAll(animAiQuestions, animSchedule);
             }
         }
 
@@ -120,6 +131,18 @@ public class InterviewController {
                 }
             }
         });
+
+        // Disable past dates in the DatePicker
+        datePicker.setDayCellFactory(picker -> new javafx.scene.control.DateCell() {
+            @Override
+            public void updateItem(LocalDate date, boolean empty) {
+                super.updateItem(date, empty);
+                if (date.isBefore(LocalDate.now())) {
+                    setDisable(true);
+                    setStyle("-fx-background-color: #2a2a2a; -fx-text-fill: #555; -fx-opacity: 0.5;");
+                }
+            }
+        });
     }
 
     // ========== User Lookup ==========
@@ -133,8 +156,15 @@ public class InterviewController {
 
             for (User u : users) {
                 String display = u.getFirstName() + " " + u.getLastName();
-                nameToId.put(display, u.getId());
+                // Always build the idToName lookup (for card display of organizers)
                 idToName.put(u.getId(), display);
+
+                // Only non-HR, non-ADMIN users can be candidates for interviews
+                String role = u.getRole();
+                if ("HR_MANAGER".equals(role) || "ADMIN".equals(role)) {
+                    continue; // skip as selectable candidates
+                }
+                nameToId.put(display, u.getId());
                 allCandidateNames.add(display);
             }
             candidateCombo.setItems(allCandidateNames);
@@ -269,7 +299,24 @@ public class InterviewController {
             return;
         }
 
-        Timestamp ts = Timestamp.valueOf(date.atTime(time));
+        // ===== Prevent scheduling in the past =====
+        java.time.LocalDateTime scheduledDateTime = date.atTime(time);
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        if (scheduledDateTime.isBefore(now)) {
+            String reason;
+            if (date.isBefore(LocalDate.now())) {
+                reason = "The date " + date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) + " is in the past.";
+            } else {
+                reason = "The time " + time.format(DateTimeFormatter.ofPattern("HH:mm")) +
+                         " has already passed today. Current time is " +
+                         LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")) + ".";
+            }
+            utils.StyledAlert.show(interviewOwnerWindow(), "Invalid Date/Time",
+                    reason + "\n\nPlease select a future date and time.", "warning");
+            return;
+        }
+
+        Timestamp ts = Timestamp.valueOf(scheduledDateTime);
         int organizerId = SessionManager.getInstance().getCurrentUser().getId();
 
         // ===== Duplicate interview check =====
@@ -283,19 +330,13 @@ public class InterviewController {
                     LocalTime existingTime = existing.getDateTime().toLocalDateTime().toLocalTime();
                     if (existingDate.equals(date)) {
                         if (existingTime.equals(time)) {
-                            Alert alert = new Alert(Alert.AlertType.ERROR);
-                            alert.setTitle("Scheduling Conflict");
-                            alert.setHeaderText("Duplicate Interview");
-                            alert.setContentText("This candidate already has an interview at " + time + " on " + date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) + ".");
-                            alert.showAndWait();
+                            utils.StyledAlert.show(interviewOwnerWindow(), "Scheduling Conflict",
+                                    "This candidate already has an interview at " + time + " on " + date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) + ".", "error");
                             return;
                         }
                         // Same day, different time — also block
-                        Alert alert = new Alert(Alert.AlertType.ERROR);
-                        alert.setTitle("Scheduling Conflict");
-                        alert.setHeaderText("Duplicate Interview");
-                        alert.setContentText("This candidate already has an interview on " + date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) + " at " + existingTime + ". A candidate cannot have two interviews on the same day.");
-                        alert.showAndWait();
+                        utils.StyledAlert.show(interviewOwnerWindow(), "Scheduling Conflict",
+                                "This candidate already has an interview on " + date.format(DateTimeFormatter.ofPattern("MMMM d, yyyy")) + " at " + existingTime + ". A candidate cannot have two interviews on the same day.", "error");
                         return;
                     }
                 }
@@ -312,12 +353,21 @@ public class InterviewController {
                 editingInterview.setStatus(status);
                 editingInterview.setMeetLink(link);
                 serviceInterview.modifier(editingInterview);
+                SoundManager.getInstance().play(SoundManager.INTERVIEW_SCHEDULED);
                 showFormStatus("Interview updated successfully!", false);
             } else {
                 // CREATE
                 Interview newInterview = new Interview(organizerId, candId, ts, link);
                 newInterview.setStatus(status);
+
+                // Notify the candidate
+                String candName = idToName.getOrDefault(candId, "User #" + candId);
+                String dateStr = date.format(DateTimeFormatter.ofPattern("MMM d, yyyy")) + " at " + time;
+                serviceNotification.notifyInterview(candId, "Scheduled",
+                        "You have an interview scheduled for " + dateStr + ".", newInterview.getId());
+
                 serviceInterview.ajouter(newInterview);
+                SoundManager.getInstance().play(SoundManager.INTERVIEW_SCHEDULED);
                 showFormStatus("Interview scheduled successfully!", false);
             }
 
@@ -361,21 +411,22 @@ public class InterviewController {
 
     // ========== Delete ==========
 
+    private Window interviewOwnerWindow() {
+        return cardsPane != null && cardsPane.getScene() != null
+                ? cardsPane.getScene().getWindow() : null;
+    }
+
     private void deleteInterview(Interview interview) {
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                "Delete interview #" + interview.getId() + "?",
-                ButtonType.YES, ButtonType.NO);
-        confirm.setTitle("Confirm Delete");
-        confirm.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.YES) {
-                try {
-                    serviceInterview.supprimer(interview.getId());
-                    loadInterviews();
-                } catch (SQLException e) {
-                    System.err.println("Failed to delete: " + e.getMessage());
-                }
+        if (utils.StyledAlert.confirm(interviewOwnerWindow(), "Confirm Delete",
+                "Delete interview #" + interview.getId() + "?")) {
+            try {
+                serviceInterview.supprimer(interview.getId());
+                SoundManager.getInstance().play(SoundManager.TASK_DELETED);
+                loadInterviews();
+            } catch (SQLException e) {
+                System.err.println("Failed to delete: " + e.getMessage());
             }
-        });
+        }
     }
 
     // ========== Card Builder ==========
@@ -541,6 +592,7 @@ public class InterviewController {
 
             content.getChildren().addAll(dateRow, sep1, peopleRow, sep2, linkRow, sep3, actions);
             card.getChildren().addAll(header, content);
+
             cardsPane.getChildren().add(card);
         }
     }
@@ -549,6 +601,19 @@ public class InterviewController {
         try {
             interview.setStatus(newStatus);
             serviceInterview.modifier(interview);
+
+            if ("ACCEPTED".equals(newStatus)) {
+                SoundManager.getInstance().play(SoundManager.INTERVIEW_ACCEPTED);
+            } else if ("REJECTED".equals(newStatus)) {
+                SoundManager.getInstance().play(SoundManager.INTERVIEW_REJECTED);
+            }
+
+            // Notify the candidate about status change
+            serviceNotification.notifyInterview(interview.getCandidateId(),
+                    newStatus.substring(0, 1).toUpperCase() + newStatus.substring(1).toLowerCase(),
+                    "Your interview has been " + newStatus.toLowerCase() + ".",
+                    interview.getId());
+
             loadInterviews();
         } catch (SQLException e) {
             System.err.println("Failed to update status: " + e.getMessage());
@@ -568,5 +633,114 @@ public class InterviewController {
     private void hideFormStatus() {
         formStatus.setManaged(false);
         formStatus.setVisible(false);
+    }
+
+    // ========== AI Interview Questions ==========
+
+    private void showAiQuestionsDialog() {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("AI Interview Questions Generator");
+        dialog.setResizable(true);
+
+        utils.DialogHelper.theme(dialog);
+        DialogPane pane = dialog.getDialogPane();
+        pane.getStyleClass().add("pm-dialog-pane");
+        pane.getButtonTypes().add(ButtonType.CLOSE);
+
+        VBox content = new VBox(12);
+        content.setPadding(new javafx.geometry.Insets(20));
+        content.setPrefWidth(500);
+
+        Label header = new Label("🤖 AI Interview Questions");
+        header.setStyle("-fx-font-size: 18; -fx-font-weight: bold; -fx-text-fill: white;");
+
+        Label desc = new Label("Enter the position and department to generate tailored interview questions.");
+        desc.setStyle("-fx-text-fill: #aaa; -fx-font-size: 12;");
+        desc.setWrapText(true);
+
+        TextField positionField = new TextField();
+        positionField.setPromptText("Position (e.g. Software Developer)");
+        positionField.getStyleClass().add("pm-form-control");
+
+        TextField departmentField = new TextField();
+        departmentField.setPromptText("Department (e.g. Engineering)");
+        departmentField.getStyleClass().add("pm-form-control");
+
+        ComboBox<String> difficultyBox = new ComboBox<>();
+        difficultyBox.getItems().addAll("junior", "intermediate", "senior");
+        difficultyBox.setValue("intermediate");
+        difficultyBox.getStyleClass().add("pm-form-control");
+
+        Button generateBtn = new Button("Generate Questions");
+        generateBtn.getStyleClass().add("pm-dialog-ok-btn");
+
+        TextArea resultArea = new TextArea();
+        resultArea.setEditable(false);
+        resultArea.setWrapText(true);
+        resultArea.setPrefRowCount(15);
+        resultArea.getStyleClass().add("pm-form-control");
+        resultArea.setPromptText("Questions will appear here...");
+
+        generateBtn.setOnAction(ev -> {
+            String position = positionField.getText().trim();
+            String department = departmentField.getText().trim();
+            if (position.isEmpty()) {
+                resultArea.setText("Please enter a position.");
+                return;
+            }
+            generateBtn.setDisable(true);
+            generateBtn.setText("Generating...");
+            resultArea.setText("⏳ Asking AI...");
+
+            new Thread(() -> {
+                try {
+                    java.util.Map<String, Object> body = new java.util.HashMap<>();
+                    body.put("position", position);
+                    body.put("department", department.isEmpty() ? "General" : department);
+                    body.put("difficulty", difficultyBox.getValue());
+
+                    com.google.gson.JsonElement resp = utils.ApiClient.post("/ai/interview-questions", body);
+                    if (resp != null && resp.isJsonObject()) {
+                        com.google.gson.JsonArray questions = resp.getAsJsonObject().getAsJsonArray("questions");
+                        if (questions != null) {
+                            StringBuilder sb = new StringBuilder();
+                            int i = 1;
+                            for (com.google.gson.JsonElement qEl : questions) {
+                                com.google.gson.JsonObject q = qEl.getAsJsonObject();
+                                sb.append(i++).append(". [").append(q.get("category").getAsString()).append("]\n");
+                                sb.append("   ").append(q.get("question").getAsString()).append("\n");
+                                sb.append("   💡 Tip: ").append(q.get("tip").getAsString()).append("\n\n");
+                            }
+                            javafx.application.Platform.runLater(() -> {
+                                resultArea.setText(sb.toString());
+                                generateBtn.setDisable(false);
+                                generateBtn.setText("Generate Questions");
+                            });
+                            return;
+                        }
+                    }
+                    javafx.application.Platform.runLater(() -> {
+                        resultArea.setText("AI returned an empty response. Try again.");
+                        generateBtn.setDisable(false);
+                        generateBtn.setText("Generate Questions");
+                    });
+                } catch (Exception ex) {
+                    javafx.application.Platform.runLater(() -> {
+                        resultArea.setText("Error: " + ex.getMessage());
+                        generateBtn.setDisable(false);
+                        generateBtn.setText("Generate Questions");
+                    });
+                }
+            }).start();
+        });
+
+        content.getChildren().addAll(header, desc,
+                new Label("Position") {{ getStyleClass().add("pm-form-label"); }}, positionField,
+                new Label("Department") {{ getStyleClass().add("pm-form-label"); }}, departmentField,
+                new Label("Difficulty") {{ getStyleClass().add("pm-form-label"); }}, difficultyBox,
+                generateBtn, resultArea);
+
+        pane.setContent(content);
+        dialog.showAndWait();
     }
 }

@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="controllers.ProjectManagementController"
+           styleClass="pm-root">
+
+    <!-- ═══════════════ VIEW 1: PROJECT LIST ═══════════════ -->
+    <VBox fx:id="projectListView" spacing="16">
+        <padding><Insets top="4" right="0" bottom="0" left="0"/></padding>
+
+        <!-- Header row -->
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <VBox spacing="2" HBox.hgrow="ALWAYS">
+                <Label text="Projects" styleClass="content-title"/>
+                <Label fx:id="projectSubtitle" text="Manage your projects and tasks" styleClass="content-subtitle"/>
+            </VBox>
+            <TextField fx:id="searchField" promptText="Search projects..." styleClass="pm-search-field"
+                       prefWidth="220" onKeyReleased="#onSearchChanged"/>
+            <Button fx:id="btnNewProject" text="+ New Project" styleClass="pm-btn-primary"
+                    onAction="#showNewProjectDialog" managed="false" visible="false"/>
+        </HBox>
+
+        <!-- Filter chips row -->
+        <HBox fx:id="filterBar" spacing="8" alignment="CENTER_LEFT" styleClass="pm-filter-bar">
+            <Button fx:id="filterAll" text="All" styleClass="pm-filter-chip,pm-filter-active"
+                    onAction="#filterAll"/>
+            <Button fx:id="filterPlanning" text="Planning" styleClass="pm-filter-chip"
+                    onAction="#filterPlanning"/>
+            <Button fx:id="filterInProgress" text="In Progress" styleClass="pm-filter-chip"
+                    onAction="#filterInProgress"/>
+            <Button fx:id="filterCompleted" text="Completed" styleClass="pm-filter-chip"
+                    onAction="#filterCompleted"/>
+        </HBox>
+
+        <!-- Project cards grid (scrollable) -->
+        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                    style="-fx-background-color: transparent; -fx-border-color: transparent;">
+            <FlowPane fx:id="projectGrid" hgap="16" vgap="16" styleClass="pm-project-grid">
+                <padding><Insets top="4" right="4" bottom="16" left="4"/></padding>
+            </FlowPane>
+        </ScrollPane>
+    </VBox>
+
+    <!-- ═══════════════ VIEW 2: PROJECT DETAIL / TASK BOARD ═══════════════ -->
+    <VBox fx:id="projectDetailView" spacing="16" visible="false" managed="false">
+        <padding><Insets top="4" right="0" bottom="0" left="0"/></padding>
+
+        <!-- Back + project header -->
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <Button fx:id="btnBack" text="← Back" styleClass="pm-btn-ghost" onAction="#backToProjectList"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="btnEditProject" text="Edit" styleClass="pm-btn-secondary"
+                    onAction="#showEditProjectDialog" managed="false" visible="false"/>
+            <Button fx:id="btnDeleteProject" text="Delete" styleClass="pm-btn-danger"
+                    onAction="#deleteCurrentProject" managed="false" visible="false"/>
+        </HBox>
+
+        <!-- Project info card -->
+        <HBox styleClass="pm-project-header-card" spacing="16" alignment="CENTER_LEFT">
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label fx:id="detailProjectName" text="Project Name" styleClass="pm-detail-title"/>
+                    <Label fx:id="detailStatusBadge" text="PLANNING" styleClass="pm-status-badge,pm-status-planning"/>
+                </HBox>
+                <Label fx:id="detailProjectDesc" text="" styleClass="pm-detail-desc" wrapText="true"/>
+                <HBox spacing="16" alignment="CENTER_LEFT">
+                    <Label fx:id="detailManager" text="Manager: —" styleClass="pm-detail-meta"/>
+                    <Label fx:id="detailDates" text="" styleClass="pm-detail-meta"/>
+                </HBox>
+                <Label fx:id="detailTeam" text="" styleClass="pm-detail-meta" wrapText="true"/>
+            </VBox>
+            <VBox alignment="CENTER" spacing="4" minWidth="90">
+                <Label fx:id="detailProgress" text="0%" styleClass="pm-progress-label"/>
+                <ProgressBar fx:id="detailProgressBar" progress="0" prefWidth="80" styleClass="pm-progress-bar"/>
+                <Label fx:id="detailTaskCount" text="0 tasks" styleClass="pm-detail-meta"/>
+            </VBox>
+        </HBox>
+
+        <!-- Task board header -->
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <Label text="Tasks" styleClass="pm-section-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="btnAiPlan" text="🤖 Plan with AI" styleClass="pm-btn-secondary"
+                    onAction="#aiPlanTasks" managed="false" visible="false"/>
+            <Button fx:id="btnAddTask" text="+ Add Task" styleClass="pm-btn-primary"
+                    onAction="#showNewTaskDialog" managed="false" visible="false"/>
+        </HBox>
+
+        <!-- Kanban columns -->
+        <HBox fx:id="kanbanBoard" spacing="12" VBox.vgrow="ALWAYS" styleClass="pm-kanban-board">
+
+            <!-- TODO column -->
+            <VBox styleClass="pm-kanban-column" HBox.hgrow="ALWAYS" spacing="0">
+                <HBox styleClass="pm-kanban-header,pm-kanban-todo" alignment="CENTER_LEFT" spacing="8">
+                    <Label text="○" styleClass="pm-kanban-dot"/>
+                    <Label text="To Do" styleClass="pm-kanban-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="countTodo" text="0" styleClass="pm-kanban-count"/>
+                </HBox>
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                            style="-fx-background-color: transparent; -fx-border-color: transparent;">
+                    <VBox fx:id="colTodo" spacing="8" styleClass="pm-kanban-cards">
+                        <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                    </VBox>
+                </ScrollPane>
+            </VBox>
+
+            <!-- IN PROGRESS column -->
+            <VBox styleClass="pm-kanban-column" HBox.hgrow="ALWAYS" spacing="0">
+                <HBox styleClass="pm-kanban-header,pm-kanban-inprogress" alignment="CENTER_LEFT" spacing="8">
+                    <Label text="◐" styleClass="pm-kanban-dot"/>
+                    <Label text="In Progress" styleClass="pm-kanban-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="countInProgress" text="0" styleClass="pm-kanban-count"/>
+                </HBox>
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                            style="-fx-background-color: transparent; -fx-border-color: transparent;">
+                    <VBox fx:id="colInProgress" spacing="8" styleClass="pm-kanban-cards">
+                        <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                    </VBox>
+                </ScrollPane>
+            </VBox>
+
+            <!-- DONE column -->
+            <VBox styleClass="pm-kanban-column" HBox.hgrow="ALWAYS" spacing="0">
+                <HBox styleClass="pm-kanban-header,pm-kanban-done" alignment="CENTER_LEFT" spacing="8">
+                    <Label text="●" styleClass="pm-kanban-dot"/>
+                    <Label text="Done" styleClass="pm-kanban-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="countDone" text="0" styleClass="pm-kanban-count"/>
+                </HBox>
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                            style="-fx-background-color: transparent; -fx-border-color: transparent;">
+                    <VBox fx:id="colDone" spacing="8" styleClass="pm-kanban-cards">
+                        <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                    </VBox>
+                </ScrollPane>
+            </VBox>
+
+        </HBox>
+    </VBox>
+
+</StackPane>

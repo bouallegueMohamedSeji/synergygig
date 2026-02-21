@@ -5,6 +5,7 @@ import entities.ChatRoom;
 import entities.Message;
 import entities.User;
 import javafx.animation.*;
+import javafx.stage.Window;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
@@ -24,6 +25,7 @@ import services.ServiceCall;
 import services.ServiceChatRoom;
 import services.ServiceMessage;
 import services.ServiceUser;
+import utils.BadWordsService;
 import utils.AIAssistantService;
 import utils.ApiClient;
 import utils.AudioCallService;
@@ -43,6 +45,7 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.prefs.Preferences;
 import javax.imageio.ImageIO;
 
 public class ChatController {
@@ -88,6 +91,10 @@ public class ChatController {
     private Message editingMessage = null;
     private boolean isAIRoom = false;
 
+    // ── Favorite rooms ──
+    private final Set<Integer> favoriteRoomIds = new LinkedHashSet<>();
+    private static final String PREF_FAVORITES = "chat_favorite_rooms";
+
     // ── Call state ──
     private Call activeCall = null;
     private long callStartTime = 0;
@@ -101,6 +108,8 @@ public class ChatController {
     private Label videoCallTimerLabel = null;
     private Button videoMuteBtn = null;
     private Button videoScreenShareBtn = null;
+    private Button videoCameraBtn = null;
+    private ImageView localPreviewView = null;
 
     private static final String IMAGE_PREFIX = "[IMAGE]";
     private static final String IMAGE_SUFFIX = "[/IMAGE]";
@@ -133,6 +142,7 @@ public class ChatController {
 
     @FXML
     public void initialize() {
+        loadFavorites();
         loadUsers();
         ensureAIRoom();
         loadRooms();
@@ -188,7 +198,19 @@ public class ChatController {
                 subtitle.getStyleClass().add("room-cell-subtitle");
 
                 textCol.getChildren().addAll(nameRow, subtitle);
-                cell.getChildren().addAll(avatar, textCol);
+
+                // ── Favorite / pin toggle star ──
+                boolean isFav = favoriteRoomIds.contains(item.getId());
+                Button starBtn = new Button(isFav ? "\u2605" : "\u2606");  // ★ or ☆
+                starBtn.getStyleClass().add("fav-toggle-btn");
+                if (isFav) starBtn.getStyleClass().add("fav-toggle-btn-active");
+                starBtn.setOnAction(ev -> {
+                    ev.consume();
+                    toggleFavorite(item.getId());
+                    roomsList.refresh();
+                });
+
+                cell.getChildren().addAll(avatar, textCol, starBtn);
                 setGraphic(cell);
                 setText(null);
             }
@@ -224,6 +246,14 @@ public class ChatController {
         }, 10, 10, TimeUnit.SECONDS);
         // Poll for incoming calls on background thread
         scheduler.scheduleAtFixedRate(this::pollIncomingCallsBackground, 2, 2, TimeUnit.SECONDS);
+
+        // ── Twemoji icons on emoji & attach buttons ──
+        Platform.runLater(() -> {
+            setupButtonIcon(btnEmoji, "1f60a", 20);  // 😊
+            setupButtonIcon(btnAttach, "1f4ce", 20); // 📎
+            installHoverCard(btnEmoji, "Emoji Picker", "Choose an emoji to add to your message");
+            installHoverCard(btnAttach, "Attach Image", "Send a photo or image from your device");
+        });
     }
 
     // ═══════════════════════════════════════════
@@ -243,6 +273,44 @@ public class ChatController {
     // ═══════════════════════════════════════════
     //  DATA LOADING
     // ═══════════════════════════════════════════
+
+    // ── Favorites persistence ──
+
+    private void loadFavorites() {
+        try {
+            Preferences prefs = Preferences.userNodeForPackage(ChatController.class);
+            String csv = prefs.get(PREF_FAVORITES, "");
+            favoriteRoomIds.clear();
+            if (!csv.isEmpty()) {
+                for (String s : csv.split(",")) {
+                    try { favoriteRoomIds.add(Integer.parseInt(s.trim())); } catch (NumberFormatException ignored) {}
+                }
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    private void saveFavorites() {
+        try {
+            Preferences prefs = Preferences.userNodeForPackage(ChatController.class);
+            StringBuilder sb = new StringBuilder();
+            for (int id : favoriteRoomIds) {
+                if (sb.length() > 0) sb.append(",");
+                sb.append(id);
+            }
+            prefs.put(PREF_FAVORITES, sb.toString());
+            prefs.flush();
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    private void toggleFavorite(int roomId) {
+        if (favoriteRoomIds.contains(roomId)) {
+            favoriteRoomIds.remove(roomId);
+        } else {
+            favoriteRoomIds.add(roomId);
+        }
+        saveFavorites();
+        loadRooms(); // re-sort with new favorites
+    }
 
     private void ensureAIRoom() {
         try {
@@ -286,7 +354,11 @@ public class ChatController {
                 }
             }
 
+            // Sort: favorites first, then by date descending
             visible.sort((a, b) -> {
+                boolean aFav = favoriteRoomIds.contains(a.getId());
+                boolean bFav = favoriteRoomIds.contains(b.getId());
+                if (aFav != bFav) return aFav ? -1 : 1;
                 if (b.getCreatedAt() != null && a.getCreatedAt() != null)
                     return b.getCreatedAt().compareTo(a.getCreatedAt());
                 return 0;
@@ -353,7 +425,8 @@ public class ChatController {
             Label icon = new Label("\u2795");
             icon.setStyle("-fx-font-size: 14;");
             Label text = new Label("Create room \"" + roomNameField.getText().trim() + "\"");
-            text.setStyle("-fx-text-fill: #90DDF0; -fx-font-size: 12;");
+            boolean dk = SessionManager.getInstance().isDarkTheme();
+            text.setStyle("-fx-text-fill: " + (dk ? "#90DDF0" : "#613039") + "; -fx-font-size: 12;");
             row.getChildren().addAll(icon, text);
             row.setOnMouseClicked(e -> { handleCreateRoom(); hideSearch(); });
             searchResultsBox.getChildren().add(row);
@@ -369,9 +442,10 @@ public class ChatController {
                 emailL.getStyleClass().add("search-result-email");
 
                 Label statusL = new Label(u.isOnline() ? "\u25CF Online" : "\u25CF Offline");
+                boolean dkS = SessionManager.getInstance().isDarkTheme();
                 statusL.setStyle(u.isOnline()
                         ? "-fx-text-fill: #4ade80; -fx-font-size: 10;"
-                        : "-fx-text-fill: #6B6B78; -fx-font-size: 10;");
+                        : "-fx-text-fill: " + (dkS ? "#6B6B78" : "#8A7C7F") + "; -fx-font-size: 10;");
 
                 info.getChildren().addAll(nameL, emailL, statusL);
                 row.getChildren().addAll(av, info);
@@ -387,7 +461,9 @@ public class ChatController {
         HBox row = new HBox(8);
         row.setAlignment(Pos.CENTER_LEFT);
         row.getStyleClass().add("search-result-item");
-        row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: rgba(44,102,110,0.15); -fx-background-radius: 8;"));
+        boolean dkR = SessionManager.getInstance().isDarkTheme();
+        String hoverBg = dkR ? "rgba(44,102,110,0.15)" : "rgba(97,48,57,0.08)";
+        row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: " + hoverBg + "; -fx-background-radius: 8;"));
         row.setOnMouseExited(e -> row.setStyle(""));
         return row;
     }
@@ -788,10 +864,10 @@ public class ChatController {
                 col.getChildren().add(fallback);
             }
         } else {
-            Label bubble = new Label(msg.getContent());
-            bubble.getStyleClass().add(isBot ? "msg-bubble-bot" : (isMe ? "msg-bubble-me" : "msg-bubble-other"));
-            bubble.setWrapText(true);
-            bubble.setMaxWidth(380);
+            javafx.scene.text.TextFlow bubbleFlow = buildEmojiTextFlow(msg.getContent());
+            bubbleFlow.getStyleClass().add(isBot ? "msg-bubble-bot" : (isMe ? "msg-bubble-me" : "msg-bubble-other"));
+            bubbleFlow.setMaxWidth(380);
+            bubbleFlow.setPrefWidth(Region.USE_COMPUTED_SIZE);
 
             if (isMe) {
                 ContextMenu ctx = new ContextMenu();
@@ -800,11 +876,11 @@ public class ChatController {
                 MenuItem deleteItem = new MenuItem("Delete");
                 deleteItem.setOnAction(e -> deleteMessage(msg));
                 ctx.getItems().addAll(editItem, deleteItem);
-                bubble.setContextMenu(ctx);
-                bubble.setOnMouseClicked(e -> { if (e.getClickCount() == 2) startEdit(msg); });
+                bubbleFlow.setOnContextMenuRequested(e -> ctx.show(bubbleFlow, e.getScreenX(), e.getScreenY()));
+                bubbleFlow.setOnMouseClicked(e -> { if (e.getClickCount() == 2) startEdit(msg); });
             }
 
-            col.getChildren().add(bubble);
+            col.getChildren().add(bubbleFlow);
         }
 
         if (isLastInGroup && msg.getTimestamp() != null) {
@@ -820,6 +896,68 @@ public class ChatController {
             row.getChildren().add(showAvatar ? createAvatar(me, 32) : spacer(32));
         }
         return row;
+    }
+
+    // ═══════════════════════════════════════════
+    //  EMOJI TEXT-FLOW BUILDER
+    // ═══════════════════════════════════════════
+
+    /**
+     * Builds a TextFlow where known emoji characters are rendered as
+     * Twemoji PNG images and all other text stays as Text nodes.
+     */
+    private javafx.scene.text.TextFlow buildEmojiTextFlow(String text) {
+        javafx.scene.text.TextFlow flow = new javafx.scene.text.TextFlow();
+        flow.setLineSpacing(2);
+
+        StringBuilder buf = new StringBuilder();
+        for (int i = 0; i < text.length(); ) {
+            int cp = text.codePointAt(i);
+            int charCount = Character.charCount(cp);
+
+            // Skip variation selectors (fe0f, fe0e) – treat as part of preceding emoji
+            if (cp == 0xFE0F || cp == 0xFE0E) {
+                i += charCount;
+                continue;
+            }
+
+            String hex = Integer.toHexString(cp);
+            if (utils.EmojiPicker.isKnownEmoji(hex)) {
+                // flush preceding text
+                if (buf.length() > 0) {
+                    javafx.scene.text.Text t = new javafx.scene.text.Text(buf.toString());
+                    t.getStyleClass().add("msg-text");
+                    flow.getChildren().add(t);
+                    buf.setLength(0);
+                }
+                // add emoji image
+                ImageView iv = new ImageView();
+                iv.setFitWidth(22);
+                iv.setFitHeight(22);
+                iv.setSmooth(true);
+                Image cached = utils.EmojiPicker.getCachedEmojiImage(hex, 22);
+                if (cached != null) {
+                    iv.setImage(cached);
+                } else {
+                    // load asynchronously from CDN
+                    String imgUrl = utils.EmojiPicker.getCdnBase() + hex + ".png";
+                    javafx.scene.image.Image img = new javafx.scene.image.Image(imgUrl, 22, 22, true, true, true);
+                    iv.setImage(img);
+                }
+                flow.getChildren().add(iv);
+            } else {
+                buf.appendCodePoint(cp);
+            }
+            i += charCount;
+        }
+        // flush remaining text
+        if (buf.length() > 0) {
+            javafx.scene.text.Text t = new javafx.scene.text.Text(buf.toString());
+            t.getStyleClass().add("msg-text");
+            flow.getChildren().add(t);
+        }
+
+        return flow;
     }
 
     // ═══════════════════════════════════════════
@@ -919,6 +1057,7 @@ public class ChatController {
     @FXML
     private void handleSendMessage() {
         if (currentRoom == null) return;
+        SoundManager.getInstance().play(SoundManager.BUTTON_CLICK);
         User currentUser = SessionManager.getInstance().getCurrentUser();
         if (currentUser == null) return;
 
@@ -928,6 +1067,14 @@ public class ChatController {
             return;
         }
         clearInputError();
+
+        // Bad words filter
+        BadWordsService.CheckResult badCheck = BadWordsService.check(content);
+        if (badCheck.hasBadWords) {
+            showInputError("Your message contains inappropriate language. Please revise it.");
+            messageArea.setText(badCheck.censoredContent);
+            return;
+        }
 
         // AI room
         if (isAIRoom && editingMessage == null) {
@@ -1035,16 +1182,90 @@ public class ChatController {
         inputErrorLabel.setText("");
     }
 
+    private Window chatOwnerWindow() {
+        return chatRootStack != null && chatRootStack.getScene() != null
+                ? chatRootStack.getScene().getWindow() : null;
+    }
+
     private void deleteMessage(Message msg) {
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Delete this message?", ButtonType.YES, ButtonType.NO);
-        confirm.setTitle("Delete Message");
-        confirm.setHeaderText(null);
-        confirm.showAndWait().ifPresent(r -> {
-            if (r == ButtonType.YES) {
-                try { serviceMessage.supprimer(msg.getId()); forceRefreshMessages(); }
-                catch (SQLException e) { e.printStackTrace(); }
-            }
-        });
+        if (utils.StyledAlert.confirm(chatOwnerWindow(), "Delete Message", "Delete this message?")) {
+            try { serviceMessage.supprimer(msg.getId()); forceRefreshMessages(); }
+            catch (SQLException e) { e.printStackTrace(); }
+        }
+    }
+
+    // ═══════════════════════════════════════════
+    //  BUTTON ICON + HOVER CARD HELPERS
+    // ═══════════════════════════════════════════
+
+    private void setupButtonIcon(Button btn, String hex, int size) {
+        btn.setText("");
+        ImageView iv = new ImageView();
+        iv.setFitWidth(size);
+        iv.setFitHeight(size);
+        iv.setSmooth(true);
+        Image cached = utils.EmojiPicker.getCachedEmojiImage(hex, size);
+        if (cached != null) {
+            iv.setImage(cached);
+        } else {
+            iv.setImage(new Image(utils.EmojiPicker.getCdnBase() + hex + ".png", size, size, true, true, true));
+        }
+        btn.setGraphic(iv);
+        btn.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+    }
+
+    private void installHoverCard(Button btn, String title, String desc) {
+        Tooltip tip = new Tooltip();
+        tip.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+
+        boolean dark = SessionManager.getInstance().isDarkTheme();
+
+        VBox card = new VBox(4);
+        card.setStyle("-fx-padding: 2 0;");
+
+        Label titleLbl = new Label(title);
+        titleLbl.setStyle("-fx-font-weight: bold; -fx-font-size: 13; -fx-text-fill: "
+                + (dark ? "#F0EDEE" : "#0D0A0B") + ";");
+
+        Label descLbl = new Label(desc);
+        descLbl.setStyle("-fx-font-size: 11; -fx-text-fill: "
+                + (dark ? "#9E9EA8" : "#8A7C7F") + ";");
+        descLbl.setMaxWidth(200);
+        descLbl.setWrapText(true);
+
+        card.getChildren().addAll(titleLbl, descLbl);
+        tip.setGraphic(card);
+
+        String bg = dark ? "#18171E" : "#FFFFFF";
+        String border = dark ? "#2C666E55" : "#E0D6D8";
+        String shadow = dark ? "rgba(0,0,0,0.45)" : "rgba(97,48,57,0.12)";
+
+        tip.setStyle("-fx-background-color: " + bg + "; "
+                + "-fx-border-color: " + border + "; "
+                + "-fx-border-radius: 10; -fx-background-radius: 10; "
+                + "-fx-padding: 10 14; "
+                + "-fx-effect: dropshadow(gaussian, " + shadow + ", 10, 0, 0, 3);");
+        tip.setShowDelay(Duration.millis(100));
+        tip.setHideDelay(Duration.millis(200));
+
+        btn.setTooltip(tip);
+    }
+
+    // ═══════════════════════════════════════════
+    //  EMOJI PICKER
+    // ═══════════════════════════════════════════
+
+    @FXML private Button btnEmoji;
+
+    @FXML
+    private void handleEmojiPicker() {
+        SoundManager.getInstance().play(SoundManager.BUTTON_CLICK);
+        javafx.geometry.Bounds bounds = btnEmoji.localToScreen(btnEmoji.getBoundsInLocal());
+        double x = bounds.getMinX();
+        double y = bounds.getMinY() - 370; // show above the button
+        utils.EmojiPicker.show(
+                btnEmoji.getScene().getWindow(), x, y,
+                emoji -> messageArea.appendText(emoji));
     }
 
     // ═══════════════════════════════════════════
@@ -1053,6 +1274,7 @@ public class ChatController {
 
     @FXML
     private void handleAttachImage() {
+        SoundManager.getInstance().play(SoundManager.BUTTON_CLICK);
         if (currentRoom == null || isAIRoom) return;
         User me = SessionManager.getInstance().getCurrentUser();
         if (me == null) return;
@@ -1182,6 +1404,28 @@ public class ChatController {
         FileChooser fc = new FileChooser();
         fc.setTitle("Save File");
         fc.setInitialFileName(fileName);
+
+        // Add extension filter based on file type
+        String ext = fileName.contains(".") ? fileName.substring(fileName.lastIndexOf(".")).toLowerCase() : "";
+        if (!ext.isEmpty()) {
+            String typeName;
+            switch (ext) {
+                case ".png": case ".jpg": case ".jpeg": case ".gif": case ".bmp": case ".webp":
+                    typeName = "Image Files"; break;
+                case ".pdf": typeName = "PDF Documents"; break;
+                case ".doc": case ".docx": typeName = "Word Documents"; break;
+                case ".xls": case ".xlsx": typeName = "Excel Spreadsheets"; break;
+                case ".ppt": case ".pptx": typeName = "PowerPoint Presentations"; break;
+                case ".mp3": case ".wav": case ".ogg": case ".flac": typeName = "Audio Files"; break;
+                case ".mp4": case ".avi": case ".mkv": case ".mov": case ".webm": typeName = "Video Files"; break;
+                case ".zip": case ".rar": case ".7z": case ".tar": case ".gz": typeName = "Archives"; break;
+                case ".txt": case ".md": case ".log": typeName = "Text Files"; break;
+                default: typeName = ext.substring(1).toUpperCase() + " Files"; break;
+            }
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter(typeName, "*" + ext));
+        }
+        fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("All Files", "*.*"));
+
         File dest = fc.showSaveDialog(chatRootStack.getScene().getWindow());
         if (dest == null) return;
 
@@ -1210,7 +1454,8 @@ public class ChatController {
         iv.setFitHeight(Math.min(img.getHeight(), 600));
 
         StackPane root = new StackPane(iv);
-        root.setStyle("-fx-background-color: #0A090C; -fx-padding: 12;");
+        boolean dkPop = SessionManager.getInstance().isDarkTheme();
+        root.setStyle("-fx-background-color: " + (dkPop ? "#0A090C" : "#F0EDED") + "; -fx-padding: 12;");
 
         javafx.scene.Scene scene = new javafx.scene.Scene(root);
         popup.setScene(scene);
@@ -1234,25 +1479,19 @@ public class ChatController {
         User u = SessionManager.getInstance().getCurrentUser();
         if (u == null || !"ADMIN".equalsIgnoreCase(u.getRole())) return;
 
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                "Delete \"" + currentRoom.getName() + "\" and all its messages?\nThis action cannot be undone.",
-                ButtonType.YES, ButtonType.NO);
-        confirm.setTitle("Delete Chat Room");
-        confirm.setHeaderText(null);
-        confirm.showAndWait().ifPresent(r -> {
-            if (r == ButtonType.YES) {
-                try {
-                    serviceChat.supprimer(currentRoom.getId());
-                    currentRoom = null;
-                    isAIRoom = false;
-                    showEmptyState();
-                    messagesContainer.getChildren().clear();
-                    aiChatHistory.clear();
-                    updateKebabMenuVisibility();
-                    loadRooms();
-                } catch (SQLException e) { e.printStackTrace(); }
-            }
-        });
+        if (utils.StyledAlert.confirm(chatOwnerWindow(), "Delete Chat Room",
+                "Delete \"" + currentRoom.getName() + "\" and all its messages?\nThis action cannot be undone.")) {
+            try {
+                serviceChat.supprimer(currentRoom.getId());
+                currentRoom = null;
+                isAIRoom = false;
+                showEmptyState();
+                messagesContainer.getChildren().clear();
+                aiChatHistory.clear();
+                updateKebabMenuVisibility();
+                loadRooms();
+            } catch (SQLException e) { e.printStackTrace(); }
+        }
     }
 
     // ═══════════════════════════════════════════
@@ -1274,13 +1513,20 @@ public class ChatController {
     /** Initiate a video call (auto-starts screen share once connected). */
     @FXML
     private void handleStartVideoCall() {
+        SoundManager.getInstance().play(SoundManager.BUTTON_CLICK);
         pendingVideoCall = true;
-        handleStartCall();
+        handleStartCall("video");
     }
 
     /** Initiate a call to the other user in the current private chat. */
     @FXML
     private void handleStartCall() {
+        handleStartCall("audio");
+    }
+
+    /** Start a call with the given type ("audio" or "video"). */
+    private void handleStartCall(String callType) {
+        SoundManager.getInstance().play(SoundManager.BUTTON_CLICK);
         if (currentRoom == null || !currentRoom.isPrivate() || isAIRoom) return;
         User me = SessionManager.getInstance().getCurrentUser();
         User other = getOtherUser(currentRoom);
@@ -1298,11 +1544,11 @@ public class ChatController {
             return;
         }
 
-        Call call = serviceCall.createCall(me.getId(), other.getId(), currentRoom.getId());
+        Call call = serviceCall.createCall(me.getId(), other.getId(), currentRoom.getId(), callType);
         if (call != null) {
             activeCall = call;
             SoundManager.getInstance().playLoop(SoundManager.OUTGOING_CALL);
-            showOutgoingCallOverlay(other);
+            showOutgoingCallOverlay(other, call.isVideoCall());
             // Start polling for acceptance
             pollCallStatus(call.getId());
         } else {
@@ -1311,7 +1557,7 @@ public class ChatController {
     }
 
     /** Show outgoing call UI (waiting for the other to pick up). */
-    private void showOutgoingCallOverlay(User other) {
+    private void showOutgoingCallOverlay(User other, boolean isVideo) {
         removeIncomingCallOverlay();
 
         VBox overlay = new VBox(16);
@@ -1326,7 +1572,7 @@ public class ChatController {
         Label nameLabel = new Label(other.getFirstName() + " " + other.getLastName());
         nameLabel.getStyleClass().add("call-overlay-name");
 
-        Label statusLabel = new Label("Calling...");
+        Label statusLabel = new Label(isVideo ? "Video calling..." : "Calling...");
         statusLabel.getStyleClass().add("call-overlay-status");
 
         // Pulsing animation on status
@@ -1340,10 +1586,12 @@ public class ChatController {
         Button cancelBtn = new Button("Cancel");
         cancelBtn.getStyleClass().addAll("btn-danger", "call-overlay-btn");
         cancelBtn.setOnAction(e -> {
+            SoundManager.getInstance().stopLoop();
             if (activeCall != null) {
                 serviceCall.endCall(activeCall.getId());
                 activeCall = null;
             }
+            pendingVideoCall = false;
             chatRootStack.getChildren().remove(overlay);
             pulse.stop();
         });
@@ -1367,7 +1615,9 @@ public class ChatController {
                 removeIncomingCallOverlay();
                 startActiveCall(callId);
             } else if (c.isEnded()) {
+                SoundManager.getInstance().stopLoop();
                 activeCall = null;
+                pendingVideoCall = false;
                 removeIncomingCallOverlay();
                 showToast("Call", "Call ended.");
             }
@@ -1424,7 +1674,7 @@ public class ChatController {
         Label nameLabel = new Label(callerName);
         nameLabel.getStyleClass().add("call-overlay-name");
 
-        Label statusLabel = new Label("Incoming audio call...");
+        Label statusLabel = new Label(call.isVideoCall() ? "Incoming video call..." : "Incoming audio call...");
         statusLabel.getStyleClass().add("call-overlay-status");
 
         HBox buttons = new HBox(16);
@@ -1439,6 +1689,10 @@ public class ChatController {
             serviceCall.acceptCall(call.getId());
             activeCall = call;
             activeCall.setStatus("active");
+            // If this is a video call, auto-open the video popup for callee too
+            if (call.isVideoCall()) {
+                pendingVideoCall = true;
+            }
             removeIncomingCallOverlay();
             startActiveCall(call.getId());
         });
@@ -1523,21 +1777,22 @@ public class ChatController {
         // Auto-start screen sharing if this was a video call
         if (pendingVideoCall) {
             pendingVideoCall = false;
+            // Open popup immediately on FX thread
             Platform.runLater(() -> {
-                // Open the Messenger-style video call popup immediately
                 openVideoCallPopup();
-                screenShareService.startCapture();
-                if (btnScreenShare != null) {
-                    btnScreenShare.setText("⏹");
-                    if (!btnScreenShare.getStyleClass().contains("screen-sharing-active"))
-                        btnScreenShare.getStyleClass().add("screen-sharing-active");
-                }
-                if (videoScreenShareBtn != null) {
-                    videoScreenShareBtn.setText("⏹");
-                    if (!videoScreenShareBtn.getStyleClass().contains("video-popup-btn-active"))
-                        videoScreenShareBtn.getStyleClass().add("video-popup-btn-active");
-                }
             });
+            // Start capture on a background thread (waits for WS connection)
+            new Thread(() -> {
+                screenShareService.startCapture();
+                Platform.runLater(() -> {
+                    if (btnScreenShare != null) {
+                        btnScreenShare.setText("⏹");
+                        if (!btnScreenShare.getStyleClass().contains("screen-sharing-active"))
+                            btnScreenShare.getStyleClass().add("screen-sharing-active");
+                    }
+                    updateVideoShareButton(true);
+                });
+            }, "video-capture-start").start();
         }
     }
 
@@ -1550,6 +1805,7 @@ public class ChatController {
     /** Toggle microphone mute. */
     @FXML
     private void handleToggleMute() {
+        SoundManager.getInstance().play(SoundManager.BUTTON_CLICK);
         boolean muted = audioCallService.toggleMute();
         if (btnMute != null) {
             btnMute.setText(muted ? "\uD83D\uDD07" : "\uD83C\uDF99");
@@ -1561,6 +1817,7 @@ public class ChatController {
     /** Toggle screen sharing on/off during an active call. */
     @FXML
     private void handleToggleScreenShare() {
+        SoundManager.getInstance().play(SoundManager.BUTTON_CLICK);
         if (activeCall == null) return;
 
         if (screenShareService.isCapturing()) {
@@ -1569,16 +1826,92 @@ public class ChatController {
                 btnScreenShare.setText("\uD83D\uDDA5");
                 btnScreenShare.getStyleClass().remove("screen-sharing-active");
             }
+            updateVideoShareButton(false);
             showToast("Screen Share", "Screen sharing stopped.");
         } else {
-            screenShareService.startCapture();
-            if (btnScreenShare != null) {
-                btnScreenShare.setText("⏹");
-                if (!btnScreenShare.getStyleClass().contains("screen-sharing-active"))
-                    btnScreenShare.getStyleClass().add("screen-sharing-active");
-            }
-            showToast("Screen Share", "Sharing your screen (" + screenShareService.getResolution().label + ")");
+            // Start capture on background thread (may need to wait for WS connection)
+            new Thread(() -> {
+                screenShareService.startCapture();
+                Platform.runLater(() -> {
+                    if (btnScreenShare != null) {
+                        btnScreenShare.setText("⏹");
+                        if (!btnScreenShare.getStyleClass().contains("screen-sharing-active"))
+                            btnScreenShare.getStyleClass().add("screen-sharing-active");
+                    }
+                    updateVideoShareButton(true);
+                    showToast("Screen Share", "Sharing your screen (" + screenShareService.getResolution().label + ")");
+                });
+            }, "screen-share-toggle").start();
         }
+    }
+
+    /** Update the video popup screen share button appearance. */
+    private void updateVideoShareButton(boolean sharing) {
+        if (videoScreenShareBtn == null || videoScreenShareBtn.getGraphic() == null) return;
+        try {
+            VBox container = (VBox) videoScreenShareBtn.getGraphic();
+            Label icon = (Label) container.getChildren().get(0);
+            Label label = (Label) container.getChildren().get(1);
+            icon.setText(sharing ? "⏹" : "\uD83D\uDDA5");
+            label.setText(sharing ? "Stop" : "Share");
+            if (sharing) {
+                if (!videoScreenShareBtn.getStyleClass().contains("video-popup-btn-active"))
+                    videoScreenShareBtn.getStyleClass().add("video-popup-btn-active");
+            } else {
+                videoScreenShareBtn.getStyleClass().remove("video-popup-btn-active");
+            }
+        } catch (Exception ignored) {}
+    }
+
+    /** Toggle camera on/off during a video call. */
+    private void handleToggleCamera() {
+        SoundManager.getInstance().play(SoundManager.BUTTON_CLICK);
+        if (activeCall == null) return;
+
+        if (screenShareService.getCaptureMode() == utils.ScreenShareService.CaptureMode.WEBCAM
+                && screenShareService.isCapturing()) {
+            // Turn camera off — stop capturing, switch back to screen mode
+            screenShareService.stopCapture();
+            screenShareService.setCaptureMode(utils.ScreenShareService.CaptureMode.SCREEN);
+            if (localPreviewView != null) localPreviewView.setVisible(false);
+            updateVideoCameraButton(false);
+            updateVideoShareButton(false);
+            showToast("Camera", "Camera turned off.");
+        } else {
+            // Turn camera on — stop any screen share, switch to webcam
+            if (screenShareService.isCapturing()) {
+                screenShareService.stopCapture();
+            }
+            screenShareService.setCaptureMode(utils.ScreenShareService.CaptureMode.WEBCAM);
+            updateVideoShareButton(false);
+
+            new Thread(() -> {
+                screenShareService.startCapture();
+                Platform.runLater(() -> {
+                    if (localPreviewView != null) localPreviewView.setVisible(true);
+                    updateVideoCameraButton(true);
+                    showToast("Camera", "Camera is live.");
+                });
+            }, "camera-toggle").start();
+        }
+    }
+
+    /** Update the video popup camera button appearance. */
+    private void updateVideoCameraButton(boolean active) {
+        if (videoCameraBtn == null || videoCameraBtn.getGraphic() == null) return;
+        try {
+            VBox container = (VBox) videoCameraBtn.getGraphic();
+            Label icon = (Label) container.getChildren().get(0);
+            Label label = (Label) container.getChildren().get(1);
+            icon.setText(active ? "\uD83D\uDCF9" : "\uD83D\uDCF7");
+            label.setText(active ? "Stop" : "Camera");
+            if (active) {
+                if (!videoCameraBtn.getStyleClass().contains("video-popup-btn-active"))
+                    videoCameraBtn.getStyleClass().add("video-popup-btn-active");
+            } else {
+                videoCameraBtn.getStyleClass().remove("video-popup-btn-active");
+            }
+        } catch (Exception ignored) {}
     }
 
     /** Handle incoming screen share frame from remote participant. */
@@ -1592,12 +1925,18 @@ public class ChatController {
     }
 
     /**
-     * Open a Messenger-style video call popup window.
+     * Open a modern video call popup window.
      * Dark floating window with: remote video stream, caller info bar,
      * and bottom control bar (mute, screen share, end call).
      */
     private void openVideoCallPopup() {
         if (videoCallStage != null && videoCallStage.isShowing()) return;
+
+        // Hide the in-chat call bar — the video popup has its own controls
+        if (activeCallBar != null) {
+            activeCallBar.setVisible(false);
+            activeCallBar.setManaged(false);
+        }
 
         // ─── Remote video display ───
         remoteVideoView = new ImageView();
@@ -1612,51 +1951,98 @@ public class ChatController {
         }
 
         videoCallNameLabel = new Label(otherName);
-        videoCallNameLabel.setStyle("-fx-text-fill: white; -fx-font-size: 16; -fx-font-weight: bold;");
+        videoCallNameLabel.getStyleClass().add("video-call-name");
 
         videoCallTimerLabel = new Label("00:00");
-        videoCallTimerLabel.setStyle("-fx-text-fill: #A0A0B0; -fx-font-size: 13;");
+        videoCallTimerLabel.getStyleClass().add("video-call-timer");
+
+        Label liveIndicator = new Label("\u25cf");
+        liveIndicator.getStyleClass().add("video-live-dot");
+
+        Label liveText = new Label("LIVE");
+        liveText.getStyleClass().add("video-live-text");
+
+        HBox liveBox = new HBox(4, liveIndicator, liveText);
+        liveBox.setAlignment(Pos.CENTER);
+        liveBox.getStyleClass().add("video-live-badge");
 
         HBox topBar = new HBox(12);
         topBar.setAlignment(Pos.CENTER_LEFT);
-        topBar.setStyle("-fx-background-color: rgba(10,9,12,0.85); -fx-padding: 12 16 12 16;");
+        topBar.getStyleClass().add("video-top-bar");
         Region topSpacer = new Region();
         HBox.setHgrow(topSpacer, Priority.ALWAYS);
 
-        Label liveLabel = new Label("\u25cf LIVE");
-        liveLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 11; -fx-font-weight: bold;");
-
-        topBar.getChildren().addAll(videoCallNameLabel, videoCallTimerLabel, topSpacer, liveLabel);
+        topBar.getChildren().addAll(videoCallNameLabel, videoCallTimerLabel, topSpacer, liveBox);
 
         // ─── Center: video stream area ───
         StackPane videoArea = new StackPane(remoteVideoView);
-        videoArea.setStyle("-fx-background-color: #111111;");
+        videoArea.getStyleClass().add("video-stream-area");
         VBox.setVgrow(videoArea, Priority.ALWAYS);
 
-        // Placeholder text when no video yet
+        // Placeholder when no video yet
+        Label waitingIcon = new Label("\uD83D\uDCF9");
+        waitingIcon.setStyle("-fx-font-size: 36; -fx-opacity: 0.3;");
         Label waitingLabel = new Label("Waiting for screen share...");
-        waitingLabel.setStyle("-fx-text-fill: #555555; -fx-font-size: 14;");
-        videoArea.getChildren().add(waitingLabel);
-        waitingLabel.setMouseTransparent(true);
+        waitingLabel.getStyleClass().add("video-waiting-label");
+        VBox waitingBox = new VBox(8, waitingIcon, waitingLabel);
+        waitingBox.setAlignment(Pos.CENTER);
+        waitingBox.setMouseTransparent(true);
+        videoArea.getChildren().add(waitingBox);
 
         // Hide placeholder once we get a frame
         remoteVideoView.imageProperty().addListener((obs, old, img) -> {
-            if (img != null) waitingLabel.setVisible(false);
+            if (img != null) waitingBox.setVisible(false);
         });
 
         // Bind video to fill the area
         remoteVideoView.fitWidthProperty().bind(videoArea.widthProperty().subtract(8));
         remoteVideoView.fitHeightProperty().bind(videoArea.heightProperty().subtract(8));
 
+        // ─── Local camera preview (PiP) ───
+        localPreviewView = new ImageView();
+        localPreviewView.setPreserveRatio(true);
+        localPreviewView.setSmooth(true);
+        localPreviewView.setFitWidth(180);
+        localPreviewView.setFitHeight(135);
+        localPreviewView.setVisible(false);
+        localPreviewView.getStyleClass().add("video-local-preview");
+
+        StackPane localPreviewContainer = new StackPane(localPreviewView);
+        localPreviewContainer.getStyleClass().add("video-local-preview-container");
+        localPreviewContainer.setMaxWidth(188);
+        localPreviewContainer.setMaxHeight(143);
+        localPreviewContainer.visibleProperty().bind(localPreviewView.visibleProperty());
+        localPreviewContainer.managedProperty().bind(localPreviewView.visibleProperty());
+        StackPane.setAlignment(localPreviewContainer, Pos.BOTTOM_RIGHT);
+        StackPane.setMargin(localPreviewContainer, new javafx.geometry.Insets(0, 12, 12, 0));
+        videoArea.getChildren().add(localPreviewContainer);
+
+        // Wire up local preview callback
+        screenShareService.setOnLocalFrame(frame -> {
+            if (localPreviewView != null) {
+                localPreviewView.setImage(frame);
+            }
+        });
+
         // ─── Bottom control bar ───
-        videoMuteBtn = new Button("\uD83C\uDF99");
-        videoMuteBtn.getStyleClass().addAll("video-popup-btn");
+        // Mute button with label
+        Label muteIcon = new Label("\uD83C\uDF99");
+        muteIcon.getStyleClass().add("video-btn-icon");
+        Label muteLabel = new Label("Mute");
+        muteLabel.getStyleClass().add("video-btn-label");
+        VBox muteContainer = new VBox(4, muteIcon, muteLabel);
+        muteContainer.setAlignment(Pos.CENTER);
+
+        videoMuteBtn = new Button();
+        videoMuteBtn.setGraphic(muteContainer);
+        videoMuteBtn.getStyleClass().addAll("video-popup-btn", "video-popup-btn-mute");
         videoMuteBtn.setOnAction(e -> {
+            SoundManager.getInstance().play(SoundManager.BUTTON_CLICK);
             boolean muted = audioCallService.toggleMute();
-            videoMuteBtn.setText(muted ? "\uD83D\uDD07" : "\uD83C\uDF99");
+            muteIcon.setText(muted ? "\uD83D\uDD07" : "\uD83C\uDF99");
+            muteLabel.setText(muted ? "Unmute" : "Mute");
             videoMuteBtn.getStyleClass().removeAll("video-popup-btn-active");
             if (muted) videoMuteBtn.getStyleClass().add("video-popup-btn-active");
-            // Sync the in-chat mute button
             if (btnMute != null) {
                 btnMute.setText(muted ? "\uD83D\uDD07" : "\uD83C\uDF99");
                 btnMute.getStyleClass().removeAll("call-muted", "call-unmuted");
@@ -1664,33 +2050,88 @@ public class ChatController {
             }
         });
 
-        videoScreenShareBtn = new Button("\uD83D\uDDA5");
-        videoScreenShareBtn.getStyleClass().addAll("video-popup-btn");
+        // Screen share button with label
+        Label shareIcon = new Label("\uD83D\uDDA5");
+        shareIcon.getStyleClass().add("video-btn-icon");
+        Label shareLabel = new Label("Share");
+        shareLabel.getStyleClass().add("video-btn-label");
+        VBox shareContainer = new VBox(4, shareIcon, shareLabel);
+        shareContainer.setAlignment(Pos.CENTER);
+
+        videoScreenShareBtn = new Button();
+        videoScreenShareBtn.setGraphic(shareContainer);
+        videoScreenShareBtn.getStyleClass().addAll("video-popup-btn", "video-popup-btn-share");
         videoScreenShareBtn.setOnAction(e -> {
-            handleToggleScreenShare();
-            // Sync button state
-            if (screenShareService.isCapturing()) {
-                videoScreenShareBtn.setText("\u23f9");
-                if (!videoScreenShareBtn.getStyleClass().contains("video-popup-btn-active"))
-                    videoScreenShareBtn.getStyleClass().add("video-popup-btn-active");
-            } else {
-                videoScreenShareBtn.setText("\uD83D\uDDA5");
-                videoScreenShareBtn.getStyleClass().remove("video-popup-btn-active");
+            // If camera is active, switch back to screen mode first
+            if (screenShareService.getCaptureMode() == utils.ScreenShareService.CaptureMode.WEBCAM) {
+                screenShareService.stopCapture();
+                screenShareService.setCaptureMode(utils.ScreenShareService.CaptureMode.SCREEN);
+                if (localPreviewView != null) localPreviewView.setVisible(false);
+                updateVideoCameraButton(false);
             }
+            handleToggleScreenShare();
         });
 
-        Button videoEndBtn = new Button("\u260E");
+        // Camera button with label
+        Label camIcon = new Label("📷");
+        camIcon.getStyleClass().add("video-btn-icon");
+        Label camLabel = new Label("Camera");
+        camLabel.getStyleClass().add("video-btn-label");
+        VBox camContainer = new VBox(4, camIcon, camLabel);
+        camContainer.setAlignment(Pos.CENTER);
+
+        boolean hasCam = utils.ScreenShareService.isWebcamAvailable();
+        videoCameraBtn = new Button();
+        videoCameraBtn.setGraphic(camContainer);
+        videoCameraBtn.getStyleClass().addAll("video-popup-btn", "video-popup-btn-camera");
+        videoCameraBtn.setDisable(!hasCam);
+        if (!hasCam) {
+            camLabel.setText("No Cam");
+            videoCameraBtn.setOpacity(0.4);
+        }
+        videoCameraBtn.setOnAction(e -> handleToggleCamera());
+
+        // End call button with hangup icon (rotated phone)
+        Label endIcon = new Label("\u260E");
+        endIcon.getStyleClass().add("video-btn-icon");
+        endIcon.setStyle("-fx-rotate: 135;");
+        Label endLabel = new Label("End");
+        endLabel.getStyleClass().add("video-btn-label");
+        VBox endContainer = new VBox(4, endIcon, endLabel);
+        endContainer.setAlignment(Pos.CENTER);
+
+        Button videoEndBtn = new Button();
+        videoEndBtn.setGraphic(endContainer);
         videoEndBtn.getStyleClass().addAll("video-popup-btn", "video-popup-end-btn");
         videoEndBtn.setOnAction(e -> handleEndCall());
 
-        HBox controlBar = new HBox(20);
+        HBox controlBar = new HBox(24);
         controlBar.setAlignment(Pos.CENTER);
-        controlBar.setStyle("-fx-background-color: rgba(10,9,12,0.9); -fx-padding: 14 20 14 20;");
-        controlBar.getChildren().addAll(videoMuteBtn, videoScreenShareBtn, videoEndBtn);
+        controlBar.getStyleClass().add("video-control-bar");
+
+        // ── Volume slider ──
+        Label volIcon = new Label("\uD83D\uDD0A");
+        boolean dkVol = SessionManager.getInstance().isDarkTheme();
+        volIcon.setStyle("-fx-font-size: 16; -fx-text-fill: " + (dkVol ? "#90DDF0" : "#613039") + ";");
+        javafx.scene.control.Slider volSlider = new javafx.scene.control.Slider(0, 3.0,
+                utils.AudioDeviceManager.getInstance().getSpeakerVolume());
+        volSlider.setMaxWidth(120);
+        volSlider.setPrefWidth(120);
+        volSlider.getStyleClass().add("call-volume-slider");
+        volSlider.valueProperty().addListener((obs, oldV, newV) -> {
+            utils.AudioDeviceManager.getInstance().setSpeakerVolume(newV.doubleValue());
+            if (newV.doubleValue() < 0.01) volIcon.setText("\uD83D\uDD07");
+            else if (newV.doubleValue() < 1.0) volIcon.setText("\uD83D\uDD09");
+            else volIcon.setText("\uD83D\uDD0A");
+        });
+        HBox volBox = new HBox(6, volIcon, volSlider);
+        volBox.setAlignment(Pos.CENTER);
+
+        controlBar.getChildren().addAll(volBox, videoMuteBtn, videoScreenShareBtn, videoCameraBtn, videoEndBtn);
 
         // ─── Assemble layout ───
         VBox root = new VBox();
-        root.setStyle("-fx-background-color: #0A090C;");
+        root.getStyleClass().add("video-popup-root");
         root.getChildren().addAll(topBar, videoArea, controlBar);
 
         javafx.scene.Scene scene = new javafx.scene.Scene(root, 800, 520);
@@ -1714,8 +2155,16 @@ public class ChatController {
         videoCallStage.setMinHeight(360);
         videoCallStage.setOnCloseRequest(e -> {
             // Don't end the call, just close the video popup
+            screenShareService.setOnLocalFrame(null);
             videoCallStage = null;
             remoteVideoView = null;
+            localPreviewView = null;
+            videoCameraBtn = null;
+            // Show the in-chat call bar again since popup is closing
+            if (activeCallBar != null && activeCall != null) {
+                activeCallBar.setVisible(true);
+                activeCallBar.setManaged(true);
+            }
         });
         videoCallStage.show();
     }
@@ -1723,15 +2172,19 @@ public class ChatController {
     /** Close the video call popup. */
     private void closeVideoCallPopup() {
         if (videoCallStage != null) {
+            screenShareService.setOnLocalFrame(null);
             videoCallStage.close();
             videoCallStage = null;
             remoteVideoView = null;
+            localPreviewView = null;
+            videoCameraBtn = null;
         }
     }
 
     /** End the active call (user clicked End — notify server). */
     @FXML
     private void handleEndCall() {
+        SoundManager.getInstance().play(SoundManager.BUTTON_CLICK);
         if (activeCall != null) {
             serviceCall.endCall(activeCall.getId());
         }

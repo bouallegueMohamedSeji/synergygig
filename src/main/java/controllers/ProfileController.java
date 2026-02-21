@@ -641,6 +641,10 @@ public class ProfileController {
 
     @FXML
     private void handleEnrollFace() {
+        if (!FaceRecognitionUtil.isAvailable()) {
+            showFaceStatus("Face recognition unavailable — Python + face_recognition library required.", true);
+            return;
+        }
         showFaceStatus("Opening camera for face enrollment...", false);
         enrollFaceBtn.setDisable(true);
 
