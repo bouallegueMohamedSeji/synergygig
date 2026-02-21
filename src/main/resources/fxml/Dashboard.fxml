@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Circle?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="controllers.DashboardController" styleClass="window-root">
+
+    <!-- TOP BAR -->
+    <top>
+        <VBox spacing="0">
+            <fx:include source="components/TitleBar.fxml"/>
+            
+            <HBox alignment="CENTER_LEFT" spacing="12" styleClass="topbar">
+                <padding><Insets top="8" right="16" bottom="8" left="16"/></padding>
+
+                <Button fx:id="sidebarTrigger" onAction="#toggleSidebar" styleClass="sidebar-trigger">
+                    <graphic>
+                        <Label fx:id="sidebarTriggerIcon" text="☰" styleClass="sidebar-trigger-icon"/>
+                    </graphic>
+                </Button>
+                <Label fx:id="welcomeLabel" text="Welcome" styleClass="topbar-welcome"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <StackPane fx:id="notificationBellSlot" alignment="CENTER" minWidth="36" minHeight="36"/>
+                <HBox fx:id="themeToggleTrack" styleClass="theme-toggle-track" alignment="CENTER_LEFT"
+                      spacing="0" onMouseClicked="#toggleTheme">
+                    <padding><Insets top="3" right="3" bottom="3" left="3"/></padding>
+                    <Label text="☀" styleClass="theme-toggle-icon-sun"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Region fx:id="themeToggleThumb" styleClass="theme-toggle-thumb"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="☾" styleClass="theme-toggle-icon-moon"/>
+                </HBox>
+                <Label fx:id="roleLabel" text="ROLE" styleClass="topbar-role-badge"/>
+            </HBox>
+        </VBox>
+    </top>
+
+    <!-- SIDEBAR -->
+    <left>
+        <VBox fx:id="sidebar" spacing="0" styleClass="sidebar" prefWidth="220" minWidth="60" maxWidth="220">
+
+            <!-- ═══ SidebarHeader ═══ -->
+            <HBox fx:id="sidebarHeader" styleClass="sidebar-header" alignment="CENTER_LEFT" spacing="10">
+                <padding><Insets top="14" right="14" bottom="14" left="16"/></padding>
+                <Label text="⬡" styleClass="sidebar-brand-icon"/>
+                <Label fx:id="sidebarBrandName" text="SynergyGig" styleClass="sidebar-brand-name"/>
+            </HBox>
+
+            <Separator styleClass="sidebar-separator"/>
+
+            <!-- ═══ SidebarContent (scrollable) ═══ -->
+            <ScrollPane fx:id="sidebarScroll" styleClass="sidebar-scroll" VBox.vgrow="ALWAYS"
+                        fitToWidth="true" hbarPolicy="NEVER">
+                <VBox spacing="4" styleClass="sidebar-content">
+                    <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+
+                    <!-- ─── Group: Overview ─── -->
+                    <VBox styleClass="sidebar-group" spacing="2">
+                        <Label text="Overview" styleClass="sidebar-group-label"/>
+                        <VBox spacing="1">
+                            <Button fx:id="btnDashboard" onAction="#showDashboardHome"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="◈" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Dashboard" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
+                        </VBox>
+                    </VBox>
+
+                    <!-- ─── Group: Admin (hidden by default) ─── -->
+                    <VBox fx:id="adminGroup" styleClass="sidebar-group" spacing="2"
+                          managed="false" visible="false">
+                        <Label text="Admin" styleClass="sidebar-group-label"/>
+                        <VBox spacing="1">
+                            <Button fx:id="btnManageUsers" onAction="#showManageUsers"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="◉" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Users" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
+                        </VBox>
+                    </VBox>
+
+                    <!-- ─── Group: HR (hidden by default) ─── -->
+                    <VBox fx:id="hrGroup" styleClass="sidebar-group" spacing="2"
+                          managed="false" visible="false">
+                        <Label text="HR" styleClass="sidebar-group-label"/>
+                        <VBox spacing="1">
+                            <Button fx:id="btnHrDashboard" onAction="#showHrDashboard"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="◎" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="HR Dashboard" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
+                        </VBox>
+                    </VBox>
+
+                    <!-- ─── Group: Modules ─── -->
+                    <VBox styleClass="sidebar-group" spacing="2">
+                        <Label text="Modules" styleClass="sidebar-group-label"/>
+                        <VBox spacing="1">
+                            <Button fx:id="btnMessages" onAction="#showMessages"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="✉" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Messages" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
+
+                            <Button fx:id="btnRecruitment" onAction="#showRecruitment"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
+                                    managed="false" visible="false">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="◈" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Interviews" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
+
+                            <Button fx:id="btnHrAdmin" onAction="#showHrAdmin"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
+                                    managed="false" visible="false">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="◈" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="HR Admin" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
+
+                            <Button fx:id="btnProjects" onAction="#showProjects"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
+                                    managed="false" visible="false">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="📋" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Projects" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
+
+                            <Button fx:id="btnTraining" onAction="#showPlaceholder"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="◈" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Training" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
+
+                            <Button fx:id="btnCommunity" onAction="#showCommunity"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="🌐" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Community" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
+                        </VBox>
+                    </VBox>
+
+                </VBox>
+            </ScrollPane>
+
+            <Separator styleClass="sidebar-separator"/>
+
+            <!-- ═══ SidebarFooter ═══ -->
+            <VBox fx:id="sidebarUserCard" styleClass="sidebar-user-card" spacing="4"
+                  onMouseClicked="#toggleUserMenu">
+                <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+                <HBox spacing="8" alignment="CENTER_LEFT">
+                    <StackPane alignment="CENTER" minWidth="32" minHeight="32" maxWidth="32" maxHeight="32">
+                        <VBox styleClass="avatar-circle" alignment="CENTER"
+                              minWidth="32" minHeight="32" maxWidth="32" maxHeight="32">
+                            <Label fx:id="sidebarAvatarInitial" text="U" styleClass="avatar-initial"
+                                   style="-fx-font-size: 13;"/>
+                        </VBox>
+                        <ImageView fx:id="sidebarAvatarImage" fitWidth="32" fitHeight="32"
+                                   preserveRatio="false" visible="false" managed="false">
+                            <clip>
+                                <Circle radius="16" centerX="16" centerY="16"/>
+                            </clip>
+                        </ImageView>
+                    </StackPane>
+                    <VBox fx:id="sidebarUserInfo" spacing="1">
+                        <Label fx:id="sidebarUserName" text="User" styleClass="sidebar-user-name"/>
+                        <Label fx:id="sidebarUserEmail" text="email@example.com" styleClass="sidebar-user-email"/>
+                    </VBox>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="sidebarUserChevron" text="⋮" styleClass="sidebar-user-chevron"/>
+                </HBox>
+            </VBox>
+
+        </VBox>
+    </left>
+
+    <!-- MAIN CONTENT AREA -->
+    <center>
+        <StackPane fx:id="contentArea" styleClass="content-area">
+            <padding><Insets top="20" right="24" bottom="20" left="24"/></padding>
+
+            <!-- Default: Dashboard Home -->
+            <ScrollPane fx:id="dashboardScroll" fitToWidth="true" 
+                        style="-fx-background-color: transparent; -fx-border-color: transparent;">
+            <VBox fx:id="dashboardHome" spacing="24" alignment="TOP_LEFT">
+
+                <!-- Header -->
+                <VBox spacing="4">
+                    <Label fx:id="dashboardTitle" text="Dashboard" styleClass="content-title"/>
+                    <Label fx:id="dashboardSubtitle" text="Overview of your workspace" styleClass="content-subtitle"/>
+                </VBox>
+
+                <!-- Stats Cards Row (admin/HR only) -->
+                <HBox fx:id="statsCardsRow" spacing="12" alignment="CENTER_LEFT">
+                    <!-- Card: Total Users -->
+                    <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                        <HBox alignment="CENTER_LEFT" spacing="0">
+                            <Label text="Total Users" styleClass="stat-label"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label text="👥" style="-fx-font-size: 20;"/>
+                        </HBox>
+                        <Label fx:id="statTotalUsers" text="0" styleClass="stat-value"/>
+                        <Label fx:id="statTotalUsersTrend" text="All registered accounts" styleClass="stat-trend"/>
+                    </VBox>
+
+                    <!-- Card: Active Employees -->
+                    <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                        <HBox alignment="CENTER_LEFT" spacing="0">
+                            <Label text="Employees" styleClass="stat-label"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label text="💼" style="-fx-font-size: 20;"/>
+                        </HBox>
+                        <Label fx:id="statEmployees" text="0" styleClass="stat-value"/>
+                        <Label fx:id="statEmployeesTrend" text="Employees &amp; project managers" styleClass="stat-trend"/>
+                    </VBox>
+
+                    <!-- Card: Gig Workers -->
+                    <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8">
+                        <HBox alignment="CENTER_LEFT" spacing="0">
+                            <Label text="Gig Workers" styleClass="stat-label"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label text="⚡" style="-fx-font-size: 20;"/>
+                        </HBox>
+                        <Label fx:id="statGigWorkers" text="0" styleClass="stat-value"/>
+                        <Label fx:id="statGigWorkersTrend" text="Freelance contributors" styleClass="stat-trend"/>
+                    </VBox>
+
+                    <!-- Card: Interviews (clickable → calendar popup) -->
+                    <VBox fx:id="interviewCard" styleClass="stat-card" HBox.hgrow="ALWAYS" spacing="8"
+                          onMouseClicked="#openInterviewCalendar" style="-fx-cursor: hand;">
+                        <HBox alignment="CENTER_LEFT" spacing="0">
+                            <Label text="Interviews" styleClass="stat-label"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label text="📅" style="-fx-font-size: 20;"/>
+                        </HBox>
+                        <Label fx:id="statInterviews" text="0" styleClass="stat-value"/>
+                        <Label fx:id="statInterviewsTrend" text="Scheduled sessions" styleClass="stat-trend"/>
+                        <Label text="Click to view calendar →" styleClass="weather-card-hint"/>
+                    </VBox>
+                </HBox>
+
+                <!-- Two column layout: Weather + Account -->
+                <HBox spacing="12">
+                    
+                    <!-- Weather Card (click to open full popup) -->
+                    <VBox fx:id="weatherCard" styleClass="dashboard-card,weather-dashboard-card" 
+                          HBox.hgrow="ALWAYS" spacing="0" onMouseClicked="#openWeatherPopup"
+                          style="-fx-cursor: hand;">
+                        <VBox styleClass="dashboard-card-header" spacing="2">
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label fx:id="weatherCardEmoji" text="🌤️" style="-fx-font-size: 20;"/>
+                                <VBox spacing="1">
+                                    <Label fx:id="weatherCardTitle" text="Weather" styleClass="dashboard-card-title"/>
+                                    <Label fx:id="weatherCardSubtitle" text="Loading..." styleClass="dashboard-card-description"/>
+                                </VBox>
+                            </HBox>
+                        </VBox>
+                        <VBox styleClass="dashboard-card-content" spacing="6">
+                            <HBox spacing="6" alignment="CENTER_LEFT">
+                                <Label fx:id="weatherCardTemp" text="--°C" styleClass="weather-card-temp"/>
+                                <Label fx:id="weatherCardCondition" text="" styleClass="weather-card-condition"/>
+                            </HBox>
+                            <HBox spacing="12" alignment="CENTER_LEFT">
+                                <Label fx:id="weatherCardHumidity" text="💧 --%" styleClass="weather-card-detail"/>
+                                <Label fx:id="weatherCardWind" text="💨 -- km/h" styleClass="weather-card-detail"/>
+                            </HBox>
+                            <Label text="Click for details →" styleClass="weather-card-hint"/>
+                        </VBox>
+                    </VBox>
+
+                    <!-- Your Account Card -->
+                    <VBox styleClass="dashboard-card" HBox.hgrow="ALWAYS" spacing="0">
+                        <VBox styleClass="dashboard-card-header" spacing="2">
+                            <Label text="Your Account" styleClass="dashboard-card-title"/>
+                            <Label text="Account information" styleClass="dashboard-card-description"/>
+                        </VBox>
+                        <VBox styleClass="dashboard-card-content" spacing="12">
+                            <HBox spacing="12" alignment="CENTER_LEFT">
+                                <StackPane alignment="CENTER" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40">
+                                    <VBox styleClass="avatar-circle" alignment="CENTER" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40">
+                                        <Label fx:id="avatarInitial" text="U" styleClass="avatar-initial"/>
+                                    </VBox>
+                                    <ImageView fx:id="accountAvatarImage" fitWidth="40" fitHeight="40"
+                                               preserveRatio="false" visible="false" managed="false">
+                                        <clip>
+                                            <Circle radius="20" centerX="20" centerY="20"/>
+                                        </clip>
+                                    </ImageView>
+                                </StackPane>
+                                <VBox spacing="2">
+                                    <Label fx:id="accountName" text="User Name" styleClass="account-name"/>
+                                    <Label fx:id="accountEmail" text="user@example.com" styleClass="account-email"/>
+                                </VBox>
+                            </HBox>
+                            <Separator styleClass="card-separator"/>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label text="Role" styleClass="stat-label"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="statRole" text="-" styleClass="topbar-role-badge"/>
+                            </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label text="Member since" styleClass="stat-label"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="accountCreatedAt" text="-" styleClass="account-meta"/>
+                            </HBox>
+                        </VBox>
+                    </VBox>
+
+                </HBox>
+
+                <!-- Platform Overview Card (admin/HR only) -->
+                <VBox fx:id="platformOverviewCard" styleClass="dashboard-card" spacing="0">
+                    <VBox styleClass="dashboard-card-header" spacing="2">
+                        <Label text="Platform Overview" styleClass="dashboard-card-title"/>
+                        <Label text="System-wide statistics and activity" styleClass="dashboard-card-description"/>
+                    </VBox>
+                    <VBox styleClass="dashboard-card-content" spacing="10">
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <Label text="Chat Rooms" styleClass="stat-label"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="statChatRooms" text="0" styleClass="account-meta"/>
+                        </HBox>
+                        <Separator styleClass="card-separator"/>
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <Label text="Total Messages" styleClass="stat-label"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="statMessages" text="0" styleClass="account-meta"/>
+                        </HBox>
+                        <Separator styleClass="card-separator"/>
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <Label text="Pending Interviews" styleClass="stat-label"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="statPendingInterviews" text="0" styleClass="account-meta"/>
+                        </HBox>
+                    </VBox>
+                </VBox>
+                
+            </VBox>
+            </ScrollPane>
+        </StackPane>
+    </center>
+
+</BorderPane>

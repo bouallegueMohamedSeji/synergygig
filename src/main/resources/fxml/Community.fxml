@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="controllers.CommunityController" spacing="0" styleClass="community-root">
+
+    <!-- Header -->
+    <HBox alignment="CENTER_LEFT" spacing="12" styleClass="community-header">
+        <padding><Insets top="14" right="20" bottom="12" left="20"/></padding>
+        <VBox spacing="2" HBox.hgrow="ALWAYS">
+            <Label text="Community" styleClass="content-title"/>
+            <Label text="Share ideas, discuss, and connect with your team" styleClass="content-subtitle"/>
+        </VBox>
+        <Button text="⋮" onAction="#handleCommunityMenu" styleClass="chat-kebab-btn"
+                style="-fx-font-size: 18; -fx-min-width: 34; -fx-min-height: 34;"/>
+        <Button fx:id="btnNewPost" text="+ New Post" onAction="#handleNewPost" styleClass="btn-primary"/>
+    </HBox>
+
+    <!-- New Post Form (hidden by default) -->
+    <VBox fx:id="newPostForm" managed="false" visible="false" styleClass="community-card" spacing="0">
+        <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
+        <VBox spacing="10" style="-fx-padding: 14 16;">
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="What's on your mind?" styleClass="community-author-name" style="-fx-font-size: 14;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="✕" onAction="#handleCancelPost" styleClass="community-action-btn"
+                        style="-fx-min-width: 28; -fx-min-height: 28; -fx-font-size: 14;"/>
+            </HBox>
+            <TextArea fx:id="postTextArea" promptText="Write something..." wrapText="true"
+                      prefRowCount="3" maxHeight="120" styleClass="chat-textarea"/>
+            <HBox spacing="10" alignment="CENTER_RIGHT">
+                <Button fx:id="btnAttachPostImage" text="📷 Image" onAction="#handleAttachPostImage"
+                        styleClass="community-react-btn" style="-fx-font-size: 12;"/>
+                <Label fx:id="imageAttachLabel" text="" styleClass="community-time-label" managed="false" visible="false"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="Cancel" onAction="#handleCancelPost" styleClass="btn-secondary"/>
+                <Button fx:id="btnSubmitPost" text="Post" onAction="#handleSubmitPost" styleClass="btn-primary"/>
+            </HBox>
+        </VBox>
+    </VBox>
+
+    <!-- ══ Line Tabs ══ -->
+    <HBox fx:id="tabBar" styleClass="community-tab-bar" spacing="0" alignment="CENTER_LEFT">
+        <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
+        <Button fx:id="tabFeed" text="Feed" onAction="#switchToFeed"
+                styleClass="community-tab,community-tab-active"/>
+        <Button fx:id="tabWiki" text="Wikipedia" onAction="#switchToWiki"
+                styleClass="community-tab"/>
+        <Button fx:id="tabQuotes" text="Quotes" onAction="#switchToQuotes"
+                styleClass="community-tab"/>
+    </HBox>
+
+    <!-- ══ Tab Content: Feed ══ -->
+    <ScrollPane fx:id="feedScroll" fitToWidth="true" VBox.vgrow="ALWAYS"
+                style="-fx-background-color: transparent; -fx-border-color: transparent;" hbarPolicy="NEVER">
+        <VBox fx:id="feedContainer" spacing="14" alignment="TOP_CENTER">
+            <padding><Insets top="14" right="20" bottom="20" left="20"/></padding>
+        </VBox>
+    </ScrollPane>
+
+    <!-- ══ Tab Content: Wikipedia ══ -->
+    <VBox fx:id="wikiPane" managed="false" visible="false" VBox.vgrow="ALWAYS" spacing="0">
+        <HBox spacing="8" alignment="CENTER_LEFT" styleClass="community-wiki-search-bar">
+            <padding><Insets top="12" right="20" bottom="12" left="20"/></padding>
+            <Label text="📚" style="-fx-font-size: 18;"/>
+            <TextField fx:id="wikiSearchField" promptText="Search Wikipedia..." styleClass="input-field"
+                       HBox.hgrow="ALWAYS" style="-fx-pref-height: 36;"/>
+            <Button fx:id="btnWikiSearch" text="Search" onAction="#handleWikiSearch"
+                    styleClass="btn-primary" style="-fx-pref-height: 36;"/>
+        </HBox>
+        <ScrollPane fx:id="wikiScroll" fitToWidth="true" VBox.vgrow="ALWAYS"
+                    style="-fx-background-color: transparent; -fx-border-color: transparent;" hbarPolicy="NEVER">
+            <VBox fx:id="wikiResultBox" spacing="12" alignment="TOP_LEFT">
+                <padding><Insets top="14" right="24" bottom="20" left="24"/></padding>
+            </VBox>
+        </ScrollPane>
+    </VBox>
+
+    <!-- ══ Tab Content: Quotes ══ -->
+    <VBox fx:id="quotesPane" managed="false" visible="false" VBox.vgrow="ALWAYS" spacing="0">
+        <HBox spacing="8" alignment="CENTER_LEFT">
+            <padding><Insets top="12" right="20" bottom="8" left="20"/></padding>
+            <Label text="💬  Inspirational Quotes" styleClass="content-title" style="-fx-font-size: 18;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="btnRefreshQuote" text="↻  New Quote" onAction="#handleRefreshQuote"
+                    styleClass="btn-secondary" style="-fx-font-size: 12;"/>
+        </HBox>
+        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                    style="-fx-background-color: transparent; -fx-border-color: transparent;" hbarPolicy="NEVER">
+            <VBox fx:id="quoteBox" spacing="16" alignment="TOP_CENTER">
+                <padding><Insets top="20" right="40" bottom="20" left="40"/></padding>
+            </VBox>
+        </ScrollPane>
+    </VBox>
+
+    <!-- Post Detail View (hidden by default) -->
+    <VBox fx:id="detailView" managed="false" visible="false" VBox.vgrow="ALWAYS">
+        <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-padding: 10 20;">
+            <Button text="← Back" onAction="#handleBackToFeed" styleClass="btn-secondary"
+                    style="-fx-font-size: 12; -fx-padding: 6 14;"/>
+            <Label text="Post Detail" styleClass="content-title" style="-fx-font-size: 16;"/>
+        </HBox>
+        <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                    style="-fx-background-color: transparent; -fx-border-color: transparent;" hbarPolicy="NEVER">
+            <VBox fx:id="detailContent" spacing="0" alignment="TOP_CENTER">
+                <padding><Insets top="6" right="20" bottom="20" left="20"/></padding>
+            </VBox>
+        </ScrollPane>
+    </VBox>
+
+</VBox>
