@@ -1,80 +1,99 @@
 package tn.esprit.synergygig.services;
 
-import com.stripe.model.PaymentIntent;
 import tn.esprit.synergygig.dao.ContractDAO;
 import tn.esprit.synergygig.entities.Contract;
 import tn.esprit.synergygig.entities.enums.ContractStatus;
-import tn.esprit.synergygig.entities.enums.PaymentStatus;
+
+import java.util.List;
 
 public class ContractService {
 
     private final ContractDAO contractDAO = new ContractDAO();
-    private final PaymentService paymentService = new PaymentService();
 
-    // ================= GENERATE CONTRACT + ESCROW =================
-    public void generateContractWithPayment(Contract contract) {
+    private final AiRiskService aiRiskService = new AiRiskService();
+    private final ContractPDFService pdfService = new ContractPDFService();
+    private final EmailService emailService = new EmailService();
+
+    // ================= GENERATE CONTRACT + AI + PDF + EMAIL =================
+    public void generateContract(
+            Contract contract,
+            String clientEmail,
+            String clientName
+    ) {
 
         try {
 
-            // 1️⃣ Création Escrow Stripe
-            PaymentIntent intent =
-                    paymentService.createPaymentIntent(contract.getAmount());
-
-            // 2️⃣ Mise à jour données contrat
-            contract.setPaymentIntentId(intent.getId());
-            contract.setPaymentStatus(PaymentStatus.AUTHORIZED);
+            // 1️⃣ Status initial
             contract.setStatus(ContractStatus.GENERATED);
 
-            // 3️⃣ Sauvegarde DB
+            // 2️⃣ Analyse IA
+            double riskScore =
+                    aiRiskService.analyzeRisk(contract.getTerms());
+
+            contract.setRiskScore(riskScore);
+
+            // 3️⃣ Insert DB
             contractDAO.insert(contract);
 
-            // 4️⃣ Génération automatique des milestones
-            MilestoneService milestoneService = new MilestoneService();
-            milestoneService.generateDefaultMilestones(
-                    contract.getId(),
-                    contract.getAmount()
+            // 4️⃣ Génération PDF
+            String pdfPath =
+                    pdfService.generatePDF(contract);
+
+            // 5️⃣ Envoi email
+            emailService.sendContractEmail(
+                    clientName,
+                    pdfPath
             );
 
-            System.out.println("✅ Contract generated + Escrow + Milestones");
+
+            System.out.println("✅ Contract + AI + PDF + Email ready");
 
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-    // ================= RELEASE PAYMENT =================
-    public void releasePayment(Contract contract) {
+
+    // ================= START WORK =================
+    public void startWork(Contract contract) {
 
         try {
 
-            paymentService.capturePayment(contract.getPaymentIntentId());
-
-            contract.setPaymentStatus(PaymentStatus.CAPTURED);
             contract.setStatus(ContractStatus.IN_PROGRESS);
-
             contractDAO.update(contract);
 
-            System.out.println("💰 Payment captured successfully");
+            System.out.println("🚀 Work started");
 
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    // ================= REFUND =================
-    public void refundPayment(Contract contract) {
+    // ================= COMPLETE =================
+    public void completeContract(Contract contract) {
 
         try {
 
-            paymentService.refundPayment(contract.getPaymentIntentId());
+            contract.setStatus(ContractStatus.COMPLETED);
 
-            contract.setPaymentStatus(PaymentStatus.REFUNDED);
+            // 🔥 Génération Hash blockchain
+            String hash = BlockchainService.generateHash(contract);
+            contract.setBlockchainHash(hash);
 
             contractDAO.update(contract);
 
-            System.out.println("↩ Payment refunded");
+            System.out.println("🏁 Contract completed + blockchain hash generated");
 
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
+
+    public List<Contract> getAllContracts() throws Exception {
+        return contractDAO.selectAll();
+    }
+    public boolean verifyContract(String hash) throws Exception {
+        return contractDAO.existsByHash(hash);
+    }
+
 }

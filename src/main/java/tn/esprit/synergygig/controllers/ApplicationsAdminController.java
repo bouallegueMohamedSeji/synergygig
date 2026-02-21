@@ -7,6 +7,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.HBox;
 import tn.esprit.synergygig.entities.Application;
+import tn.esprit.synergygig.entities.Offer;
 import tn.esprit.synergygig.entities.enums.ApplicationStatus;
 import tn.esprit.synergygig.services.ApplicationService;
 import javafx.animation.Animation;
@@ -15,6 +16,19 @@ import javafx.fxml.FXML;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Circle;
 import javafx.util.Duration;
+import tn.esprit.synergygig.services.OfferService;
+import java.time.LocalDate;
+
+import tn.esprit.synergygig.entities.Contract;
+import tn.esprit.synergygig.entities.Offer;
+import tn.esprit.synergygig.entities.User;
+
+import tn.esprit.synergygig.services.ContractService;
+import tn.esprit.synergygig.services.OfferService;
+import tn.esprit.synergygig.services.UserService;
+import java.time.LocalDate;
+
+
 
 
 public class ApplicationsAdminController {
@@ -132,13 +146,58 @@ public class ApplicationsAdminController {
     }
 
     private void accept(Application app) {
+
         try {
+
+            // 1️⃣ Update statut application
             service.accept(app);
+
+            // 2️⃣ Récupérer l'offre liée
+            OfferService offerService = new OfferService();
+            Offer offer = offerService.getById(app.getOfferId());
+
+            if (offer == null) {
+                showError("Offer introuvable.");
+                return;
+            }
+
+            // 3️⃣ Récupérer le client (créateur offre)
+            UserService userService = new UserService();
+            User client = userService.getById(offer.getCreatedBy());
+
+            if (client == null) {
+                showError("Client introuvable.");
+                return;
+            }
+
+            // 4️⃣ Créer contrat
+            Contract contract = new Contract(
+                    app.getId(),
+                    java.time.LocalDate.now(),
+                    java.time.LocalDate.now().plusDays(30),
+                    offer.getAmount(),
+                    "Client may delay payment and legal conflict possible"
+            );
+
+            // 5️⃣ Générer contrat (IA + PDF + Email)
+            ContractService contractService = new ContractService();
+            contractService.generateContract(
+                    contract,
+                    client.getEmail(),
+                    client.getFullName()
+            );
+
+            showSuccess("✅ Application acceptée. Contrat généré et email envoyé.");
+
             loadApplications();
+
         } catch (Exception e) {
-            showError(e.getMessage());
+            e.printStackTrace();
+            showError("Erreur lors de l'acceptation.");
         }
     }
+
+
 
     private void reject(Application app) {
         try {
@@ -183,5 +242,11 @@ public class ApplicationsAdminController {
             animatedBackground.getChildren().add(star);
         }
     }
+    private void showSuccess(String msg) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setContentText(msg);
+        alert.show();
+    }
+
 
 }

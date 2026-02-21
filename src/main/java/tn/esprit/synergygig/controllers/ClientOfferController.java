@@ -60,6 +60,9 @@ public class ClientOfferController {
     private ImageView logoImage;
     @FXML
     private ImageView previewImage;
+    @FXML
+    private TextField amountField;
+
 
     private String uploadedImageName;
 
@@ -210,7 +213,8 @@ public class ClientOfferController {
                     descriptionArea.getText(),
                     typeBox.getValue(),
                     currentUserId,
-                    uploadedImageName   // 🔥 IMPORTANT
+                    uploadedImageName,
+                    Double.parseDouble(amountField.getText()) // 🔥 nouveau champ
             );
 
 

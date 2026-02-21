@@ -29,6 +29,7 @@
                     <TableColumn fx:id="colDescription" text="Description" />
                     <TableColumn fx:id="colType" text="Type" />
                     <TableColumn fx:id="colStatus" text="Status" />
+                    <TableColumn fx:id="colAmount" text="Amount"/>
                     <TableColumn fx:id="colActions" text="Actions" />
                 </columns>
 

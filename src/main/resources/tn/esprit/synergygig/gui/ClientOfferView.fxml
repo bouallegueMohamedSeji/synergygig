@@ -9,10 +9,8 @@
            alignment="CENTER"
            fx:controller="tn.esprit.synergygig.controllers.ClientOfferController">
 
-    <!-- 🌌 Galaxy Background -->
     <Pane fx:id="animatedBackground"/>
 
-    <!-- Glass Card -->
     <VBox spacing="25"
           alignment="TOP_CENTER"
           maxWidth="950"
@@ -23,12 +21,10 @@
                  -fx-border-color: rgba(255,255,255,0.1);
                  -fx-border-radius:25;">
 
-        <!-- LOGO -->
         <ImageView fx:id="logoImage"
                    fitWidth="180"
                    preserveRatio="true"/>
 
-        <!-- TITLE -->
         <Label text="Manage My Offers"
                styleClass="title-galaxy"/>
 
@@ -71,16 +67,27 @@
                       GridPane.columnIndex="1"
                       GridPane.rowIndex="2"/>
 
-            <!-- 🔥 Image Upload -->
-            <Label text="Image"
+            <!-- Amount -->
+            <Label text="Amount"
                    styleClass="label-galaxy"
                    GridPane.rowIndex="3"
+                   GridPane.halignment="RIGHT"/>
+
+            <TextField fx:id="amountField"
+                       promptText="Enter amount (USD)"
+                       GridPane.columnIndex="1"
+                       GridPane.rowIndex="3"/>
+
+            <!-- Image -->
+            <Label text="Image"
+                   styleClass="label-galaxy"
+                   GridPane.rowIndex="4"
                    GridPane.halignment="RIGHT"/>
 
             <HBox spacing="15"
                   alignment="CENTER_LEFT"
                   GridPane.columnIndex="1"
-                  GridPane.rowIndex="3">
+                  GridPane.rowIndex="4">
 
                 <Button text="📷 Upload Image"
                         onAction="#handleUploadImage"

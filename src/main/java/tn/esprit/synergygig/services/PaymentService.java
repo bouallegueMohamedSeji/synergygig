@@ -9,7 +9,7 @@ import com.stripe.param.RefundCreateParams;
 public class PaymentService {
 
     static {
-        Stripe.apiKey = System.getenv("STRIPE_SECRET_KEY");
+        Stripe.apiKey = System.getenv("");
     }
 
     // ================= CREATE PAYMENT INTENT =================
@@ -44,4 +44,9 @@ public class PaymentService {
 
         Refund.create(params);
     }
+    // ================= GENERATE PAYMENT LINK (TEST VERSION) =================
+    public String generatePaymentLink(String paymentIntentId) {
+        return "https://dashboard.stripe.com/test/payments/" + paymentIntentId;
+    }
+
 }

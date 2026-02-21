@@ -76,6 +76,16 @@ public class OfferService {
     public List<Offer> getOffersByUser(int userId) throws SQLException {
         return dao.selectByUser(userId);
     }
+    public Offer getById(int id) throws Exception {
+
+        return dao.selectAll()
+                .stream()
+                .filter(o -> o.getId() == id)
+                .findFirst()
+                .orElse(null);
+    }
+
+
 
 
 }

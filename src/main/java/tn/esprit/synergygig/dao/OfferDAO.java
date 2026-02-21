@@ -20,22 +20,23 @@ public class OfferDAO implements CRUD<Offer> {
     // ================== INSERT ==================
     @Override
     public void insertOne(Offer o) throws SQLException {
+
         String sql = """
-    INSERT INTO offers (title, description, type, status, created_by, image_url)
-    VALUES (?, ?, ?, ?, ?, ?)
-""";
+    INSERT INTO offers (title, description, type, status, created_by, image_url, amount)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    """;
 
         PreparedStatement ps = cnx.prepareStatement(sql);
+
         ps.setString(1, o.getTitle());
         ps.setString(2, o.getDescription());
         ps.setString(3, o.getType().name());
         ps.setString(4, o.getStatus().name());
-
         ps.setInt(5, o.getCreatedBy());
-        ps.setString(6, o.getImageUrl());   // 🔥 IMPORTANT
+        ps.setString(6, o.getImageUrl());
+        ps.setDouble(7, o.getAmount());   // 🔥
 
         ps.executeUpdate();
-        System.out.println("✅ Offer insérée avec succès");
     }
 
     // ================== SELECT ALL ==================
@@ -49,6 +50,7 @@ public class OfferDAO implements CRUD<Offer> {
         ResultSet rs = st.executeQuery(sql);
 
         while (rs.next()) {
+
             Offer o = new Offer(
                     rs.getInt("id"),
                     rs.getString("title"),
@@ -57,7 +59,8 @@ public class OfferDAO implements CRUD<Offer> {
                     OfferStatus.valueOf(rs.getString("status")),
                     rs.getInt("created_by"),
                     rs.getTimestamp("created_at").toLocalDateTime(),
-                    rs.getString("image_url") // ✅ AJOUT ICI
+                    rs.getString("image_url"),
+                    rs.getDouble("amount")   // 🔥
             );
 
             offers.add(o);
@@ -70,18 +73,24 @@ public class OfferDAO implements CRUD<Offer> {
     @Override
     public void updateOne(Offer o) throws SQLException {
 
-        String sql = "UPDATE offers SET title=?, description=?, type=?, status=? WHERE id=?";
+        String sql = """
+    UPDATE offers
+    SET title=?, description=?, type=?, status=?, amount=?
+    WHERE id=?
+    """;
 
         PreparedStatement ps = cnx.prepareStatement(sql);
+
         ps.setString(1, o.getTitle());
         ps.setString(2, o.getDescription());
         ps.setString(3, o.getType().name());
         ps.setString(4, o.getStatus().name());
-        ps.setInt(5, o.getId());
+        ps.setDouble(5, o.getAmount());   // 🔥
+        ps.setInt(6, o.getId());
 
         ps.executeUpdate();
-        System.out.println("✏️ Offer mise à jour avec succès");
     }
+
 
     // ================== DELETE ==================
     @Override
@@ -138,13 +147,38 @@ public class OfferDAO implements CRUD<Offer> {
                     OfferStatus.valueOf(rs.getString("status")),
                     rs.getInt("created_by"),
                     rs.getTimestamp("created_at").toLocalDateTime(),
-                    rs.getString("image_url")
+                    rs.getString("image_url"),
+                    rs.getDouble("amount")   // 🔥
             );
 
             offers.add(o);
         }
 
         return offers;
+    }
+    public Offer selectById(int id) throws Exception {
+
+        String sql = "SELECT * FROM offers WHERE id = ?";
+        PreparedStatement ps = cnx.prepareStatement(sql);
+        ps.setInt(1, id);
+
+        ResultSet rs = ps.executeQuery();
+
+        if (rs.next()) {
+            return new Offer(
+                    rs.getInt("id"),
+                    rs.getString("title"),
+                    rs.getString("description"),
+                    OfferType.valueOf(rs.getString("type")),
+                    OfferStatus.valueOf(rs.getString("status")),
+                    rs.getInt("created_by"),
+                    rs.getTimestamp("created_at").toLocalDateTime(),
+                    rs.getString("image_url"),
+                    rs.getDouble("amount")
+            );
+        }
+
+        return null;
     }
 
 

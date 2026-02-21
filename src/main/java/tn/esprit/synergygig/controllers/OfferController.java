@@ -50,6 +50,9 @@ public class OfferController {
     @FXML private TableColumn<Offer, String> colTitle;
     @FXML private TableColumn<Offer, OfferType> colType;
     @FXML private TableColumn<Offer, OfferStatus> colStatus;
+    @FXML
+    private TableColumn<Offer, Double> colAmount;
+
     @FXML private TableColumn<Offer, Void> colActions;
     @FXML
     private TableColumn<Offer, String> colDescription;
@@ -63,6 +66,10 @@ public class OfferController {
     @FXML private ImageView previewImage;
     @FXML
     private Pane animatedBackground;
+    @FXML
+    private TextField amountField;
+
+
 
     private String selectedImageName;
 
@@ -79,6 +86,9 @@ public class OfferController {
         colType.setCellValueFactory(new PropertyValueFactory<>("type"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
         colDescription.setCellValueFactory(new PropertyValueFactory<>("description"));
+        colAmount.setCellValueFactory(
+                new PropertyValueFactory<>("amount")
+        );
         colActions.setPrefWidth(300);
         colActions.setMinWidth(300);
         offerTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -146,8 +156,9 @@ public class OfferController {
                     titleField.getText(),
                     descriptionField.getText(),
                     typeBox.getValue(),
-                    1,                      // createdBy
-                    selectedImageName       // image
+                    1,
+                    selectedImageName,
+                    Double.parseDouble(amountField.getText())
             );
 
 
