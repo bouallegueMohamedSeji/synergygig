@@ -31,6 +31,9 @@
         <Button text="🧑‍💻 Gig View" onAction="#goGigOffers" styleClass="sidebar-btn"/>
         <Button text="🧑‍💻 Gig View" onAction="#goGigOffers" styleClass="sidebar-btn"/>
         <Button text="👤 My Offers" onAction="#showClientOffers" styleClass="sidebar-btn"/>
+        <Button text="🔐 Verify Contract"
+                onAction="#showVerifyView"/>
+
 
 
     </VBox>

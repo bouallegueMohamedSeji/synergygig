@@ -11,9 +11,9 @@ public class BlockchainService {
         try {
 
             String data =
-                    contract.getId() +
-                            contract.getStartDate() +
-                            contract.getEndDate() +
+                    String.valueOf(contract.getId()) +
+                            contract.getStartDate().toString() +
+                            contract.getEndDate().toString() +
                             contract.getTerms();
 
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -34,4 +34,5 @@ public class BlockchainService {
             return null;
         }
     }
+
 }

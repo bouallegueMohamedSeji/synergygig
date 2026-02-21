@@ -15,6 +15,7 @@ public class ContractService {
     private final EmailService emailService = new EmailService();
 
     // ================= GENERATE CONTRACT + AI + PDF + EMAIL =================
+    // ================= GENERATE CONTRACT + AI + PDF + EMAIL =================
     public void generateContract(
             Contract contract,
             String clientEmail,
@@ -32,21 +33,27 @@ public class ContractService {
 
             contract.setRiskScore(riskScore);
 
-            // 3️⃣ Insert DB
+            // 3️⃣ Insert DB (ID généré ici)
             contractDAO.insert(contract);
 
-            // 4️⃣ Génération PDF
+            // 🔥 4️⃣ Génération Hash blockchain (APRÈS insert)
+            String hash = BlockchainService.generateHash(contract);
+            contract.setBlockchainHash(hash);
+
+            // 🔥 Sauvegarder le hash en base
+            contractDAO.update(contract);
+
+            // 5️⃣ Génération PDF
             String pdfPath =
                     pdfService.generatePDF(contract);
 
-            // 5️⃣ Envoi email
+            // 6️⃣ Envoi email
             emailService.sendContractEmail(
                     clientName,
                     pdfPath
             );
 
-
-            System.out.println("✅ Contract + AI + PDF + Email ready");
+            System.out.println("✅ Contract + Hash + AI + PDF + Email ready");
 
         } catch (Exception e) {
             e.printStackTrace();
