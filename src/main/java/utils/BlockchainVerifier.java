@@ -23,7 +23,7 @@ public class BlockchainVerifier {
      * @param amount     Contract amount
      * @return 64-char hex SHA-256 hash
      */
-    public static String generateHash(int contractId, String terms, double amount) {
+    public static synchronized String generateHash(int contractId, String terms, double amount) {
         try {
             String data = lastHash + "|" + contractId + "|" + (terms != null ? terms : "") + "|" + amount + "|" + Instant.now().toEpochMilli();
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

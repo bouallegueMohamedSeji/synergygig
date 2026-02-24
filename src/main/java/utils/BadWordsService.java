@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import utils.AppConfig;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -19,7 +20,8 @@ import java.time.Duration;
 public class BadWordsService {
 
     private static final String API_URL = "https://api.apilayer.com/bad_words";
-    private static final String API_KEY = "YgbeLs1Let62752r83R0gWVaXdhZMBPj";
+    private static final String API_KEY = AppConfig.get("badwords.api_key",
+            "YgbeLs1Let62752r83R0gWVaXdhZMBPj");
 
     private static final HttpClient client = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))

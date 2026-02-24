@@ -12,6 +12,8 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
 import services.ServiceInterview;
 import services.ServiceUser;
+import javafx.animation.PauseTransition;
+import javafx.util.Duration;
 import utils.AnimatedButton;
 import utils.SessionManager;
 import utils.StyledAlert;
@@ -374,10 +376,9 @@ public class InterviewController {
             loadInterviews();
 
             // Auto-hide form after brief delay
-            javafx.application.Platform.runLater(() -> {
-                try { Thread.sleep(800); } catch (InterruptedException ignored) {}
-                javafx.application.Platform.runLater(this::cancelForm);
-            });
+            PauseTransition pause = new PauseTransition(Duration.millis(800));
+            pause.setOnFinished(e -> cancelForm());
+            pause.play();
 
         } catch (SQLException e) {
             showFormStatus("Error: " + e.getMessage(), true);

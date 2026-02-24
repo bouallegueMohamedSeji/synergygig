@@ -123,7 +123,14 @@ public class ServiceUser implements IService<User> {
         if (useApi) {
             Map<String, Object> body = new HashMap<>();
             body.put("email", user.getEmail());
-            body.put("password", user.getPassword());
+            // Only send password if it looks like a new plaintext value (not already hashed)
+            String pw = user.getPassword();
+            if (pw != null && !pw.isEmpty() && !pw.startsWith("$2")) {
+                // Hash plaintext password before sending
+                pw = BCrypt.hashpw(pw, BCrypt.gensalt());
+                user.setPassword(pw);
+            }
+            body.put("password", pw);
             body.put("first_name", user.getFirstName());
             body.put("last_name", user.getLastName());
             body.put("role", user.getRole());
@@ -132,10 +139,16 @@ public class ServiceUser implements IService<User> {
             System.out.println("✅ User updated via API: " + user.getEmail());
             return;
         }
+        // JDBC: hash password if it's plaintext
+        String pw = user.getPassword();
+        if (pw != null && !pw.isEmpty() && !pw.startsWith("$2")) {
+            pw = BCrypt.hashpw(pw, BCrypt.gensalt());
+            user.setPassword(pw);
+        }
         String req = "UPDATE users SET email=?, password=?, first_name=?, last_name=?, role=?, avatar_path=? WHERE id=?";
         PreparedStatement ps = connection.prepareStatement(req);
         ps.setString(1, user.getEmail());
-        ps.setString(2, user.getPassword());
+        ps.setString(2, pw);
         ps.setString(3, user.getFirstName());
         ps.setString(4, user.getLastName());
         ps.setString(5, user.getRole());
@@ -485,7 +498,19 @@ public class ServiceUser implements IService<User> {
      * Verify an OTP code (API mode only — server holds the store).
      * Returns true if valid.
      */
+    /**
+     * Verify an OTP code.
+     * API mode: server validates. JDBC mode: caller must pass the expected OTP for comparison.
+     */
     public boolean verifyOtp(String email, String otp) {
+        return verifyOtp(email, otp, null);
+    }
+
+    /**
+     * Verify an OTP code against an expected value.
+     * @param expectedOtp The OTP that was generated locally (JDBC mode). Ignored in API mode.
+     */
+    public boolean verifyOtp(String email, String otp, String expectedOtp) {
         if (useApi) {
             Map<String, Object> body = new HashMap<>();
             body.put("email", email);
@@ -495,8 +520,12 @@ public class ServiceUser implements IService<User> {
                     && resp.getAsJsonObject().has("valid")
                     && resp.getAsJsonObject().get("valid").getAsBoolean();
         }
-        // In JDBC mode, OTP is verified locally in the controller
-        return true;
+        // JDBC mode: compare against locally generated OTP
+        if (expectedOtp == null || expectedOtp.isEmpty()) {
+            System.err.println("[OTP] JDBC mode requires expectedOtp — rejecting");
+            return false;
+        }
+        return otp != null && otp.equals(expectedOtp);
     }
 
     /**
