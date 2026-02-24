@@ -75,24 +75,25 @@ public class ServiceTrainingCourse implements IService<TrainingCourse> {
         String sql = "INSERT INTO training_courses (title, description, category, difficulty, duration_hours, " +
                 "instructor_name, mega_link, thumbnail_url, max_participants, status, start_date, end_date, created_by) " +
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
-        PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        ps.setString(1, c.getTitle());
-        ps.setString(2, c.getDescription());
-        ps.setString(3, c.getCategory());
-        ps.setString(4, c.getDifficulty());
-        ps.setDouble(5, c.getDurationHours());
-        ps.setString(6, c.getInstructorName());
-        ps.setString(7, c.getMegaLink());
-        ps.setString(8, c.getThumbnailUrl());
-        ps.setInt(9, c.getMaxParticipants());
-        ps.setString(10, c.getStatus());
-        ps.setDate(11, c.getStartDate());
-        ps.setDate(12, c.getEndDate());
-        ps.setInt(13, c.getCreatedBy());
-        ps.executeUpdate();
-        ResultSet keys = ps.getGeneratedKeys();
-        if (keys.next()) c.setId(keys.getInt(1));
-        keys.close(); ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, c.getTitle());
+            ps.setString(2, c.getDescription());
+            ps.setString(3, c.getCategory());
+            ps.setString(4, c.getDifficulty());
+            ps.setDouble(5, c.getDurationHours());
+            ps.setString(6, c.getInstructorName());
+            ps.setString(7, c.getMegaLink());
+            ps.setString(8, c.getThumbnailUrl());
+            ps.setInt(9, c.getMaxParticipants());
+            ps.setString(10, c.getStatus());
+            ps.setDate(11, c.getStartDate());
+            ps.setDate(12, c.getEndDate());
+            ps.setInt(13, c.getCreatedBy());
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) c.setId(keys.getInt(1));
+            }
+        }
     }
 
     @Override
@@ -103,60 +104,63 @@ public class ServiceTrainingCourse implements IService<TrainingCourse> {
         }
         String sql = "UPDATE training_courses SET title=?, description=?, category=?, difficulty=?, duration_hours=?, " +
                 "instructor_name=?, mega_link=?, thumbnail_url=?, max_participants=?, status=?, start_date=?, end_date=? WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(sql);
-        ps.setString(1, c.getTitle());
-        ps.setString(2, c.getDescription());
-        ps.setString(3, c.getCategory());
-        ps.setString(4, c.getDifficulty());
-        ps.setDouble(5, c.getDurationHours());
-        ps.setString(6, c.getInstructorName());
-        ps.setString(7, c.getMegaLink());
-        ps.setString(8, c.getThumbnailUrl());
-        ps.setInt(9, c.getMaxParticipants());
-        ps.setString(10, c.getStatus());
-        ps.setDate(11, c.getStartDate());
-        ps.setDate(12, c.getEndDate());
-        ps.setInt(13, c.getId());
-        ps.executeUpdate(); ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, c.getTitle());
+            ps.setString(2, c.getDescription());
+            ps.setString(3, c.getCategory());
+            ps.setString(4, c.getDifficulty());
+            ps.setDouble(5, c.getDurationHours());
+            ps.setString(6, c.getInstructorName());
+            ps.setString(7, c.getMegaLink());
+            ps.setString(8, c.getThumbnailUrl());
+            ps.setInt(9, c.getMaxParticipants());
+            ps.setString(10, c.getStatus());
+            ps.setDate(11, c.getStartDate());
+            ps.setDate(12, c.getEndDate());
+            ps.setInt(13, c.getId());
+            ps.executeUpdate();
+        }
     }
 
     @Override
     public void supprimer(int id) throws SQLException {
         if (useApi) { ApiClient.delete("/training_courses/" + id); return; }
-        PreparedStatement ps = connection.prepareStatement("DELETE FROM training_courses WHERE id=?");
-        ps.setInt(1, id);
-        ps.executeUpdate(); ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM training_courses WHERE id=?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
     }
 
     @Override
     public List<TrainingCourse> recuperer() throws SQLException {
         if (useApi) return jsonArrayToList(ApiClient.get("/training_courses"));
         List<TrainingCourse> list = new ArrayList<>();
-        Statement st = connection.createStatement();
-        ResultSet rs = st.executeQuery("SELECT * FROM training_courses ORDER BY created_at DESC");
-        while (rs.next()) list.add(rowToCourse(rs));
-        rs.close(); st.close();
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM training_courses ORDER BY created_at DESC")) {
+            while (rs.next()) list.add(rowToCourse(rs));
+        }
         return list;
     }
 
     public List<TrainingCourse> getActive() throws SQLException {
         if (useApi) return jsonArrayToList(ApiClient.get("/training_courses/status/ACTIVE"));
         List<TrainingCourse> list = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement("SELECT * FROM training_courses WHERE status='ACTIVE' ORDER BY created_at DESC");
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) list.add(rowToCourse(rs));
-        rs.close(); ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM training_courses WHERE status='ACTIVE' ORDER BY created_at DESC");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) list.add(rowToCourse(rs));
+        }
         return list;
     }
 
     public List<TrainingCourse> getByCategory(String category) throws SQLException {
         if (useApi) return jsonArrayToList(ApiClient.get("/training_courses/category/" + category));
         List<TrainingCourse> list = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement("SELECT * FROM training_courses WHERE category=? ORDER BY created_at DESC");
-        ps.setString(1, category);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) list.add(rowToCourse(rs));
-        rs.close(); ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM training_courses WHERE category=? ORDER BY created_at DESC")) {
+            ps.setString(1, category);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) list.add(rowToCourse(rs));
+            }
+        }
         return list;
     }
 

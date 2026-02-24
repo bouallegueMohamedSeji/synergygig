@@ -110,17 +110,17 @@ public class ServiceAttendance implements IService<Attendance> {
             return;
         }
         String sql = "INSERT INTO attendance (user_id, date, check_in, check_out, status) VALUES (?, ?, ?, ?, ?)";
-        PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        ps.setInt(1, a.getUserId());
-        ps.setDate(2, a.getDate());
-        ps.setTime(3, a.getCheckIn());
-        ps.setTime(4, a.getCheckOut());
-        ps.setString(5, a.getStatus());
-        ps.executeUpdate();
-        ResultSet keys = ps.getGeneratedKeys();
-        if (keys.next()) a.setId(keys.getInt(1));
-        keys.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, a.getUserId());
+            ps.setDate(2, a.getDate());
+            ps.setTime(3, a.getCheckIn());
+            ps.setTime(4, a.getCheckOut());
+            ps.setString(5, a.getStatus());
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) a.setId(keys.getInt(1));
+            }
+        }
     }
 
     @Override
@@ -136,15 +136,15 @@ public class ServiceAttendance implements IService<Attendance> {
             return;
         }
         String sql = "UPDATE attendance SET user_id=?, date=?, check_in=?, check_out=?, status=? WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(sql);
-        ps.setInt(1, a.getUserId());
-        ps.setDate(2, a.getDate());
-        ps.setTime(3, a.getCheckIn());
-        ps.setTime(4, a.getCheckOut());
-        ps.setString(5, a.getStatus());
-        ps.setInt(6, a.getId());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, a.getUserId());
+            ps.setDate(2, a.getDate());
+            ps.setTime(3, a.getCheckIn());
+            ps.setTime(4, a.getCheckOut());
+            ps.setString(5, a.getStatus());
+            ps.setInt(6, a.getId());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -153,10 +153,10 @@ public class ServiceAttendance implements IService<Attendance> {
             ApiClient.delete("/attendance/" + id);
             return;
         }
-        PreparedStatement ps = connection.prepareStatement("DELETE FROM attendance WHERE id=?");
-        ps.setInt(1, id);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM attendance WHERE id=?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -165,11 +165,10 @@ public class ServiceAttendance implements IService<Attendance> {
             return jsonArrayToList(ApiClient.get("/attendance"));
         }
         List<Attendance> list = new ArrayList<>();
-        Statement st = connection.createStatement();
-        ResultSet rs = st.executeQuery("SELECT * FROM attendance ORDER BY date DESC");
-        while (rs.next()) list.add(rowToAttendance(rs));
-        rs.close();
-        st.close();
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM attendance ORDER BY date DESC")) {
+            while (rs.next()) list.add(rowToAttendance(rs));
+        }
         return list;
     }
 
@@ -178,12 +177,12 @@ public class ServiceAttendance implements IService<Attendance> {
             return jsonArrayToList(ApiClient.get("/attendance/user/" + userId));
         }
         List<Attendance> list = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement("SELECT * FROM attendance WHERE user_id=? ORDER BY date DESC");
-        ps.setInt(1, userId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) list.add(rowToAttendance(rs));
-        rs.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM attendance WHERE user_id=? ORDER BY date DESC")) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) list.add(rowToAttendance(rs));
+            }
+        }
         return list;
     }
 
@@ -192,12 +191,12 @@ public class ServiceAttendance implements IService<Attendance> {
             return jsonArrayToList(ApiClient.get("/attendance/date/" + date.toString()));
         }
         List<Attendance> list = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement("SELECT * FROM attendance WHERE date=? ORDER BY user_id");
-        ps.setDate(1, date);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) list.add(rowToAttendance(rs));
-        rs.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM attendance WHERE date=? ORDER BY user_id")) {
+            ps.setDate(1, date);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) list.add(rowToAttendance(rs));
+            }
+        }
         return list;
     }
 
@@ -210,15 +209,14 @@ public class ServiceAttendance implements IService<Attendance> {
             List<Attendance> todayList = jsonArrayToList(ApiClient.get("/attendance/date/" + today.toString()));
             return todayList.stream().filter(a -> a.getUserId() == userId).findFirst().orElse(null);
         }
-        PreparedStatement ps = connection.prepareStatement("SELECT * FROM attendance WHERE user_id=? AND date=?");
-        ps.setInt(1, userId);
-        ps.setDate(2, today);
-        ResultSet rs = ps.executeQuery();
-        Attendance a = null;
-        if (rs.next()) a = rowToAttendance(rs);
-        rs.close();
-        ps.close();
-        return a;
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM attendance WHERE user_id=? AND date=?")) {
+            ps.setInt(1, userId);
+            ps.setDate(2, today);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rowToAttendance(rs);
+            }
+        }
+        return null;
     }
 
     /**

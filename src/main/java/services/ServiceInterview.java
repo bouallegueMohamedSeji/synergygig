@@ -69,13 +69,13 @@ public class ServiceInterview implements IService<Interview> {
             return;
         }
         String req = "INSERT INTO interviews (organizer_id, candidate_id, date_time, status, meet_link) VALUES (?, ?, ?, 'PENDING', ?)";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ps.setInt(1, interview.getOrganizerId());
-        ps.setInt(2, interview.getCandidateId());
-        ps.setTimestamp(3, interview.getDateTime());
-        ps.setString(4, interview.getMeetLink());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(req)) {
+            ps.setInt(1, interview.getOrganizerId());
+            ps.setInt(2, interview.getCandidateId());
+            ps.setTimestamp(3, interview.getDateTime());
+            ps.setString(4, interview.getMeetLink());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -91,15 +91,15 @@ public class ServiceInterview implements IService<Interview> {
             return;
         }
         String req = "UPDATE interviews SET organizer_id=?, candidate_id=?, date_time=?, status=?, meet_link=? WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ps.setInt(1, interview.getOrganizerId());
-        ps.setInt(2, interview.getCandidateId());
-        ps.setTimestamp(3, interview.getDateTime());
-        ps.setString(4, interview.getStatus());
-        ps.setString(5, interview.getMeetLink());
-        ps.setInt(6, interview.getId());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(req)) {
+            ps.setInt(1, interview.getOrganizerId());
+            ps.setInt(2, interview.getCandidateId());
+            ps.setTimestamp(3, interview.getDateTime());
+            ps.setString(4, interview.getStatus());
+            ps.setString(5, interview.getMeetLink());
+            ps.setInt(6, interview.getId());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -109,10 +109,10 @@ public class ServiceInterview implements IService<Interview> {
             return;
         }
         String req = "DELETE FROM interviews WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ps.setInt(1, id);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(req)) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -122,19 +122,18 @@ public class ServiceInterview implements IService<Interview> {
         }
         List<Interview> interviews = new ArrayList<>();
         String req = "SELECT * FROM interviews";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) {
-            interviews.add(new Interview(
-                    rs.getInt("id"),
-                    rs.getInt("organizer_id"),
-                    rs.getInt("candidate_id"),
-                    rs.getTimestamp("date_time"),
-                    rs.getString("status"),
-                    rs.getString("meet_link")));
+        try (PreparedStatement ps = connection.prepareStatement(req);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                interviews.add(new Interview(
+                        rs.getInt("id"),
+                        rs.getInt("organizer_id"),
+                        rs.getInt("candidate_id"),
+                        rs.getTimestamp("date_time"),
+                        rs.getString("status"),
+                        rs.getString("meet_link")));
+            }
         }
-        rs.close();
-        ps.close();
         return interviews;
     }
 
@@ -144,20 +143,20 @@ public class ServiceInterview implements IService<Interview> {
         }
         List<Interview> interviews = new ArrayList<>();
         String req = "SELECT * FROM interviews WHERE organizer_id=? ORDER BY date_time DESC";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ps.setInt(1, organizerId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) {
-            interviews.add(new Interview(
-                    rs.getInt("id"),
-                    rs.getInt("organizer_id"),
-                    rs.getInt("candidate_id"),
-                    rs.getTimestamp("date_time"),
-                    rs.getString("status"),
-                    rs.getString("meet_link")));
+        try (PreparedStatement ps = connection.prepareStatement(req)) {
+            ps.setInt(1, organizerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    interviews.add(new Interview(
+                            rs.getInt("id"),
+                            rs.getInt("organizer_id"),
+                            rs.getInt("candidate_id"),
+                            rs.getTimestamp("date_time"),
+                            rs.getString("status"),
+                            rs.getString("meet_link")));
+                }
+            }
         }
-        rs.close();
-        ps.close();
         return interviews;
     }
 
@@ -167,20 +166,20 @@ public class ServiceInterview implements IService<Interview> {
         }
         List<Interview> interviews = new ArrayList<>();
         String req = "SELECT * FROM interviews WHERE candidate_id=? ORDER BY date_time DESC";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ps.setInt(1, candidateId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) {
-            interviews.add(new Interview(
-                    rs.getInt("id"),
-                    rs.getInt("organizer_id"),
-                    rs.getInt("candidate_id"),
-                    rs.getTimestamp("date_time"),
-                    rs.getString("status"),
-                    rs.getString("meet_link")));
+        try (PreparedStatement ps = connection.prepareStatement(req)) {
+            ps.setInt(1, candidateId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    interviews.add(new Interview(
+                            rs.getInt("id"),
+                            rs.getInt("organizer_id"),
+                            rs.getInt("candidate_id"),
+                            rs.getTimestamp("date_time"),
+                            rs.getString("status"),
+                            rs.getString("meet_link")));
+                }
+            }
         }
-        rs.close();
-        ps.close();
         return interviews;
     }
 }

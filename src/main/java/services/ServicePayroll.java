@@ -88,24 +88,24 @@ public class ServicePayroll implements IService<Payroll> {
         }
         String sql = "INSERT INTO payrolls (user_id, month, year, amount, base_salary, bonus, deductions, net_salary, total_hours_worked, hourly_rate, status) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        ps.setInt(1, p.getUserId());
-        ps.setDate(2, p.getMonth());
-        if (p.getYear() != null) ps.setInt(3, p.getYear());
-        else ps.setNull(3, Types.INTEGER);
-        ps.setDouble(4, p.getAmount());
-        ps.setDouble(5, p.getBaseSalary());
-        ps.setDouble(6, p.getBonus());
-        ps.setDouble(7, p.getDeductions());
-        ps.setDouble(8, p.getNetSalary());
-        ps.setDouble(9, p.getTotalHoursWorked());
-        ps.setDouble(10, p.getHourlyRate());
-        ps.setString(11, p.getStatus());
-        ps.executeUpdate();
-        ResultSet keys = ps.getGeneratedKeys();
-        if (keys.next()) p.setId(keys.getInt(1));
-        keys.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, p.getUserId());
+            ps.setDate(2, p.getMonth());
+            if (p.getYear() != null) ps.setInt(3, p.getYear());
+            else ps.setNull(3, Types.INTEGER);
+            ps.setDouble(4, p.getAmount());
+            ps.setDouble(5, p.getBaseSalary());
+            ps.setDouble(6, p.getBonus());
+            ps.setDouble(7, p.getDeductions());
+            ps.setDouble(8, p.getNetSalary());
+            ps.setDouble(9, p.getTotalHoursWorked());
+            ps.setDouble(10, p.getHourlyRate());
+            ps.setString(11, p.getStatus());
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) p.setId(keys.getInt(1));
+            }
+        }
     }
 
     @Override
@@ -128,22 +128,22 @@ public class ServicePayroll implements IService<Payroll> {
         }
         String sql = "UPDATE payrolls SET user_id=?, month=?, year=?, amount=?, base_salary=?, bonus=?, deductions=?, " +
                 "net_salary=?, total_hours_worked=?, hourly_rate=?, status=? WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(sql);
-        ps.setInt(1, p.getUserId());
-        ps.setDate(2, p.getMonth());
-        if (p.getYear() != null) ps.setInt(3, p.getYear());
-        else ps.setNull(3, Types.INTEGER);
-        ps.setDouble(4, p.getAmount());
-        ps.setDouble(5, p.getBaseSalary());
-        ps.setDouble(6, p.getBonus());
-        ps.setDouble(7, p.getDeductions());
-        ps.setDouble(8, p.getNetSalary());
-        ps.setDouble(9, p.getTotalHoursWorked());
-        ps.setDouble(10, p.getHourlyRate());
-        ps.setString(11, p.getStatus());
-        ps.setInt(12, p.getId());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, p.getUserId());
+            ps.setDate(2, p.getMonth());
+            if (p.getYear() != null) ps.setInt(3, p.getYear());
+            else ps.setNull(3, Types.INTEGER);
+            ps.setDouble(4, p.getAmount());
+            ps.setDouble(5, p.getBaseSalary());
+            ps.setDouble(6, p.getBonus());
+            ps.setDouble(7, p.getDeductions());
+            ps.setDouble(8, p.getNetSalary());
+            ps.setDouble(9, p.getTotalHoursWorked());
+            ps.setDouble(10, p.getHourlyRate());
+            ps.setString(11, p.getStatus());
+            ps.setInt(12, p.getId());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -152,10 +152,10 @@ public class ServicePayroll implements IService<Payroll> {
             ApiClient.delete("/payrolls/" + id);
             return;
         }
-        PreparedStatement ps = connection.prepareStatement("DELETE FROM payrolls WHERE id=?");
-        ps.setInt(1, id);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM payrolls WHERE id=?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -164,11 +164,10 @@ public class ServicePayroll implements IService<Payroll> {
             return jsonArrayToList(ApiClient.get("/payrolls"));
         }
         List<Payroll> list = new ArrayList<>();
-        Statement st = connection.createStatement();
-        ResultSet rs = st.executeQuery("SELECT * FROM payrolls ORDER BY month DESC");
-        while (rs.next()) list.add(rowToPayroll(rs));
-        rs.close();
-        st.close();
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM payrolls ORDER BY month DESC")) {
+            while (rs.next()) list.add(rowToPayroll(rs));
+        }
         return list;
     }
 
@@ -177,12 +176,12 @@ public class ServicePayroll implements IService<Payroll> {
             return jsonArrayToList(ApiClient.get("/payrolls/user/" + userId));
         }
         List<Payroll> list = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement("SELECT * FROM payrolls WHERE user_id=? ORDER BY month DESC");
-        ps.setInt(1, userId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) list.add(rowToPayroll(rs));
-        rs.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM payrolls WHERE user_id=? ORDER BY month DESC")) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) list.add(rowToPayroll(rs));
+            }
+        }
         return list;
     }
 

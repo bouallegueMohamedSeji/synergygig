@@ -90,20 +90,20 @@ public class ServiceProject implements IService<Project> {
             return;
         }
         String sql = "INSERT INTO projects (name, description, owner_id, start_date, deadline, status, department_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        ps.setString(1, p.getName());
-        ps.setString(2, p.getDescription());
-        ps.setInt(3, p.getManagerId());
-        ps.setDate(4, p.getStartDate());
-        ps.setDate(5, p.getDeadline());
-        ps.setString(6, p.getStatus());
-        if (p.getDepartmentId() != null) ps.setInt(7, p.getDepartmentId());
-        else ps.setNull(7, java.sql.Types.INTEGER);
-        ps.executeUpdate();
-        ResultSet keys = ps.getGeneratedKeys();
-        if (keys.next()) p.setId(keys.getInt(1));
-        keys.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, p.getName());
+            ps.setString(2, p.getDescription());
+            ps.setInt(3, p.getManagerId());
+            ps.setDate(4, p.getStartDate());
+            ps.setDate(5, p.getDeadline());
+            ps.setString(6, p.getStatus());
+            if (p.getDepartmentId() != null) ps.setInt(7, p.getDepartmentId());
+            else ps.setNull(7, java.sql.Types.INTEGER);
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) p.setId(keys.getInt(1));
+            }
+        }
     }
 
     @Override
@@ -121,18 +121,18 @@ public class ServiceProject implements IService<Project> {
             return;
         }
         String sql = "UPDATE projects SET name=?, description=?, owner_id=?, start_date=?, deadline=?, status=?, department_id=? WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(sql);
-        ps.setString(1, p.getName());
-        ps.setString(2, p.getDescription());
-        ps.setInt(3, p.getManagerId());
-        ps.setDate(4, p.getStartDate());
-        ps.setDate(5, p.getDeadline());
-        ps.setString(6, p.getStatus());
-        if (p.getDepartmentId() != null) ps.setInt(7, p.getDepartmentId());
-        else ps.setNull(7, java.sql.Types.INTEGER);
-        ps.setInt(8, p.getId());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, p.getName());
+            ps.setString(2, p.getDescription());
+            ps.setInt(3, p.getManagerId());
+            ps.setDate(4, p.getStartDate());
+            ps.setDate(5, p.getDeadline());
+            ps.setString(6, p.getStatus());
+            if (p.getDepartmentId() != null) ps.setInt(7, p.getDepartmentId());
+            else ps.setNull(7, java.sql.Types.INTEGER);
+            ps.setInt(8, p.getId());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -142,15 +142,14 @@ public class ServiceProject implements IService<Project> {
             return;
         }
         // Delete tasks first (cascade)
-        PreparedStatement delTasks = connection.prepareStatement("DELETE FROM tasks WHERE project_id = ?");
-        delTasks.setInt(1, id);
-        delTasks.executeUpdate();
-        delTasks.close();
-
-        PreparedStatement ps = connection.prepareStatement("DELETE FROM projects WHERE id = ?");
-        ps.setInt(1, id);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement delTasks = connection.prepareStatement("DELETE FROM tasks WHERE project_id = ?")) {
+            delTasks.setInt(1, id);
+            delTasks.executeUpdate();
+        }
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM projects WHERE id = ?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -160,13 +159,12 @@ public class ServiceProject implements IService<Project> {
             return jsonArrayToProjects(el);
         }
         List<Project> projects = new ArrayList<>();
-        Statement st = connection.createStatement();
-        ResultSet rs = st.executeQuery("SELECT * FROM projects ORDER BY created_at DESC");
-        while (rs.next()) {
-            projects.add(rowToProject(rs));
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM projects ORDER BY created_at DESC")) {
+            while (rs.next()) {
+                projects.add(rowToProject(rs));
+            }
         }
-        rs.close();
-        st.close();
         return projects;
     }
 
@@ -177,15 +175,15 @@ public class ServiceProject implements IService<Project> {
             return jsonArrayToProjects(el);
         }
         List<Project> projects = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement(
-                "SELECT * FROM projects WHERE owner_id = ? ORDER BY created_at DESC");
-        ps.setInt(1, managerId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) {
-            projects.add(rowToProject(rs));
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT * FROM projects WHERE owner_id = ? ORDER BY created_at DESC")) {
+            ps.setInt(1, managerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    projects.add(rowToProject(rs));
+                }
+            }
         }
-        rs.close();
-        ps.close();
         return projects;
     }
 

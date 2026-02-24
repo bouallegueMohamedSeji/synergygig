@@ -57,15 +57,16 @@ public class ServiceTrainingCertificate implements IService<TrainingCertificate>
             return;
         }
         String sql = "INSERT INTO training_certificates (enrollment_id, user_id, course_id, certificate_number) VALUES (?,?,?,?)";
-        PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        ps.setInt(1, c.getEnrollmentId());
-        ps.setInt(2, c.getUserId());
-        ps.setInt(3, c.getCourseId());
-        ps.setString(4, c.getCertificateNumber());
-        ps.executeUpdate();
-        ResultSet keys = ps.getGeneratedKeys();
-        if (keys.next()) c.setId(keys.getInt(1));
-        keys.close(); ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, c.getEnrollmentId());
+            ps.setInt(2, c.getUserId());
+            ps.setInt(3, c.getCourseId());
+            ps.setString(4, c.getCertificateNumber());
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) c.setId(keys.getInt(1));
+            }
+        }
     }
 
     @Override
@@ -75,42 +76,45 @@ public class ServiceTrainingCertificate implements IService<TrainingCertificate>
             return;
         }
         String sql = "UPDATE training_certificates SET enrollment_id=?, user_id=?, course_id=?, certificate_number=? WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(sql);
-        ps.setInt(1, c.getEnrollmentId());
-        ps.setInt(2, c.getUserId());
-        ps.setInt(3, c.getCourseId());
-        ps.setString(4, c.getCertificateNumber());
-        ps.setInt(5, c.getId());
-        ps.executeUpdate(); ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, c.getEnrollmentId());
+            ps.setInt(2, c.getUserId());
+            ps.setInt(3, c.getCourseId());
+            ps.setString(4, c.getCertificateNumber());
+            ps.setInt(5, c.getId());
+            ps.executeUpdate();
+        }
     }
 
     @Override
     public void supprimer(int id) throws SQLException {
         if (useApi) { ApiClient.delete("/training_certificates/" + id); return; }
-        PreparedStatement ps = connection.prepareStatement("DELETE FROM training_certificates WHERE id=?");
-        ps.setInt(1, id);
-        ps.executeUpdate(); ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM training_certificates WHERE id=?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
     }
 
     @Override
     public List<TrainingCertificate> recuperer() throws SQLException {
         if (useApi) return jsonArrayToList(ApiClient.get("/training_certificates"));
         List<TrainingCertificate> list = new ArrayList<>();
-        Statement st = connection.createStatement();
-        ResultSet rs = st.executeQuery("SELECT * FROM training_certificates ORDER BY issued_at DESC");
-        while (rs.next()) list.add(rowToCertificate(rs));
-        rs.close(); st.close();
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM training_certificates ORDER BY issued_at DESC")) {
+            while (rs.next()) list.add(rowToCertificate(rs));
+        }
         return list;
     }
 
     public List<TrainingCertificate> getByUser(int userId) throws SQLException {
         if (useApi) return jsonArrayToList(ApiClient.get("/training_certificates/user/" + userId));
         List<TrainingCertificate> list = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement("SELECT * FROM training_certificates WHERE user_id=? ORDER BY issued_at DESC");
-        ps.setInt(1, userId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) list.add(rowToCertificate(rs));
-        rs.close(); ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM training_certificates WHERE user_id=? ORDER BY issued_at DESC")) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) list.add(rowToCertificate(rs));
+            }
+        }
         return list;
     }
 

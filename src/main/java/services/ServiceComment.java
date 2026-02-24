@@ -60,12 +60,12 @@ public class ServiceComment implements IService<Comment> {
             return;
         }
         String sql = "INSERT INTO comments (post_id, author_id, content) VALUES (?, ?, ?)";
-        PreparedStatement ps = connection.prepareStatement(sql);
-        ps.setInt(1, comment.getPostId());
-        ps.setInt(2, comment.getAuthorId());
-        ps.setString(3, comment.getContent());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, comment.getPostId());
+            ps.setInt(2, comment.getAuthorId());
+            ps.setString(3, comment.getContent());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -77,11 +77,11 @@ public class ServiceComment implements IService<Comment> {
             return;
         }
         String sql = "UPDATE comments SET content = ? WHERE id = ?";
-        PreparedStatement ps = connection.prepareStatement(sql);
-        ps.setString(1, comment.getContent());
-        ps.setInt(2, comment.getId());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, comment.getContent());
+            ps.setInt(2, comment.getId());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -90,10 +90,10 @@ public class ServiceComment implements IService<Comment> {
             ApiClient.delete("/comments/" + id);
             return;
         }
-        PreparedStatement ps = connection.prepareStatement("DELETE FROM comments WHERE id = ?");
-        ps.setInt(1, id);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM comments WHERE id = ?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -103,18 +103,18 @@ public class ServiceComment implements IService<Comment> {
             return jsonArrayToComments(el);
         }
         List<Comment> comments = new ArrayList<>();
-        Statement st = connection.createStatement();
-        ResultSet rs = st.executeQuery("SELECT * FROM comments ORDER BY created_at ASC");
-        while (rs.next()) {
-            comments.add(new Comment(
-                    rs.getInt("id"),
-                    rs.getInt("post_id"),
-                    rs.getInt("author_id"),
-                    rs.getString("content"),
-                    rs.getTimestamp("created_at")
-            ));
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM comments ORDER BY created_at ASC")) {
+            while (rs.next()) {
+                comments.add(new Comment(
+                        rs.getInt("id"),
+                        rs.getInt("post_id"),
+                        rs.getInt("author_id"),
+                        rs.getString("content"),
+                        rs.getTimestamp("created_at")
+                ));
+            }
         }
-        rs.close(); st.close();
         return comments;
     }
 
@@ -125,20 +125,21 @@ public class ServiceComment implements IService<Comment> {
             return jsonArrayToComments(el);
         }
         List<Comment> comments = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement(
-                "SELECT * FROM comments WHERE post_id = ? ORDER BY created_at ASC");
-        ps.setInt(1, postId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) {
-            comments.add(new Comment(
-                    rs.getInt("id"),
-                    rs.getInt("post_id"),
-                    rs.getInt("author_id"),
-                    rs.getString("content"),
-                    rs.getTimestamp("created_at")
-            ));
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT * FROM comments WHERE post_id = ? ORDER BY created_at ASC")) {
+            ps.setInt(1, postId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    comments.add(new Comment(
+                            rs.getInt("id"),
+                            rs.getInt("post_id"),
+                            rs.getInt("author_id"),
+                            rs.getString("content"),
+                            rs.getTimestamp("created_at")
+                    ));
+                }
+            }
         }
-        rs.close(); ps.close();
         return comments;
     }
 }

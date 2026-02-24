@@ -96,25 +96,25 @@ public class ServiceOffer implements IService<Offer> {
             return;
         }
         String sql = "INSERT INTO offers (title, description, offer_type, status, required_skills, location, amount, currency, owner_id, department_id, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        ps.setString(1, o.getTitle());
-        ps.setString(2, o.getDescription());
-        ps.setString(3, o.getOfferType());
-        ps.setString(4, o.getStatus());
-        ps.setString(5, o.getRequiredSkills());
-        ps.setString(6, o.getLocation());
-        ps.setDouble(7, o.getAmount());
-        ps.setString(8, o.getCurrency());
-        ps.setInt(9, o.getOwnerId());
-        if (o.getDepartmentId() != null) ps.setInt(10, o.getDepartmentId());
-        else ps.setNull(10, Types.INTEGER);
-        ps.setDate(11, o.getStartDate());
-        ps.setDate(12, o.getEndDate());
-        ps.executeUpdate();
-        ResultSet keys = ps.getGeneratedKeys();
-        if (keys.next()) o.setId(keys.getInt(1));
-        keys.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, o.getTitle());
+            ps.setString(2, o.getDescription());
+            ps.setString(3, o.getOfferType());
+            ps.setString(4, o.getStatus());
+            ps.setString(5, o.getRequiredSkills());
+            ps.setString(6, o.getLocation());
+            ps.setDouble(7, o.getAmount());
+            ps.setString(8, o.getCurrency());
+            ps.setInt(9, o.getOwnerId());
+            if (o.getDepartmentId() != null) ps.setInt(10, o.getDepartmentId());
+            else ps.setNull(10, Types.INTEGER);
+            ps.setDate(11, o.getStartDate());
+            ps.setDate(12, o.getEndDate());
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) o.setId(keys.getInt(1));
+            }
+        }
     }
 
     @Override
@@ -137,23 +137,23 @@ public class ServiceOffer implements IService<Offer> {
             return;
         }
         String sql = "UPDATE offers SET title=?, description=?, offer_type=?, status=?, required_skills=?, location=?, amount=?, currency=?, owner_id=?, department_id=?, start_date=?, end_date=? WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(sql);
-        ps.setString(1, o.getTitle());
-        ps.setString(2, o.getDescription());
-        ps.setString(3, o.getOfferType());
-        ps.setString(4, o.getStatus());
-        ps.setString(5, o.getRequiredSkills());
-        ps.setString(6, o.getLocation());
-        ps.setDouble(7, o.getAmount());
-        ps.setString(8, o.getCurrency());
-        ps.setInt(9, o.getOwnerId());
-        if (o.getDepartmentId() != null) ps.setInt(10, o.getDepartmentId());
-        else ps.setNull(10, Types.INTEGER);
-        ps.setDate(11, o.getStartDate());
-        ps.setDate(12, o.getEndDate());
-        ps.setInt(13, o.getId());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, o.getTitle());
+            ps.setString(2, o.getDescription());
+            ps.setString(3, o.getOfferType());
+            ps.setString(4, o.getStatus());
+            ps.setString(5, o.getRequiredSkills());
+            ps.setString(6, o.getLocation());
+            ps.setDouble(7, o.getAmount());
+            ps.setString(8, o.getCurrency());
+            ps.setInt(9, o.getOwnerId());
+            if (o.getDepartmentId() != null) ps.setInt(10, o.getDepartmentId());
+            else ps.setNull(10, Types.INTEGER);
+            ps.setDate(11, o.getStartDate());
+            ps.setDate(12, o.getEndDate());
+            ps.setInt(13, o.getId());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -163,19 +163,18 @@ public class ServiceOffer implements IService<Offer> {
             return;
         }
         // Cascade: delete applications and contracts referencing this offer
-        PreparedStatement delApps = connection.prepareStatement("DELETE FROM job_applications WHERE offer_id = ?");
-        delApps.setInt(1, id);
-        delApps.executeUpdate();
-        delApps.close();
-        PreparedStatement delContracts = connection.prepareStatement("DELETE FROM contracts WHERE offer_id = ?");
-        delContracts.setInt(1, id);
-        delContracts.executeUpdate();
-        delContracts.close();
-
-        PreparedStatement ps = connection.prepareStatement("DELETE FROM offers WHERE id = ?");
-        ps.setInt(1, id);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement delApps = connection.prepareStatement("DELETE FROM job_applications WHERE offer_id = ?")) {
+            delApps.setInt(1, id);
+            delApps.executeUpdate();
+        }
+        try (PreparedStatement delContracts = connection.prepareStatement("DELETE FROM contracts WHERE offer_id = ?")) {
+            delContracts.setInt(1, id);
+            delContracts.executeUpdate();
+        }
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM offers WHERE id = ?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -185,11 +184,10 @@ public class ServiceOffer implements IService<Offer> {
             return jsonArrayToOffers(el);
         }
         List<Offer> offers = new ArrayList<>();
-        Statement st = connection.createStatement();
-        ResultSet rs = st.executeQuery("SELECT * FROM offers ORDER BY created_at DESC");
-        while (rs.next()) offers.add(rowToOffer(rs));
-        rs.close();
-        st.close();
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM offers ORDER BY created_at DESC")) {
+            while (rs.next()) offers.add(rowToOffer(rs));
+        }
         return offers;
     }
 
@@ -200,12 +198,12 @@ public class ServiceOffer implements IService<Offer> {
             return jsonArrayToOffers(el);
         }
         List<Offer> offers = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement("SELECT * FROM offers WHERE owner_id = ? ORDER BY created_at DESC");
-        ps.setInt(1, ownerId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) offers.add(rowToOffer(rs));
-        rs.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM offers WHERE owner_id = ? ORDER BY created_at DESC")) {
+            ps.setInt(1, ownerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) offers.add(rowToOffer(rs));
+            }
+        }
         return offers;
     }
 
@@ -216,11 +214,10 @@ public class ServiceOffer implements IService<Offer> {
             return jsonArrayToOffers(el);
         }
         List<Offer> offers = new ArrayList<>();
-        Statement st = connection.createStatement();
-        ResultSet rs = st.executeQuery("SELECT * FROM offers WHERE status='OPEN' ORDER BY created_at DESC");
-        while (rs.next()) offers.add(rowToOffer(rs));
-        rs.close();
-        st.close();
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM offers WHERE status='OPEN' ORDER BY created_at DESC")) {
+            while (rs.next()) offers.add(rowToOffer(rs));
+        }
         return offers;
     }
 

@@ -60,12 +60,12 @@ public class ServiceReaction implements IService<Reaction> {
             return;
         }
         String sql = "INSERT INTO reactions (post_id, user_id, type) VALUES (?, ?, ?)";
-        PreparedStatement ps = connection.prepareStatement(sql);
-        ps.setInt(1, reaction.getPostId());
-        ps.setInt(2, reaction.getUserId());
-        ps.setString(3, reaction.getType());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, reaction.getPostId());
+            ps.setInt(2, reaction.getUserId());
+            ps.setString(3, reaction.getType());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -77,11 +77,11 @@ public class ServiceReaction implements IService<Reaction> {
             return;
         }
         String sql = "UPDATE reactions SET type = ? WHERE id = ?";
-        PreparedStatement ps = connection.prepareStatement(sql);
-        ps.setString(1, reaction.getType());
-        ps.setInt(2, reaction.getId());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, reaction.getType());
+            ps.setInt(2, reaction.getId());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -90,10 +90,10 @@ public class ServiceReaction implements IService<Reaction> {
             ApiClient.delete("/reactions/" + id);
             return;
         }
-        PreparedStatement ps = connection.prepareStatement("DELETE FROM reactions WHERE id = ?");
-        ps.setInt(1, id);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM reactions WHERE id = ?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -103,18 +103,18 @@ public class ServiceReaction implements IService<Reaction> {
             return jsonArrayToReactions(el);
         }
         List<Reaction> reactions = new ArrayList<>();
-        Statement st = connection.createStatement();
-        ResultSet rs = st.executeQuery("SELECT * FROM reactions ORDER BY created_at DESC");
-        while (rs.next()) {
-            reactions.add(new Reaction(
-                    rs.getInt("id"),
-                    rs.getInt("post_id"),
-                    rs.getInt("user_id"),
-                    rs.getString("type"),
-                    rs.getTimestamp("created_at")
-            ));
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM reactions ORDER BY created_at DESC")) {
+            while (rs.next()) {
+                reactions.add(new Reaction(
+                        rs.getInt("id"),
+                        rs.getInt("post_id"),
+                        rs.getInt("user_id"),
+                        rs.getString("type"),
+                        rs.getTimestamp("created_at")
+                ));
+            }
         }
-        rs.close(); st.close();
         return reactions;
     }
 
@@ -125,20 +125,21 @@ public class ServiceReaction implements IService<Reaction> {
             return jsonArrayToReactions(el);
         }
         List<Reaction> reactions = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement(
-                "SELECT * FROM reactions WHERE post_id = ? ORDER BY created_at ASC");
-        ps.setInt(1, postId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) {
-            reactions.add(new Reaction(
-                    rs.getInt("id"),
-                    rs.getInt("post_id"),
-                    rs.getInt("user_id"),
-                    rs.getString("type"),
-                    rs.getTimestamp("created_at")
-            ));
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT * FROM reactions WHERE post_id = ? ORDER BY created_at ASC")) {
+            ps.setInt(1, postId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    reactions.add(new Reaction(
+                            rs.getInt("id"),
+                            rs.getInt("post_id"),
+                            rs.getInt("user_id"),
+                            rs.getString("type"),
+                            rs.getTimestamp("created_at")
+                    ));
+                }
+            }
         }
-        rs.close(); ps.close();
         return reactions;
     }
 
@@ -157,23 +158,23 @@ public class ServiceReaction implements IService<Reaction> {
             return false;
         }
         // Check if reaction already exists
-        PreparedStatement check = connection.prepareStatement(
-                "SELECT id FROM reactions WHERE post_id = ? AND user_id = ? AND type = ?");
-        check.setInt(1, postId);
-        check.setInt(2, userId);
-        check.setString(3, type);
-        ResultSet rs = check.executeQuery();
-        if (rs.next()) {
-            // Remove existing reaction
-            int reactionId = rs.getInt("id");
-            rs.close(); check.close();
-            PreparedStatement del = connection.prepareStatement("DELETE FROM reactions WHERE id = ?");
-            del.setInt(1, reactionId);
-            del.executeUpdate();
-            del.close();
-            return false; // removed
+        try (PreparedStatement check = connection.prepareStatement(
+                "SELECT id FROM reactions WHERE post_id = ? AND user_id = ? AND type = ?")) {
+            check.setInt(1, postId);
+            check.setInt(2, userId);
+            check.setString(3, type);
+            try (ResultSet rs = check.executeQuery()) {
+                if (rs.next()) {
+                    // Remove existing reaction
+                    int reactionId = rs.getInt("id");
+                    try (PreparedStatement del = connection.prepareStatement("DELETE FROM reactions WHERE id = ?")) {
+                        del.setInt(1, reactionId);
+                        del.executeUpdate();
+                    }
+                    return false; // removed
+                }
+            }
         }
-        rs.close(); check.close();
         // Add new reaction
         ajouter(new Reaction(postId, userId, type));
         return true; // added
@@ -186,15 +187,15 @@ public class ServiceReaction implements IService<Reaction> {
             return el != null && el.isJsonObject() && el.getAsJsonObject().has("exists") &&
                    el.getAsJsonObject().get("exists").getAsBoolean();
         }
-        PreparedStatement ps = connection.prepareStatement(
-                "SELECT COUNT(*) FROM reactions WHERE post_id = ? AND user_id = ? AND type = ?");
-        ps.setInt(1, postId);
-        ps.setInt(2, userId);
-        ps.setString(3, type);
-        ResultSet rs = ps.executeQuery();
-        rs.next();
-        boolean exists = rs.getInt(1) > 0;
-        rs.close(); ps.close();
-        return exists;
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT COUNT(*) FROM reactions WHERE post_id = ? AND user_id = ? AND type = ?")) {
+            ps.setInt(1, postId);
+            ps.setInt(2, userId);
+            ps.setString(3, type);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getInt(1) > 0;
+            }
+        }
     }
 }

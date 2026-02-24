@@ -79,19 +79,19 @@ public class ServiceTask implements IService<Task> {
             return;
         }
         String sql = "INSERT INTO tasks (project_id, assigned_to, title, description, status, priority, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        ps.setInt(1, t.getProjectId());
-        if (t.getAssigneeId() > 0) ps.setInt(2, t.getAssigneeId()); else ps.setNull(2, Types.INTEGER);
-        ps.setString(3, t.getTitle());
-        ps.setString(4, t.getDescription());
-        ps.setString(5, t.getStatus());
-        ps.setString(6, t.getPriority());
-        ps.setDate(7, t.getDueDate());
-        ps.executeUpdate();
-        ResultSet keys = ps.getGeneratedKeys();
-        if (keys.next()) t.setId(keys.getInt(1));
-        keys.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, t.getProjectId());
+            if (t.getAssigneeId() > 0) ps.setInt(2, t.getAssigneeId()); else ps.setNull(2, Types.INTEGER);
+            ps.setString(3, t.getTitle());
+            ps.setString(4, t.getDescription());
+            ps.setString(5, t.getStatus());
+            ps.setString(6, t.getPriority());
+            ps.setDate(7, t.getDueDate());
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) t.setId(keys.getInt(1));
+            }
+        }
     }
 
     @Override
@@ -109,17 +109,17 @@ public class ServiceTask implements IService<Task> {
             return;
         }
         String sql = "UPDATE tasks SET project_id=?, assigned_to=?, title=?, description=?, status=?, priority=?, due_date=? WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(sql);
-        ps.setInt(1, t.getProjectId());
-        if (t.getAssigneeId() > 0) ps.setInt(2, t.getAssigneeId()); else ps.setNull(2, Types.INTEGER);
-        ps.setString(3, t.getTitle());
-        ps.setString(4, t.getDescription());
-        ps.setString(5, t.getStatus());
-        ps.setString(6, t.getPriority());
-        ps.setDate(7, t.getDueDate());
-        ps.setInt(8, t.getId());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, t.getProjectId());
+            if (t.getAssigneeId() > 0) ps.setInt(2, t.getAssigneeId()); else ps.setNull(2, Types.INTEGER);
+            ps.setString(3, t.getTitle());
+            ps.setString(4, t.getDescription());
+            ps.setString(5, t.getStatus());
+            ps.setString(6, t.getPriority());
+            ps.setDate(7, t.getDueDate());
+            ps.setInt(8, t.getId());
+            ps.executeUpdate();
+        }
     }
 
     /** Quick status update for drag-and-drop Kanban. */
@@ -130,11 +130,11 @@ public class ServiceTask implements IService<Task> {
             ApiClient.put("/tasks/" + taskId, body);
             return;
         }
-        PreparedStatement ps = connection.prepareStatement("UPDATE tasks SET status = ? WHERE id = ?");
-        ps.setString(1, newStatus);
-        ps.setInt(2, taskId);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("UPDATE tasks SET status = ? WHERE id = ?")) {
+            ps.setString(1, newStatus);
+            ps.setInt(2, taskId);
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -143,10 +143,10 @@ public class ServiceTask implements IService<Task> {
             ApiClient.delete("/tasks/" + id);
             return;
         }
-        PreparedStatement ps = connection.prepareStatement("DELETE FROM tasks WHERE id = ?");
-        ps.setInt(1, id);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM tasks WHERE id = ?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -156,11 +156,10 @@ public class ServiceTask implements IService<Task> {
             return jsonArrayToTasks(el);
         }
         List<Task> tasks = new ArrayList<>();
-        Statement st = connection.createStatement();
-        ResultSet rs = st.executeQuery("SELECT * FROM tasks ORDER BY created_at DESC");
-        while (rs.next()) tasks.add(rowToTask(rs));
-        rs.close();
-        st.close();
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM tasks ORDER BY created_at DESC")) {
+            while (rs.next()) tasks.add(rowToTask(rs));
+        }
         return tasks;
     }
 
@@ -171,13 +170,13 @@ public class ServiceTask implements IService<Task> {
             return jsonArrayToTasks(el);
         }
         List<Task> tasks = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement(
-                "SELECT * FROM tasks WHERE project_id = ? ORDER BY FIELD(priority,'HIGH','MEDIUM','LOW'), created_at DESC");
-        ps.setInt(1, projectId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) tasks.add(rowToTask(rs));
-        rs.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT * FROM tasks WHERE project_id = ? ORDER BY FIELD(priority,'HIGH','MEDIUM','LOW'), created_at DESC")) {
+            ps.setInt(1, projectId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) tasks.add(rowToTask(rs));
+            }
+        }
         return tasks;
     }
 
@@ -188,13 +187,13 @@ public class ServiceTask implements IService<Task> {
             return jsonArrayToTasks(el);
         }
         List<Task> tasks = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement(
-                "SELECT * FROM tasks WHERE assigned_to = ? ORDER BY created_at DESC");
-        ps.setInt(1, userId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) tasks.add(rowToTask(rs));
-        rs.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT * FROM tasks WHERE assigned_to = ? ORDER BY created_at DESC")) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) tasks.add(rowToTask(rs));
+            }
+        }
         return tasks;
     }
 

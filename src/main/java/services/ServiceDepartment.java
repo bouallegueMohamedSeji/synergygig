@@ -69,17 +69,17 @@ public class ServiceDepartment implements IService<Department> {
             return;
         }
         String sql = "INSERT INTO departments (name, description, manager_id, allocated_budget) VALUES (?, ?, ?, ?)";
-        PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        ps.setString(1, d.getName());
-        ps.setString(2, d.getDescription());
-        if (d.getManagerId() != null) ps.setInt(3, d.getManagerId());
-        else ps.setNull(3, Types.INTEGER);
-        ps.setDouble(4, d.getAllocatedBudget());
-        ps.executeUpdate();
-        ResultSet keys = ps.getGeneratedKeys();
-        if (keys.next()) d.setId(keys.getInt(1));
-        keys.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, d.getName());
+            ps.setString(2, d.getDescription());
+            if (d.getManagerId() != null) ps.setInt(3, d.getManagerId());
+            else ps.setNull(3, Types.INTEGER);
+            ps.setDouble(4, d.getAllocatedBudget());
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) d.setId(keys.getInt(1));
+            }
+        }
     }
 
     @Override
@@ -94,15 +94,15 @@ public class ServiceDepartment implements IService<Department> {
             return;
         }
         String sql = "UPDATE departments SET name=?, description=?, manager_id=?, allocated_budget=? WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(sql);
-        ps.setString(1, d.getName());
-        ps.setString(2, d.getDescription());
-        if (d.getManagerId() != null) ps.setInt(3, d.getManagerId());
-        else ps.setNull(3, Types.INTEGER);
-        ps.setDouble(4, d.getAllocatedBudget());
-        ps.setInt(5, d.getId());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, d.getName());
+            ps.setString(2, d.getDescription());
+            if (d.getManagerId() != null) ps.setInt(3, d.getManagerId());
+            else ps.setNull(3, Types.INTEGER);
+            ps.setDouble(4, d.getAllocatedBudget());
+            ps.setInt(5, d.getId());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -112,15 +112,14 @@ public class ServiceDepartment implements IService<Department> {
             return;
         }
         // Clear department_id from users first
-        PreparedStatement clearUsers = connection.prepareStatement("UPDATE users SET department_id=NULL WHERE department_id=?");
-        clearUsers.setInt(1, id);
-        clearUsers.executeUpdate();
-        clearUsers.close();
-
-        PreparedStatement ps = connection.prepareStatement("DELETE FROM departments WHERE id=?");
-        ps.setInt(1, id);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement clearUsers = connection.prepareStatement("UPDATE users SET department_id=NULL WHERE department_id=?")) {
+            clearUsers.setInt(1, id);
+            clearUsers.executeUpdate();
+        }
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM departments WHERE id=?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -129,13 +128,12 @@ public class ServiceDepartment implements IService<Department> {
             return jsonArrayToDepartments(ApiClient.get("/departments"));
         }
         List<Department> list = new ArrayList<>();
-        Statement st = connection.createStatement();
-        ResultSet rs = st.executeQuery("SELECT * FROM departments ORDER BY id");
-        while (rs.next()) {
-            list.add(rowToDepartment(rs));
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM departments ORDER BY id")) {
+            while (rs.next()) {
+                list.add(rowToDepartment(rs));
+            }
         }
-        rs.close();
-        st.close();
         return list;
     }
 
@@ -147,14 +145,13 @@ public class ServiceDepartment implements IService<Department> {
             }
             return null;
         }
-        PreparedStatement ps = connection.prepareStatement("SELECT * FROM departments WHERE id=?");
-        ps.setInt(1, id);
-        ResultSet rs = ps.executeQuery();
-        Department d = null;
-        if (rs.next()) d = rowToDepartment(rs);
-        rs.close();
-        ps.close();
-        return d;
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM departments WHERE id=?")) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rowToDepartment(rs);
+            }
+        }
+        return null;
     }
 
     private Department rowToDepartment(ResultSet rs) throws SQLException {

@@ -65,12 +65,12 @@ public class ServiceChatRoom implements IService<ChatRoom> {
             return;
         }
         String req = "INSERT INTO chat_rooms (name, type, created_by) VALUES (?, ?, ?)";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ps.setString(1, room.getName());
-        ps.setString(2, room.getType() != null ? room.getType() : "group");
-        ps.setInt(3, room.getCreatedBy());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(req)) {
+            ps.setString(1, room.getName());
+            ps.setString(2, room.getType() != null ? room.getType() : "group");
+            ps.setInt(3, room.getCreatedBy());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -82,11 +82,11 @@ public class ServiceChatRoom implements IService<ChatRoom> {
             return;
         }
         String req = "UPDATE chat_rooms SET name=? WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ps.setString(1, room.getName());
-        ps.setInt(2, room.getId());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(req)) {
+            ps.setString(1, room.getName());
+            ps.setInt(2, room.getId());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -96,10 +96,10 @@ public class ServiceChatRoom implements IService<ChatRoom> {
             return;
         }
         String req = "DELETE FROM chat_rooms WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ps.setInt(1, id);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(req)) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -109,18 +109,17 @@ public class ServiceChatRoom implements IService<ChatRoom> {
         }
         List<ChatRoom> rooms = new ArrayList<>();
         String req = "SELECT * FROM chat_rooms ORDER BY created_at DESC";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) {
-            rooms.add(new ChatRoom(
-                    rs.getInt("id"),
-                    rs.getString("name"),
-                    rs.getTimestamp("created_at"),
-                    rs.getString("type"),
-                    rs.getInt("created_by")));
+        try (PreparedStatement ps = connection.prepareStatement(req);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                rooms.add(new ChatRoom(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getTimestamp("created_at"),
+                        rs.getString("type"),
+                        rs.getInt("created_by")));
+            }
         }
-        rs.close();
-        ps.close();
         return rooms;
     }
 
@@ -144,24 +143,20 @@ public class ServiceChatRoom implements IService<ChatRoom> {
         }
         // Try to find existing
         String req = "SELECT * FROM chat_rooms WHERE name=?";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ps.setString(1, name);
-        ResultSet rs = ps.executeQuery();
-        if (rs.next()) {
-            ChatRoom room = new ChatRoom(
-                    rs.getInt("id"),
-                    rs.getString("name"),
-                    rs.getTimestamp("created_at"),
-                    rs.getString("type"),
-                    rs.getInt("created_by"));
-            rs.close();
-            ps.close();
-            return room;
+        try (PreparedStatement ps = connection.prepareStatement(req)) {
+            ps.setString(1, name);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new ChatRoom(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            rs.getTimestamp("created_at"),
+                            rs.getString("type"),
+                            rs.getInt("created_by"));
+                }
+            }
         }
-
         // Create new if not found
-        rs.close();
-        ps.close();
         ajouter(new ChatRoom(name, isPrivate ? "private" : "group", 0));
         return getOrCreateRoom(name);
     }

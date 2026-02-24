@@ -69,28 +69,28 @@ public class ServiceProjectMember {
         }
         // JDBC fallback
         List<ProjectMember> list = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement(
+        try (PreparedStatement ps = connection.prepareStatement(
                 "SELECT pm.id, pm.project_id, pm.user_id, pm.role, " +
                 "u.first_name, u.last_name, u.email, u.role as user_role, u.department_id " +
                 "FROM project_members pm JOIN users u ON pm.user_id = u.id " +
-                "WHERE pm.project_id = ? ORDER BY pm.joined_at");
-        ps.setInt(1, projectId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) {
-            ProjectMember m = new ProjectMember();
-            m.id = rs.getInt("id");
-            m.projectId = rs.getInt("project_id");
-            m.userId = rs.getInt("user_id");
-            m.role = rs.getString("role");
-            m.firstName = rs.getString("first_name");
-            m.lastName = rs.getString("last_name");
-            m.email = rs.getString("email");
-            m.userRole = rs.getString("user_role");
-            m.departmentId = rs.getObject("department_id") != null ? rs.getInt("department_id") : null;
-            list.add(m);
+                "WHERE pm.project_id = ? ORDER BY pm.joined_at")) {
+            ps.setInt(1, projectId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ProjectMember m = new ProjectMember();
+                    m.id = rs.getInt("id");
+                    m.projectId = rs.getInt("project_id");
+                    m.userId = rs.getInt("user_id");
+                    m.role = rs.getString("role");
+                    m.firstName = rs.getString("first_name");
+                    m.lastName = rs.getString("last_name");
+                    m.email = rs.getString("email");
+                    m.userRole = rs.getString("user_role");
+                    m.departmentId = rs.getObject("department_id") != null ? rs.getInt("department_id") : null;
+                    list.add(m);
+                }
+            }
         }
-        rs.close();
-        ps.close();
         return list;
     }
 
@@ -107,13 +107,13 @@ public class ServiceProjectMember {
             ApiClient.post("/projects/" + projectId + "/members", body);
             return;
         }
-        PreparedStatement ps = connection.prepareStatement(
-                "INSERT IGNORE INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)");
-        ps.setInt(1, projectId);
-        ps.setInt(2, userId);
-        ps.setString(3, role);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "INSERT IGNORE INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)")) {
+            ps.setInt(1, projectId);
+            ps.setInt(2, userId);
+            ps.setString(3, role);
+            ps.executeUpdate();
+        }
     }
 
     /** Remove a member from a project. */
@@ -122,12 +122,12 @@ public class ServiceProjectMember {
             ApiClient.delete("/projects/" + projectId + "/members/" + userId);
             return;
         }
-        PreparedStatement ps = connection.prepareStatement(
-                "DELETE FROM project_members WHERE project_id = ? AND user_id = ?");
-        ps.setInt(1, projectId);
-        ps.setInt(2, userId);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "DELETE FROM project_members WHERE project_id = ? AND user_id = ?")) {
+            ps.setInt(1, projectId);
+            ps.setInt(2, userId);
+            ps.executeUpdate();
+        }
     }
 
     /** Add all users from a department as members. Returns number added. */
@@ -140,19 +140,19 @@ public class ServiceProjectMember {
             return 0;
         }
         // JDBC fallback
-        PreparedStatement ps = connection.prepareStatement(
-                "SELECT id FROM users WHERE department_id = ?");
-        ps.setInt(1, departmentId);
-        ResultSet rs = ps.executeQuery();
         int added = 0;
-        while (rs.next()) {
-            try {
-                addMember(projectId, rs.getInt("id"));
-                added++;
-            } catch (SQLException ignored) {}
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT id FROM users WHERE department_id = ?")) {
+            ps.setInt(1, departmentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    try {
+                        addMember(projectId, rs.getInt("id"));
+                        added++;
+                    } catch (SQLException ignored) {}
+                }
+            }
         }
-        rs.close();
-        ps.close();
         return added;
     }
 
@@ -164,12 +164,12 @@ public class ServiceProjectMember {
             ApiClient.put("/projects/" + projectId + "/department", body);
             return;
         }
-        PreparedStatement ps = connection.prepareStatement(
-                "UPDATE projects SET department_id = ? WHERE id = ?");
-        if (departmentId != null) ps.setInt(1, departmentId);
-        else ps.setNull(1, java.sql.Types.INTEGER);
-        ps.setInt(2, projectId);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "UPDATE projects SET department_id = ? WHERE id = ?")) {
+            if (departmentId != null) ps.setInt(1, departmentId);
+            else ps.setNull(1, java.sql.Types.INTEGER);
+            ps.setInt(2, projectId);
+            ps.executeUpdate();
+        }
     }
 }

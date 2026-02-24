@@ -104,26 +104,26 @@ public class ServiceContract implements IService<Contract> {
             return;
         }
         String sql = "INSERT INTO contracts (offer_id, applicant_id, owner_id, terms, amount, currency, status, risk_score, risk_factors, blockchain_hash, qr_code_url, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        ps.setInt(1, c.getOfferId());
-        ps.setInt(2, c.getApplicantId());
-        ps.setInt(3, c.getOwnerId());
-        ps.setString(4, c.getTerms());
-        ps.setDouble(5, c.getAmount());
-        ps.setString(6, c.getCurrency());
-        ps.setString(7, c.getStatus());
-        if (c.getRiskScore() != null) ps.setInt(8, c.getRiskScore());
-        else ps.setNull(8, Types.INTEGER);
-        ps.setString(9, c.getRiskFactors());
-        ps.setString(10, c.getBlockchainHash());
-        ps.setString(11, c.getQrCodeUrl());
-        ps.setDate(12, c.getStartDate());
-        ps.setDate(13, c.getEndDate());
-        ps.executeUpdate();
-        ResultSet keys = ps.getGeneratedKeys();
-        if (keys.next()) c.setId(keys.getInt(1));
-        keys.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, c.getOfferId());
+            ps.setInt(2, c.getApplicantId());
+            ps.setInt(3, c.getOwnerId());
+            ps.setString(4, c.getTerms());
+            ps.setDouble(5, c.getAmount());
+            ps.setString(6, c.getCurrency());
+            ps.setString(7, c.getStatus());
+            if (c.getRiskScore() != null) ps.setInt(8, c.getRiskScore());
+            else ps.setNull(8, Types.INTEGER);
+            ps.setString(9, c.getRiskFactors());
+            ps.setString(10, c.getBlockchainHash());
+            ps.setString(11, c.getQrCodeUrl());
+            ps.setDate(12, c.getStartDate());
+            ps.setDate(13, c.getEndDate());
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) c.setId(keys.getInt(1));
+            }
+        }
     }
 
     @Override
@@ -147,24 +147,24 @@ public class ServiceContract implements IService<Contract> {
             return;
         }
         String sql = "UPDATE contracts SET offer_id=?, applicant_id=?, owner_id=?, terms=?, amount=?, currency=?, status=?, risk_score=?, risk_factors=?, blockchain_hash=?, qr_code_url=?, start_date=?, end_date=? WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(sql);
-        ps.setInt(1, c.getOfferId());
-        ps.setInt(2, c.getApplicantId());
-        ps.setInt(3, c.getOwnerId());
-        ps.setString(4, c.getTerms());
-        ps.setDouble(5, c.getAmount());
-        ps.setString(6, c.getCurrency());
-        ps.setString(7, c.getStatus());
-        if (c.getRiskScore() != null) ps.setInt(8, c.getRiskScore());
-        else ps.setNull(8, Types.INTEGER);
-        ps.setString(9, c.getRiskFactors());
-        ps.setString(10, c.getBlockchainHash());
-        ps.setString(11, c.getQrCodeUrl());
-        ps.setDate(12, c.getStartDate());
-        ps.setDate(13, c.getEndDate());
-        ps.setInt(14, c.getId());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, c.getOfferId());
+            ps.setInt(2, c.getApplicantId());
+            ps.setInt(3, c.getOwnerId());
+            ps.setString(4, c.getTerms());
+            ps.setDouble(5, c.getAmount());
+            ps.setString(6, c.getCurrency());
+            ps.setString(7, c.getStatus());
+            if (c.getRiskScore() != null) ps.setInt(8, c.getRiskScore());
+            else ps.setNull(8, Types.INTEGER);
+            ps.setString(9, c.getRiskFactors());
+            ps.setString(10, c.getBlockchainHash());
+            ps.setString(11, c.getQrCodeUrl());
+            ps.setDate(12, c.getStartDate());
+            ps.setDate(13, c.getEndDate());
+            ps.setInt(14, c.getId());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -173,10 +173,10 @@ public class ServiceContract implements IService<Contract> {
             ApiClient.delete("/contracts/" + id);
             return;
         }
-        PreparedStatement ps = connection.prepareStatement("DELETE FROM contracts WHERE id = ?");
-        ps.setInt(1, id);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM contracts WHERE id = ?")) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -186,11 +186,10 @@ public class ServiceContract implements IService<Contract> {
             return jsonArrayToContracts(el);
         }
         List<Contract> list = new ArrayList<>();
-        Statement st = connection.createStatement();
-        ResultSet rs = st.executeQuery("SELECT * FROM contracts ORDER BY created_at DESC");
-        while (rs.next()) list.add(rowToContract(rs));
-        rs.close();
-        st.close();
+        try (Statement st = connection.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM contracts ORDER BY created_at DESC")) {
+            while (rs.next()) list.add(rowToContract(rs));
+        }
         return list;
     }
 
@@ -201,12 +200,12 @@ public class ServiceContract implements IService<Contract> {
             return jsonArrayToContracts(el);
         }
         List<Contract> list = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement("SELECT * FROM contracts WHERE owner_id = ? ORDER BY created_at DESC");
-        ps.setInt(1, ownerId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) list.add(rowToContract(rs));
-        rs.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM contracts WHERE owner_id = ? ORDER BY created_at DESC")) {
+            ps.setInt(1, ownerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) list.add(rowToContract(rs));
+            }
+        }
         return list;
     }
 
@@ -217,12 +216,12 @@ public class ServiceContract implements IService<Contract> {
             return jsonArrayToContracts(el);
         }
         List<Contract> list = new ArrayList<>();
-        PreparedStatement ps = connection.prepareStatement("SELECT * FROM contracts WHERE applicant_id = ? ORDER BY created_at DESC");
-        ps.setInt(1, applicantId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) list.add(rowToContract(rs));
-        rs.close();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM contracts WHERE applicant_id = ? ORDER BY created_at DESC")) {
+            ps.setInt(1, applicantId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) list.add(rowToContract(rs));
+            }
+        }
         return list;
     }
 

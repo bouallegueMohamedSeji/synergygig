@@ -63,12 +63,12 @@ public class ServiceMessage implements IService<Message> {
             return;
         }
         String req = "INSERT INTO messages (sender_id, room_id, content) VALUES (?, ?, ?)";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ps.setInt(1, message.getSenderId());
-        ps.setInt(2, message.getRoomId());
-        ps.setString(3, message.getContent());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(req)) {
+            ps.setInt(1, message.getSenderId());
+            ps.setInt(2, message.getRoomId());
+            ps.setString(3, message.getContent());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -80,11 +80,11 @@ public class ServiceMessage implements IService<Message> {
             return;
         }
         String req = "UPDATE messages SET content=? WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ps.setString(1, message.getContent());
-        ps.setInt(2, message.getId());
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(req)) {
+            ps.setString(1, message.getContent());
+            ps.setInt(2, message.getId());
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -94,10 +94,10 @@ public class ServiceMessage implements IService<Message> {
             return;
         }
         String req = "DELETE FROM messages WHERE id=?";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ps.setInt(1, id);
-        ps.executeUpdate();
-        ps.close();
+        try (PreparedStatement ps = connection.prepareStatement(req)) {
+            ps.setInt(1, id);
+            ps.executeUpdate();
+        }
     }
 
     @Override
@@ -107,19 +107,18 @@ public class ServiceMessage implements IService<Message> {
         }
         List<Message> messages = new ArrayList<>();
         String req = "SELECT * FROM messages";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) {
-            Message msg = new Message(
-                    rs.getInt("id"),
-                    rs.getInt("sender_id"),
-                    rs.getInt("room_id"),
-                    rs.getString("content"),
-                    rs.getTimestamp("timestamp"));
-            messages.add(msg);
+        try (PreparedStatement ps = connection.prepareStatement(req);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Message msg = new Message(
+                        rs.getInt("id"),
+                        rs.getInt("sender_id"),
+                        rs.getInt("room_id"),
+                        rs.getString("content"),
+                        rs.getTimestamp("timestamp"));
+                messages.add(msg);
+            }
         }
-        rs.close();
-        ps.close();
         return messages;
     }
 
@@ -129,20 +128,20 @@ public class ServiceMessage implements IService<Message> {
         }
         List<Message> messages = new ArrayList<>();
         String req = "SELECT * FROM messages WHERE room_id=? ORDER BY timestamp ASC";
-        PreparedStatement ps = connection.prepareStatement(req);
-        ps.setInt(1, roomId);
-        ResultSet rs = ps.executeQuery();
-        while (rs.next()) {
-            Message msg = new Message(
-                    rs.getInt("id"),
-                    rs.getInt("sender_id"),
-                    rs.getInt("room_id"),
-                    rs.getString("content"),
-                    rs.getTimestamp("timestamp"));
-            messages.add(msg);
+        try (PreparedStatement ps = connection.prepareStatement(req)) {
+            ps.setInt(1, roomId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Message msg = new Message(
+                            rs.getInt("id"),
+                            rs.getInt("sender_id"),
+                            rs.getInt("room_id"),
+                            rs.getString("content"),
+                            rs.getTimestamp("timestamp"));
+                    messages.add(msg);
+                }
+            }
         }
-        rs.close();
-        ps.close();
         return messages;
     }
 }
