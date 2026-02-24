@@ -54,6 +54,12 @@ public class ContractService {
             // 5️⃣ Blockchain hash
             String hash = BlockchainService.generateHash(contract);
             contract.setBlockchainHash(hash);
+            String fingerprint =
+                    BlockchainService.generateFingerprint(contract);
+
+            contract.setFingerprint(fingerprint);
+
+            System.out.println("🔥 FINGERPRINT GENERATED: " + fingerprint);
 
             // 6️⃣ Update DB
             contractDAO.update(contract);

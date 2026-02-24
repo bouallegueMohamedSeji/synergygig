@@ -28,6 +28,7 @@ public class Contract {
 
     // ✅ AJOUT ICI
     private String aiFullContract;
+    private String fingerprint;
 
     // ================= CONSTRUCTORS =================
 
@@ -112,4 +113,11 @@ public class Contract {
     public void setBlockchainHash(String blockchainHash) { this.blockchainHash = blockchainHash; }
     public void setRiskScore(double riskScore) { this.riskScore = riskScore; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public String getFingerprint() {
+        return fingerprint;
+    }
+
+    public void setFingerprint(String fingerprint) {
+        this.fingerprint = fingerprint;
+    }
 }

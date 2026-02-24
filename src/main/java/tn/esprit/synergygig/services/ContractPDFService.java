@@ -138,7 +138,9 @@ public class ContractPDFService {
             try {
 
                 String qrContent =
-                        contract.getId() + "|" + contract.getBlockchainHash();
+                        "CONTRACT_VERIFICATION|" +
+                                contract.getId() +
+                                "|" + contract.getFingerprint();
 
                 QRCodeWriter qrCodeWriter = new QRCodeWriter();
                 BitMatrix bitMatrix =
@@ -166,7 +168,15 @@ public class ContractPDFService {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            document.add(new Paragraph("\n\nBLOCKCHAIN CERTIFICATION")
+                    .setBold());
 
+            document.add(new Paragraph("Digital Fingerprint:")
+                    .setBold());
+
+            document.add(new Paragraph(contract.getFingerprint())
+                    .setFontSize(9)
+                    .setFontColor(ColorConstants.GRAY));
             document.close();
 
             System.out.println("🔥 Premium Legal PDF Generated");
