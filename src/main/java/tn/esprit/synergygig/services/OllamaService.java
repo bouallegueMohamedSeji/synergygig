@@ -319,4 +319,247 @@ Contract:
             return 0.0;
         }
     }
+    public String analyzeContract(Contract contract) {
+
+        try {
+
+            URL url = new URL(ENDPOINT);
+            HttpURLConnection conn =
+                    (HttpURLConnection) url.openConnection();
+
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
+
+            long duration = java.time.temporal.ChronoUnit.DAYS.between(
+                    contract.getStartDate(),
+                    contract.getEndDate()
+            );
+
+            String prompt = """
+You are a Senior International Legal Auditor specialized in corporate risk assessment, contract compliance, and financial liability exposure.
+
+Your task is to perform a PROFESSIONAL LEGAL RISK AUDIT of the following contract using strict corporate standards.
+
+==============================
+CONTRACT METADATA
+==============================
+Contract ID: %d
+Contract Amount: %.2f
+Start Date: %s
+End Date: %s
+Duration (days): %d
+
+==============================
+CONTRACT CONTENT
+==============================
+%s
+
+==============================
+INSTRUCTIONS
+==============================
+
+Produce a FORMAL LEGAL AUDIT REPORT using executive-level legal language.
+
+Structure the output EXACTLY as follows:
+
+══════════════════════════════════
+LEGAL RISK AUDIT REPORT
+══════════════════════════════════
+
+1️⃣ OVERALL RISK SCORE (0.00 – 1.00)
+Provide ONLY a decimal number on this line.
+
+2️⃣ FINANCIAL RISK EXPOSURE
+- Assess payment structure
+- Assess liability exposure relative to contract amount
+- Identify missing financial protections
+- Evaluate penalty structure
+
+3️⃣ DURATION & TERMINATION RISK
+- Evaluate if duration is excessive
+- Evaluate termination safeguards
+- Evaluate exit protection mechanisms
+
+4️⃣ REGULATORY & COMPLIANCE RISK
+- Identify compliance weaknesses
+- Identify legal enforceability concerns
+
+5️⃣ MISSING CRITICAL CLAUSES
+List missing clauses such as:
+- Indemnification
+- Limitation of liability
+- Confidentiality
+- Force majeure
+- Governing law
+- Dispute resolution
+- IP ownership
+- Data protection
+
+6️⃣ IDENTIFIED LEGAL WEAKNESSES
+Bullet points only.
+
+7️⃣ PROFESSIONAL RECOMMENDATIONS
+Bullet points only.
+Recommendations must be precise and legally actionable.
+
+Use highly professional corporate legal tone.
+Do NOT simplify language.
+"""
+                    .formatted(
+                            contract.getId(),
+                            contract.getAmount(),
+                            contract.getStartDate(),
+                            contract.getEndDate(),
+                            duration,
+                            contract.getTerms()
+                    );
+
+            com.google.gson.JsonObject json = new com.google.gson.JsonObject();
+            json.addProperty("model", "llama3");
+            json.addProperty("prompt", prompt);
+            json.addProperty("stream", false);
+
+            OutputStream os = conn.getOutputStream();
+            os.write(json.toString().getBytes());
+            os.close();
+
+            BufferedReader br =
+                    new BufferedReader(
+                            new InputStreamReader(conn.getInputStream()));
+
+            StringBuilder response = new StringBuilder();
+            String line;
+
+            while ((line = br.readLine()) != null) {
+                response.append(line);
+            }
+
+            br.close();
+
+            String full = response.toString();
+
+            int start = full.indexOf("\"response\":\"") + 12;
+            int end = full.indexOf("\",\"done\"");
+
+            return full.substring(start, end)
+                    .replace("\\n", "\n")
+                    .replace("\\\"", "\"");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    public String improveContract(Contract contract) {
+
+        try {
+
+            URL url = new URL(ENDPOINT);
+            HttpURLConnection conn =
+                    (HttpURLConnection) url.openConnection();
+
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
+
+            long duration = java.time.temporal.ChronoUnit.DAYS.between(
+                    contract.getStartDate(),
+                    contract.getEndDate()
+            );
+
+            String prompt = """
+You are a Senior Corporate Contract Drafting Lawyer specialized in enterprise-level agreements.
+
+Your task is to FULLY REWRITE and UPGRADE the following contract to meet international corporate legal standards.
+
+==============================
+CONTRACT METADATA
+==============================
+Amount: %.2f
+Duration (days): %d
+Start Date: %s
+End Date: %s
+
+==============================
+ORIGINAL CONTRACT
+==============================
+%s
+
+==============================
+REQUIREMENTS
+==============================
+
+Rewrite the contract from scratch with:
+
+✔ Clear structured numbered clauses
+✔ Strong financial protection mechanisms
+✔ Strict payment enforcement
+✔ Late payment penalties
+✔ Indemnification clause
+✔ Limitation of liability
+✔ Termination safeguards
+✔ Confidentiality clause
+✔ Intellectual property ownership
+✔ Data protection compliance
+✔ Force majeure clause
+✔ Governing law clause
+✔ Dispute resolution clause
+✔ Entire agreement clause
+
+Use formal international legal language.
+Structure with numbered headings.
+Avoid generic language.
+Make it legally enforceable and professionally drafted.
+
+Title the contract:
+
+PROFESSIONAL SERVICE AGREEMENT
+
+Then provide the complete structured contract.
+"""
+                    .formatted(
+                            contract.getAmount(),
+                            duration,
+                            contract.getStartDate(),
+                            contract.getEndDate(),
+                            contract.getTerms()
+                    );
+
+            com.google.gson.JsonObject json = new com.google.gson.JsonObject();
+            json.addProperty("model", "llama3");
+            json.addProperty("prompt", prompt);
+            json.addProperty("stream", false);
+
+            OutputStream os = conn.getOutputStream();
+            os.write(json.toString().getBytes());
+            os.close();
+
+            BufferedReader br =
+                    new BufferedReader(
+                            new InputStreamReader(conn.getInputStream()));
+
+            StringBuilder response = new StringBuilder();
+            String line;
+
+            while ((line = br.readLine()) != null) {
+                response.append(line);
+            }
+
+            br.close();
+
+            String full = response.toString();
+
+            int start = full.indexOf("\"response\":\"") + 12;
+            int end = full.indexOf("\",\"done\"");
+
+            return full.substring(start, end)
+                    .replace("\\n", "\n")
+                    .replace("\\\"", "\"");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 }

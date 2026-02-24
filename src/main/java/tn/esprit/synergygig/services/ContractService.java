@@ -118,9 +118,7 @@ public class ContractService {
 
         try {
 
-            String summary =
-                    ollamaService.summarize(contract.getTerms());
-
+            String summary = ollamaService.analyzeContract(contract);
             contract.setAiSummary(summary);
             contractDAO.update(contract);
 
@@ -138,8 +136,7 @@ public class ContractService {
 
         try {
 
-            String improved =
-                    ollamaService.improve(contract.getTerms());
+            String improved = ollamaService.improveContract(contract);
 
             contract.setAiImproved(improved);
 
