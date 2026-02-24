@@ -75,8 +75,21 @@ public class ContractPDFService {
             contractBox.add(new Paragraph("Contract ID: " + contract.getId()).setBold());
             contractBox.add(new Paragraph("Start Date: " + contract.getStartDate()));
             contractBox.add(new Paragraph("End Date: " + contract.getEndDate()));
-            contractBox.add(new Paragraph("Terms:"));
-            contractBox.add(new Paragraph(contract.getTerms()));
+            contractBox.add(new Paragraph("AI Generated Legal Contract:")
+                    .setBold()
+                    .setFontSize(14));
+
+            contractBox.add(new Paragraph("\n"));
+
+            String content = contract.getAiFullContract();
+            if (content == null || content.isBlank()) {
+                content = contract.getTerms();
+            }
+
+            contractBox.add(new Paragraph(content)
+                    .setFontSize(12)
+                    .setTextAlignment(TextAlignment.JUSTIFIED));
+
             contractBox.add(new Paragraph("Risk Score: " + contract.getRiskScore())
                     .setFontColor(ColorConstants.RED));
 

@@ -17,9 +17,16 @@ public class VerifyContractController {
 
         try {
 
-            String hash = hashField.getText();
+            String input = hashField.getText().trim();
 
-            boolean valid = contractService.verifyContract(hash);
+            // 🔥 Si format QR = ID|HASH
+            if (input.contains("|")) {
+                String[] parts = input.split("\\|");
+                input = parts[1]; // On prend seulement le hash
+            }
+            System.out.println("HASH ENTERED: " + input);
+
+            boolean valid = contractService.verifyContract(input);
 
             if (valid) {
                 resultLabel.setText("✅ CONTRACT VALID");

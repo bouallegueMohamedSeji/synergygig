@@ -13,6 +13,9 @@ public class ContractService {
     private final AiRiskService aiRiskService = new AiRiskService();
     private final ContractPDFService pdfService = new ContractPDFService();
     private final EmailService emailService = new EmailService();
+    private final OllamaService ollamaService = new OllamaService();
+
+
 
     // ================= GENERATE CONTRACT + AI + PDF + EMAIL =================
     // ================= GENERATE CONTRACT + AI + PDF + EMAIL =================
@@ -24,42 +27,51 @@ public class ContractService {
 
         try {
 
-            // 1️⃣ Status initial
+            // 1️⃣ Status
             contract.setStatus(ContractStatus.GENERATED);
 
-            // 2️⃣ Analyse IA
+            // 2️⃣ 🔥 RISK ANALYSIS (OLLAMA)
             double riskScore =
-                    aiRiskService.analyzeRisk(contract.getTerms());
+                    ollamaService.analyzeRisk(contract.getTerms());
 
             contract.setRiskScore(riskScore);
 
-            // 3️⃣ Insert DB (ID généré ici)
+            System.out.println("🔥 RISK GENERATED = " + riskScore);
+
+            // 3️⃣ Insert initial
             contractDAO.insert(contract);
 
-            // 🔥 4️⃣ Génération Hash blockchain (APRÈS insert)
+            // 4️⃣ Generate full legal contract
+            String legalText =
+                    ollamaService.generateLegalContract(contract);
+
+            if (legalText == null || legalText.isBlank()) {
+                legalText = contract.getTerms();
+            }
+
+            contract.setAiFullContract(legalText);
+
+            // 5️⃣ Blockchain hash
             String hash = BlockchainService.generateHash(contract);
             contract.setBlockchainHash(hash);
 
-            // 🔥 Sauvegarder le hash en base
+            // 6️⃣ Update DB
             contractDAO.update(contract);
 
-            // 5️⃣ Génération PDF
-            String pdfPath =
-                    pdfService.generatePDF(contract);
+            // 7️⃣ Generate PDF
+            String pdfPath = pdfService.generatePDF(contract);
 
-            // 6️⃣ Envoi email
-            emailService.sendContractEmail(
-                    clientName,
-                    pdfPath
-            );
+            // 8️⃣ Send email
+            if (pdfPath != null) {
+                emailService.sendContractEmail(clientName, pdfPath);
+            }
 
-            System.out.println("✅ Contract + Hash + AI + PDF + Email ready");
+            System.out.println("🔥 Contract workflow completed PRO version");
 
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-
     // ================= START WORK =================
     public void startWork(Contract contract) {
 
@@ -102,5 +114,43 @@ public class ContractService {
     public boolean verifyContract(String hash) throws Exception {
         return contractDAO.existsByHash(hash);
     }
+    public void analyzeWithAI(Contract contract) {
+
+        try {
+
+            String summary =
+                    ollamaService.summarize(contract.getTerms());
+
+            contract.setAiSummary(summary);
+            contractDAO.update(contract);
+
+
+            System.out.println("🤖 AI analysis saved.");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    public Contract getByApplicationId(int appId) throws Exception {
+        return contractDAO.findByApplicationId(appId);
+    }
+    public void improveWithAI(Contract contract) {
+
+        try {
+
+            String improved =
+                    ollamaService.improve(contract.getTerms());
+
+            contract.setAiImproved(improved);
+
+            contractDAO.update(contract);
+
+            System.out.println("✨ Improved version saved.");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
 }

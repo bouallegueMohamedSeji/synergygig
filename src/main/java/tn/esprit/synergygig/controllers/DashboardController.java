@@ -1,4 +1,6 @@
 package tn.esprit.synergygig.controllers;
+import javafx.scene.control.ListView;
+import tn.esprit.synergygig.services.NewsService;
 
 import javafx.fxml.FXML;
 import javafx.scene.chart.*;
@@ -16,6 +18,17 @@ import javafx.scene.shape.Circle;
 import javafx.animation.FadeTransition;
 import javafx.animation.Animation;
 import javafx.util.Duration;
+import tn.esprit.synergygig.entities.NewsArticles;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+import javafx.scene.control.ListCell;
+import java.awt.Desktop;
+import java.net.URI;
+import tn.esprit.synergygig.services.WeatherService;
+
+
 
 
 public class DashboardController {
@@ -42,19 +55,32 @@ public class DashboardController {
     @FXML private ProgressBar healthProgress;
     @FXML private Label healthPercent;
     @FXML private Label healthBadge;
+    @FXML
+    private ListView<NewsArticles> newsListView;
+    // ===== WEATHER =====
+    @FXML private VBox weatherCard;
+    @FXML private Label weatherCity;
+    @FXML private Label weatherTemp;
+    @FXML private Label weatherDesc;
+    @FXML private ImageView weatherIcon;
+
+
 
 
 
     private final DashboardService service = new DashboardService();
+    WeatherService weatherService = new WeatherService();
 
     @FXML
     public void initialize() {
+
         loadNumbers();
         animateCards();
         loadCharts();
         createStars();
         loadPlatformHealth();
-
+        loadNews();
+        loadWeather();
     }
 
     // ======================
@@ -286,7 +312,121 @@ public class DashboardController {
             healthBadge.setStyle("-fx-text-fill: #ff4d4d;");
         }
     }
+    private void loadNews() {
 
+        NewsService newsService = new NewsService();
 
+        javafx.concurrent.Task<java.util.List<NewsArticles>> task =
+                new javafx.concurrent.Task<>() {
+                    @Override
+                    protected java.util.List<NewsArticles> call() {
+                        return newsService.getTop5Articles(); // ✅ correction ici
+                    }
+                };
+
+        task.setOnSucceeded(e -> {
+            if (task.getValue() != null) {
+                newsListView.getItems().setAll(task.getValue());
+            }
+        });
+
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
+
+        newsListView.setCellFactory(list -> new ListCell<>() {
+
+            @Override
+            protected void updateItem(NewsArticles article, boolean empty) {
+                super.updateItem(article, empty);
+
+                if (empty || article == null) {
+                    setGraphic(null);
+                    return;
+                }
+
+                HBox root = new HBox(15);
+                root.setStyle("-fx-background-color: rgba(255,255,255,0.05);" +
+                        "-fx-background-radius:15;" +
+                        "-fx-padding:15;");
+
+                ImageView imageView = new ImageView();
+                imageView.setFitWidth(100);
+                imageView.setFitHeight(70);
+                imageView.setPreserveRatio(true);
+
+                if (article.getImageUrl() != null &&
+                        !article.getImageUrl().isBlank()) {
+                    try {
+                        imageView.setImage(new Image(article.getImageUrl(), true));
+                    } catch (Exception ignored) {}
+                }
+
+                VBox textBox = new VBox(6);
+
+                Label title = new Label(article.getTitle());
+                title.setStyle("-fx-text-fill: #4da6ff;" +
+                        "-fx-font-size:15;" +
+                        "-fx-font-weight:bold;");
+
+                Label desc = new Label(article.getDescription());
+                desc.setWrapText(true);
+                desc.setStyle("-fx-text-fill: black; -fx-font-size:13;");
+
+                Label date = new Label(article.getPublishedAt());
+                date.setStyle("-fx-text-fill: #aaaaaa; -fx-font-size:11;");
+
+                textBox.getChildren().addAll(title, desc, date);
+                root.getChildren().addAll(imageView, textBox);
+
+                root.setOnMouseClicked(event -> {
+                    if (event.getClickCount() == 2 &&
+                            article.getUrl() != null &&
+                            !article.getUrl().isBlank()) {
+                        try {
+                            Desktop.getDesktop().browse(new URI(article.getUrl()));
+                        } catch (Exception ignored) {}
+                    }
+                });
+
+                setGraphic(root);
+            }
+        });
+    }
+    private void loadWeather() {
+
+        try {
+
+            String city = "Tunis"; // tu peux changer
+
+            String json = weatherService.getRawWeather(city);
+
+            if (json == null) return;
+
+            org.json.JSONObject obj = new org.json.JSONObject(json);
+
+            double temp = obj.getJSONObject("main").getDouble("temp");
+            String desc = obj.getJSONArray("weather")
+                    .getJSONObject(0)
+                    .getString("description");
+
+            String iconCode = obj.getJSONArray("weather")
+                    .getJSONObject(0)
+                    .getString("icon");
+
+            weatherCity.setText(city);
+            weatherTemp.setText((int) temp + "°C");
+            weatherDesc.setText(desc.toUpperCase());
+
+            String iconUrl =
+                    "https://openweathermap.org/img/wn/"
+                            + iconCode + "@2x.png";
+
+            weatherIcon.setImage(new Image(iconUrl, true));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
 }

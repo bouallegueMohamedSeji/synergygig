@@ -6,11 +6,10 @@ import java.net.URL;
 
 public class AiRiskService {
 
-    private static final String API_KEY = "hf_xxxxxxxxxxxxxxxxxxxxx"; // ton token
+    private static final String API_KEY = ""; // ton token
 
     private static final String MODEL_URL =
-            "https://router.huggingface.co/models/facebook/bart-large-mnli";
-
+            "https://router.huggingface.co/hf-inference/models/cross-encoder/nli-distilroberta-base";
     public double analyzeRisk(String text) {
 
         try {
@@ -25,13 +24,13 @@ public class AiRiskService {
             conn.setDoOutput(true);
 
             String jsonInput = """
-            {
-              "inputs": "%s",
-              "parameters": {
-                "candidate_labels": ["low risk", "medium risk", "high risk"]
-              }
-            }
-            """.formatted(text.replace("\"", "'"));
+        {
+          "inputs": {
+            "premise": "%s",
+            "hypothesis": "This contract has high legal risk."
+          }
+        }
+        """.formatted(text.replace("\"", "'"));
 
             OutputStream os = conn.getOutputStream();
             os.write(jsonInput.getBytes());
@@ -46,9 +45,8 @@ public class AiRiskService {
                             ? conn.getInputStream()
                             : conn.getErrorStream();
 
-            BufferedReader br = new BufferedReader(
-                    new InputStreamReader(inputStream)
-            );
+            BufferedReader br =
+                    new BufferedReader(new InputStreamReader(inputStream));
 
             StringBuilder response = new StringBuilder();
             String line;
@@ -62,17 +60,22 @@ public class AiRiskService {
             String result = response.toString();
             System.out.println("HF RESPONSE: " + result);
 
-            if (result.contains("\"high risk\""))
-                return 0.9;
+            if (responseCode != 200) return 0.3;
 
-            if (result.contains("\"medium risk\""))
-                return 0.5;
+            // Exemple réponse :
+            // [{"label":"ENTAILMENT","score":0.87}]
 
-            return 0.1;
+            int scoreIndex = result.indexOf("\"score\":") + 8;
+            int endIndex = result.indexOf("}", scoreIndex);
+
+            String scoreStr =
+                    result.substring(scoreIndex, endIndex);
+
+            return Double.parseDouble(scoreStr);
 
         } catch (Exception e) {
             e.printStackTrace();
-            return 0.0;
+            return 0.3;
         }
     }
 }

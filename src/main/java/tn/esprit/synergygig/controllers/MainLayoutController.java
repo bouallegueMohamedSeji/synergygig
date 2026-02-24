@@ -70,6 +70,10 @@ public class MainLayoutController {
     public void showClientOffers() {
         loadCenter("ClientOfferView.fxml");
     }
+    public void showVerifyView() {
+        loadCenter("VerifyContractView.fxml");
+    }
+
 
     // ================= LOAD CENTER WITH ANIMATION =================
     private void loadCenter(String fxml) {

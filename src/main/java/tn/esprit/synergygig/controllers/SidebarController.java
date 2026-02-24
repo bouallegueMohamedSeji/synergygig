@@ -66,10 +66,11 @@ public class SidebarController {
     }
     @FXML
     private void showVerifyView() {
-        mainLayoutController.loadCenter(
-                "/tn/esprit/synergygig/gui/VerifyContractView.fxml"
-        );
+        if (mainLayoutController != null) {
+            mainLayoutController.showVerifyView();
+        }
     }
+
 
     private void createStars() {
 

@@ -20,11 +20,11 @@ public class ContractDAO {
     public void insert(Contract contract) throws SQLException {
 
         String sql = """
-        INSERT INTO contracts
-        (application_id, start_date, end_date, amount, terms, status,
-         blockchain_hash, risk_score)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """;
+INSERT INTO contracts
+(application_id, start_date, end_date, amount, terms, status,
+ blockchain_hash, risk_score, ai_full_contract)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+""";
 
         PreparedStatement ps = cnx.prepareStatement(
                 sql,
@@ -39,6 +39,7 @@ public class ContractDAO {
         ps.setString(6, contract.getStatus().name());
         ps.setString(7, contract.getBlockchainHash());
         ps.setDouble(8, contract.getRiskScore());
+        ps.setString(9, contract.getAiFullContract());
 
         ps.executeUpdate();
 
@@ -53,25 +54,31 @@ public class ContractDAO {
     // ================= UPDATE =================
     public void update(Contract contract) throws SQLException {
 
-        String sql = """
-        UPDATE contracts
-        SET status = ?,
-            blockchain_hash = ?,
-            risk_score = ?
-        WHERE id = ?
-        """;
+        if (contract.getStatus() == null) {
+            contract.setStatus(ContractStatus.GENERATED);
+        }
 
+        String sql = """
+UPDATE contracts
+SET status = ?,
+    blockchain_hash = ?,
+    risk_score = ?,
+    ai_full_contract = ?
+WHERE id = ?
+""";
         PreparedStatement ps = cnx.prepareStatement(sql);
 
         ps.setString(1, contract.getStatus().name());
         ps.setString(2, contract.getBlockchainHash());
         ps.setDouble(3, contract.getRiskScore());
-        ps.setInt(4, contract.getId());
+        ps.setString(4, contract.getAiSummary());
+        ps.setString(5, contract.getAiImproved());
+        ps.setString(4, contract.getAiFullContract());
+        ps.setInt(5, contract.getId());
 
         ps.executeUpdate();
         ps.close();
     }
-
     // ================= SELECT ALL =================
     public List<Contract> selectAll() throws SQLException {
 
@@ -96,6 +103,19 @@ public class ContractDAO {
                     rs.getTimestamp("created_at").toLocalDateTime()
             );
 
+            // 🔥 NOUVEAUX CHAMPS IA
+            contract.setAiFullContract(
+                    rs.getString("ai_full_contract")
+            );
+
+            contract.setAiSummary(
+                    rs.getString("ai_summary")
+            );
+
+            contract.setAiImproved(
+                    rs.getString("ai_improved")
+            );
+
             list.add(contract);
         }
 
@@ -114,6 +134,39 @@ public class ContractDAO {
         rs.next();
 
         return rs.getInt(1) > 0;
+    }
+    public Contract findByApplicationId(int appId) throws Exception {
+
+        String sql = "SELECT * FROM contracts WHERE application_id = ?";
+
+        PreparedStatement ps = cnx.prepareStatement(sql);
+        ps.setInt(1, appId);
+
+        ResultSet rs = ps.executeQuery();
+
+        if (rs.next()) {
+
+            Contract contract = new Contract(
+                    rs.getInt("id"),
+                    rs.getInt("application_id"),
+                    rs.getDate("start_date").toLocalDate(),
+                    rs.getDate("end_date").toLocalDate(),
+                    rs.getDouble("amount"),
+                    rs.getString("terms"),
+                    ContractStatus.valueOf(rs.getString("status")),
+                    rs.getString("blockchain_hash"),
+                    rs.getDouble("risk_score"),
+                    rs.getTimestamp("created_at").toLocalDateTime()
+            );
+
+            contract.setAiSummary(rs.getString("ai_summary"));
+            contract.setAiImproved(rs.getString("ai_improved"));
+            contract.setAiFullContract(rs.getString("ai_full_contract"));
+
+            return contract;
+        }
+
+        return null;
     }
 
 }

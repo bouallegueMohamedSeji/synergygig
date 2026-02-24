@@ -34,16 +34,15 @@ public class ApplicationService {
     }
     public void accept(Application app) throws SQLException {
 
-        if (app.getStatus() != ApplicationStatus.PENDING) {
+        Application fresh = dao.findById(app.getId());
+
+        if (fresh.getStatus() != ApplicationStatus.PENDING) {
             throw new IllegalStateException("Application déjà traitée");
         }
 
         dao.updateStatus(app.getId(), ApplicationStatus.ACCEPTED);
-
-        // 🔄 synchronisation OFFER
         offerDao.updateStatus(app.getOfferId(), OfferStatus.IN_PROGRESS);
     }
-
 
     public void reject(Application app) throws SQLException {
 

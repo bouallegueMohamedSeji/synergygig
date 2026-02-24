@@ -32,7 +32,12 @@
                 <TableColumn fx:id="colOffer" text="Offre"/>
                 <TableColumn fx:id="colApplicant" text="Candidat"/>
                 <TableColumn fx:id="colStatus" text="Status"/>
-                <TableColumn fx:id="colActions" text="Actions"/>
+                <TableColumn fx:id="colActions"
+                             text="Actions"
+                             prefWidth="560"
+                             minWidth="520"
+                             maxWidth="600"/>
+
             </columns>
 
         </TableView>

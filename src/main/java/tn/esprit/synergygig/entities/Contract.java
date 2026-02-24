@@ -22,6 +22,13 @@ public class Contract {
     private double riskScore;
     private LocalDateTime createdAt;
 
+    private String aiSummary;
+    private String aiAnalysis;
+    private String aiImproved;
+
+    // ✅ AJOUT ICI
+    private String aiFullContract;
+
     // ================= CONSTRUCTORS =================
 
     public Contract() {}
@@ -64,6 +71,7 @@ public class Contract {
         this.createdAt = createdAt;
     }
 
+
     // ================= GETTERS =================
 
     public int getId() { return id; }
@@ -76,6 +84,21 @@ public class Contract {
     public String getBlockchainHash() { return blockchainHash; }
     public double getRiskScore() { return riskScore; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public String getAiSummary() { return aiSummary; }
+    public void setAiSummary(String aiSummary) { this.aiSummary = aiSummary; }
+    public String getAiFullContract() {
+        return aiFullContract;
+    }
+
+    public void setAiFullContract(String aiFullContract) {
+        this.aiFullContract = aiFullContract;
+    }
+
+    public String getAiAnalysis() { return aiAnalysis; }
+    public void setAiAnalysis(String aiAnalysis) { this.aiAnalysis = aiAnalysis; }
+
+    public String getAiImproved() { return aiImproved; }
+    public void setAiImproved(String aiImproved) { this.aiImproved = aiImproved; }
 
     // ================= SETTERS =================
 

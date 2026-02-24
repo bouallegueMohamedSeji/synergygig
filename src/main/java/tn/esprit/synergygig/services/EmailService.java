@@ -91,8 +91,21 @@ public class EmailService {
             htmlPart.setContent(htmlContent, "text/html; charset=utf-8");
 
             // ===== PDF ATTACHMENT =====
+            // ===== PDF ATTACHMENT =====
+            if (pdfPath == null || pdfPath.isBlank()) {
+                System.out.println("❌ PDF path null. Email not sent.");
+                return;
+            }
+
+            File file = new File(pdfPath);
+
+            if (!file.exists()) {
+                System.out.println("❌ PDF file does not exist.");
+                return;
+            }
+
             MimeBodyPart attachmentPart = new MimeBodyPart();
-            attachmentPart.attachFile(new File(pdfPath));
+            attachmentPart.attachFile(file);
 
             Multipart multipart = new MimeMultipart();
             multipart.addBodyPart(htmlPart);

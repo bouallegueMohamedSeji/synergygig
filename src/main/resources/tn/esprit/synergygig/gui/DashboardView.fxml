@@ -3,6 +3,7 @@
 <?import javafx.scene.chart.*?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.image.ImageView?>
 
 <StackPane
         xmlns="http://javafx.com/javafx/21"
@@ -13,14 +14,55 @@
     <Pane fx:id="animatedBackground"/>
 
     <!-- CONTENT -->
-    <VBox spacing="30" style="-fx-padding: 40;">
+    <VBox spacing="30"
+          alignment="TOP_LEFT"
+          style="-fx-padding: 40;">
 
-        <Label text="🚀 SynergyGig Dashboard"
-               style="-fx-text-fill: white;
-                      -fx-font-size:26;
-                      -fx-font-weight:bold;" />
+        <!-- HEADER + WEATHER -->
+        <HBox alignment="CENTER_LEFT" spacing="20">
 
-        <!-- Stats Cards -->
+            <Label text="🚀 SynergyGig Dashboard"
+                   style="-fx-text-fill: white;
+                          -fx-font-size:26;
+                          -fx-font-weight:bold;" />
+
+            <Region HBox.hgrow="ALWAYS"/>
+
+            <!-- WEATHER CARD -->
+            <VBox fx:id="weatherCard"
+                  prefWidth="180"
+                  spacing="5"
+                  alignment="CENTER"
+                  style="-fx-background-color: rgba(255,255,255,0.08);
+                         -fx-background-radius:20;
+                         -fx-padding:15;
+                         -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3),10,0,0,4);">
+
+                <Label fx:id="weatherCity"
+                       text="City"
+                       style="-fx-text-fill: white;
+                              -fx-font-size:14;
+                              -fx-font-weight:bold;"/>
+
+                <ImageView fx:id="weatherIcon"
+                           fitHeight="60"
+                           preserveRatio="true"/>
+
+                <Label fx:id="weatherTemp"
+                       text="0°C"
+                       style="-fx-text-fill: #4da6ff;
+                              -fx-font-size:22;
+                              -fx-font-weight:bold;"/>
+
+                <Label fx:id="weatherDesc"
+                       text="Clear"
+                       style="-fx-text-fill: white;
+                              -fx-font-size:12;"/>
+            </VBox>
+
+        </HBox>
+
+        <!-- STATS CARDS -->
         <HBox spacing="25">
 
             <VBox fx:id="cardTotal" styleClass="stat-card stat-total">
@@ -50,13 +92,42 @@
 
         </HBox>
 
-        <!-- Charts -->
-        <HBox spacing="40">
+        <!-- CHARTS + HEALTH -->
+        <HBox spacing="50">
 
-            <PieChart fx:id="offerPieChart" prefWidth="400"/>
+            <!-- LEFT SIDE -->
+            <VBox spacing="30">
 
+                <PieChart fx:id="offerPieChart"
+                          prefWidth="400"/>
+
+                <VBox spacing="15">
+
+                    <Label text="📊 SynergyGig Health Score"
+                           style="-fx-text-fill: white;
+                                  -fx-font-size:20;
+                                  -fx-font-weight:bold;" />
+
+                    <ProgressBar fx:id="healthProgress"
+                                 prefWidth="400"
+                                 progress="0"/>
+
+                    <Label fx:id="healthPercent"
+                           text="0%"
+                           style="-fx-text-fill: white;
+                                  -fx-font-size:16;" />
+
+                    <Label fx:id="healthBadge"
+                           text=""
+                           style="-fx-font-size:16;
+                                  -fx-font-weight:bold;" />
+                </VBox>
+
+            </VBox>
+
+            <!-- RIGHT SIDE -->
             <BarChart fx:id="offerBarChart"
-                      prefWidth="500"
+                      prefWidth="650"
                       categoryGap="20"
                       barGap="5">
                 <xAxis>
@@ -69,28 +140,19 @@
 
         </HBox>
 
-        <!-- Platform Health Score -->
-        <VBox spacing="15" style="-fx-padding: 20;">
+        <!-- NEWS SECTION -->
+        <VBox spacing="10">
 
-            <Label text="📊 SynergyGig Health Score"
+            <Label text="📰 Market Insights"
                    style="-fx-text-fill: white;
                           -fx-font-size:20;
                           -fx-font-weight:bold;" />
 
-            <ProgressBar fx:id="healthProgress"
-                         prefWidth="400"
-                         progress="0"/>
-
-            <Label fx:id="healthPercent"
-                   text="0%"
-                   style="-fx-text-fill: white;
-                          -fx-font-size:16;" />
-
-            <Label fx:id="healthBadge"
-                   text=""
-                   style="-fx-font-size:16;
-                          -fx-font-weight:bold;" />
-
+            <ListView fx:id="newsListView"
+                      prefHeight="200"
+                      style="-fx-background-color: rgba(255,255,255,0.05);
+                             -fx-control-inner-background: #1a1a2e;
+                             -fx-text-fill: #121826;" />
         </VBox>
 
     </VBox>

@@ -97,6 +97,28 @@ public class ApplicationDAO {
 
         return apps;
     }
+    public Application findById(int id) throws SQLException {
+
+        String sql = "SELECT * FROM applications WHERE id = ?";
+
+        PreparedStatement ps = cnx.prepareStatement(sql);
+        ps.setInt(1, id);
+
+        ResultSet rs = ps.executeQuery();
+
+        if (rs.next()) {
+
+            return new Application(
+                    rs.getInt("id"),
+                    rs.getInt("offer_id"),
+                    rs.getInt("applicant_id"),
+                    ApplicationStatus.valueOf(rs.getString("status")),
+                    rs.getTimestamp("applied_at").toLocalDateTime()
+            );
+        }
+
+        return null;
+    }
 
 
 }

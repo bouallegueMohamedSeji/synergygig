@@ -27,6 +27,19 @@ import tn.esprit.synergygig.services.ContractService;
 import tn.esprit.synergygig.services.OfferService;
 import tn.esprit.synergygig.services.UserService;
 import java.time.LocalDate;
+import javafx.scene.layout.HBox;
+import javafx.scene.control.Button;
+import javafx.geometry.Pos;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.layout.HBox;
+import javafx.scene.control.TableCell;
+import tn.esprit.synergygig.entities.enums.ContractStatus;
+import javafx.stage.Stage;
+import javafx.stage.Modality;
+import javafx.scene.Scene;
+import javafx.scene.control.TextArea;
+import javafx.scene.layout.VBox;
 
 
 
@@ -38,6 +51,12 @@ public class ApplicationsAdminController {
     @FXML private TableColumn<Application, String> colApplicant;
     @FXML private TableColumn<Application, ApplicationStatus> colStatus;
     @FXML private TableColumn<Application, Void> colActions;
+    @FXML
+    private TextArea aiResultArea;
+
+    @FXML
+    private Label aiBadge;
+
     @FXML
     private Pane animatedBackground;
 
@@ -106,21 +125,54 @@ public class ApplicationsAdminController {
 
             private final Button btnAccept = new Button("✔ Accepter");
             private final Button btnReject = new Button("✖ Refuser");
-            private final HBox box = new HBox(10, btnAccept, btnReject);
+            private final Button btnAnalyze = new Button("🤖 Analyze");
+            private final Button btnImprove = new Button("✨ Improve");
+
+            private final HBox box =
+                    new HBox(12, btnAccept, btnReject, btnAnalyze, btnImprove);
 
             {
-                // 🔥 ajouter styles galaxy
+                box.setAlignment(Pos.CENTER);
+                box.setStyle("-fx-padding:8;");
+
+                btnAccept.setPrefWidth(110);
+                btnReject.setPrefWidth(110);
+                btnAnalyze.setPrefWidth(110);
+                btnImprove.setPrefWidth(110);
+
                 btnAccept.getStyleClass().add("btn-accept");
                 btnReject.getStyleClass().add("btn-reject");
+                btnAnalyze.getStyleClass().add("btn-ai");
+                btnImprove.getStyleClass().add("btn-improve");
 
                 btnAccept.setOnAction(e -> {
-                    Application app = getTableView().getItems().get(getIndex());
+                    Application app =
+                            getTableView().getItems().get(getIndex());
                     accept(app);
+                    getTableView().refresh();
                 });
 
                 btnReject.setOnAction(e -> {
-                    Application app = getTableView().getItems().get(getIndex());
+                    Application app =
+                            getTableView().getItems().get(getIndex());
                     reject(app);
+                    getTableView().refresh();
+                });
+
+                btnAnalyze.setOnAction(e -> {
+                    Application app =
+                            getTableView().getItems().get(getIndex());
+                    if ("ACCEPTED".equals(app.getStatus().name())) {
+                        analyzeContract(app);
+                    }
+                });
+
+                btnImprove.setOnAction(e -> {
+                    Application app =
+                            getTableView().getItems().get(getIndex());
+                    if ("ACCEPTED".equals(app.getStatus().name())) {
+                        improveContract(app);
+                    }
                 });
             }
 
@@ -130,20 +182,29 @@ public class ApplicationsAdminController {
 
                 if (empty) {
                     setGraphic(null);
-                    return;
+                } else {
+
+                    Application app =
+                            getTableView().getItems().get(getIndex());
+
+                    boolean isPending =
+                            "PENDING".equals(app.getStatus().name());
+
+                    boolean isAccepted =
+                            "ACCEPTED".equals(app.getStatus().name());
+
+                    btnAccept.setDisable(!isPending);
+                    btnReject.setDisable(!isPending);
+
+                    btnAnalyze.setDisable(!isAccepted);
+                    btnImprove.setDisable(!isAccepted);
+
+                    setGraphic(box);
                 }
-
-                Application app = getTableView().getItems().get(getIndex());
-
-                boolean pending = app.getStatus() == ApplicationStatus.PENDING;
-
-                btnAccept.setDisable(!pending);
-                btnReject.setDisable(!pending);
-
-                setGraphic(box);
             }
         });
     }
+
 
     private void accept(Application app) {
 
@@ -178,6 +239,7 @@ public class ApplicationsAdminController {
                     offer.getAmount(),
                     "Client may delay payment and legal conflict possible"
             );
+            contract.setStatus(ContractStatus.GENERATED);
 
             // 5️⃣ Générer contrat (IA + PDF + Email)
             ContractService contractService = new ContractService();
@@ -247,6 +309,160 @@ public class ApplicationsAdminController {
         alert.setContentText(msg);
         alert.show();
     }
+
+    private void improveContract(Application app) {
+
+        try {
+
+            ContractService service = new ContractService();
+            Contract contract =
+                    service.getByApplicationId(app.getId());
+
+            if (contract == null) {
+                showGalaxyPopup("Error",
+                        "No contract found.",
+                        "❌ ERROR");
+                return;
+            }
+
+            javafx.concurrent.Task<Void> task =
+                    new javafx.concurrent.Task<>() {
+                        @Override
+                        protected Void call() {
+                            service.improveWithAI(contract);
+                            return null;
+                        }
+                    };
+
+            task.setOnSucceeded(e -> {
+
+                // 🔥 UTILISER L'OBJET EN MÉMOIRE (PAS RELOAD DB)
+                String improved = contract.getAiImproved();
+
+                if (improved == null || improved.isBlank()) {
+                    showGalaxyPopup(
+                            "AI Improve",
+                            "Improvement failed.",
+                            "❌ ERROR"
+                    );
+                    return;
+                }
+
+                showGalaxyPopup(
+                        "✨ Improved Contract Version",
+                        improved,
+                        "⚖ LEGAL OPTIMIZATION COMPLETE"
+                );
+            });
+
+            new Thread(task).start();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    private void showGalaxyPopup(String title, String content, String riskStatus) {
+
+        Stage stage = new Stage();
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.setTitle(title);
+
+        Label riskLabel = new Label(riskStatus);
+        riskLabel.setStyle("""
+        -fx-text-fill: #00ffcc;
+        -fx-font-size: 16px;
+        -fx-font-weight: bold;
+    """);
+
+        TextArea textArea = new TextArea(content);
+        textArea.setWrapText(true);
+        textArea.setEditable(false);
+        textArea.setPrefHeight(500);
+
+        textArea.setStyle("""
+        -fx-control-inner-background: #0f0f2d;
+        -fx-text-fill: #4da6ff;
+        -fx-font-size: 14px;
+        -fx-font-family: 'Consolas';
+        -fx-background-radius: 20;
+        -fx-border-color: #00ccff;
+        -fx-border-radius: 20;
+        -fx-border-width: 2;
+    """);
+
+        VBox container = new VBox(20, riskLabel, textArea);
+        container.setStyle("""
+        -fx-background-color: linear-gradient(to bottom right, #0f0f2d, #1a1a40);
+        -fx-padding: 30;
+    """);
+
+        Scene scene = new Scene(container, 900, 650);
+        stage.setScene(scene);
+        stage.showAndWait();
+    }
+    private void analyzeContract(Application app) {
+
+        try {
+
+            ContractService service = new ContractService();
+            Contract contract =
+                    service.getByApplicationId(app.getId());
+
+            if (contract == null) {
+                showGalaxyPopup("Error",
+                        "No contract found.",
+                        "❌ ERROR");
+                return;
+            }
+
+            javafx.concurrent.Task<Void> task =
+                    new javafx.concurrent.Task<>() {
+                        @Override
+                        protected Void call() {
+                            service.analyzeWithAI(contract);
+                            return null;
+                        }
+                    };
+
+            task.setOnSucceeded(e -> {
+
+                // 🔥 UTILISER L'OBJET EN MÉMOIRE (PAS RELOAD DB)
+                String summary = contract.getAiSummary();
+                double risk = contract.getRiskScore();
+
+                if (summary == null || summary.isBlank()) {
+                    showGalaxyPopup(
+                            "AI Analysis",
+                            "AI analysis failed.",
+                            "❌ ERROR"
+                    );
+                    return;
+                }
+
+                String riskLevel;
+
+                if (risk < 0.3) {
+                    riskLevel = "🟢 LOW RISK (" + risk + ")";
+                } else if (risk < 0.7) {
+                    riskLevel = "🟡 MEDIUM RISK (" + risk + ")";
+                } else {
+                    riskLevel = "🔴 HIGH RISK (" + risk + ")";
+                }
+
+                showGalaxyPopup(
+                        "🤖 AI Contract Analysis",
+                        summary,
+                        riskLevel
+                );
+            });
+
+            new Thread(task).start();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
 
 }
