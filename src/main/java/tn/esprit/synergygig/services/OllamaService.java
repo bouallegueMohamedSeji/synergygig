@@ -367,8 +367,11 @@ Structure the output EXACTLY as follows:
 LEGAL RISK AUDIT REPORT
 ══════════════════════════════════
 
-1️⃣ OVERALL RISK SCORE (0.00 – 1.00)
-Provide ONLY a decimal number on this line.
+1️⃣ OVERALL RISK SCORE
+Use the provided system risk score below.
+Do NOT recalculate it.
+
+System Risk Score: %.2f
 
 2️⃣ FINANCIAL RISK EXPOSURE
 - Assess payment structure
@@ -412,7 +415,8 @@ Do NOT simplify language.
                             contract.getStartDate(),
                             contract.getEndDate(),
                             duration,
-                            contract.getTerms()
+                            contract.getTerms(),
+                            contract.getRiskScore()
                     );
 
             com.google.gson.JsonObject json = new com.google.gson.JsonObject();
