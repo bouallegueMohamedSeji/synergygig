@@ -86,13 +86,7 @@
                         styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"
                         managed="false" visible="false"/>
 
-                <Button fx:id="btnCourses" text="📚  Courses" onAction="#showCourses"
-                        styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
-
-                <Button fx:id="btnResources" text="📂  Resources" onAction="#showResources"
-                        styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
-
-                <Button fx:id="btnQuizzes" text="❓  Quizzes" onAction="#showQuizzes"
+                <Button fx:id="btnTraining" text="🎓  Training" onAction="#showTraining"
                         styleClass="sidebar-btn" maxWidth="Infinity" alignment="CENTER_LEFT"/>
 
                 <Button fx:id="btnCommunity" text="🏛️  Community" onAction="#showPlaceholder"

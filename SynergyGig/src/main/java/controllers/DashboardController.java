@@ -30,6 +30,8 @@ public class DashboardController {
     private Button btnDashboard;
     @FXML
     private Button btnProfile;
+    @FXML
+    private Button btnMySkills;
 
     // Admin-only
     @FXML
@@ -53,11 +55,7 @@ public class DashboardController {
     @FXML
     private Button btnProjects;
     @FXML
-    private Button btnCourses;
-    @FXML
-    private Button btnResources;
-    @FXML
-    private Button btnQuizzes;
+    private Button btnTraining;
     @FXML
     private Button btnCommunity;
 
@@ -103,13 +101,16 @@ public class DashboardController {
     private void configureRoleAccess(String role) {
         switch (role) {
             case "ADMIN":
-                // Admin sees everything
+                // Admin sees everything EXCEPT My Skills (Admin manages others)
                 showNode(adminSectionLabel);
                 showNode(btnManageUsers);
                 showNode(hrSectionLabel);
                 showNode(btnHrDashboard);
                 showNode(btnHrAdmin);
                 showNode(btnProjects);
+
+                btnMySkills.setVisible(false);
+                btnMySkills.setManaged(false);
                 break;
 
             case "HR_MANAGER":
@@ -118,29 +119,27 @@ public class DashboardController {
                 showNode(btnHrDashboard);
                 showNode(btnHrAdmin);
                 showNode(btnProjects);
-                break;
 
-            case "EMPLOYEE":
-                // Employee sees basic modules
-                showNode(btnHrAdmin); // can view attendance/leave
-                // btnResources is hidden by default in FXML? No, it's visible.
-                // We need to explicitly hide it if it's visible by default.
-                btnResources.setVisible(false);
-                btnResources.setManaged(false);
+                btnMySkills.setVisible(false);
+                btnMySkills.setManaged(false);
                 break;
 
             case "PROJECT_OWNER":
                 // Employee + Projects/Tasks
                 showNode(btnHrAdmin);
                 showNode(btnProjects);
-                // Project Owner might still want direct Resource Management?
-                // "keep it like how it is for the admin and for the project owner"
+
+                btnMySkills.setVisible(false);
+                btnMySkills.setManaged(false);
+                break;
+
+            case "EMPLOYEE":
+                // Employee sees basic modules
+                showNode(btnHrAdmin); // can view attendance/leave
                 break;
 
             case "GIG_WORKER":
                 // Gig worker sees recruitment-focused modules
-                btnResources.setVisible(false);
-                btnResources.setManaged(false);
                 break;
         }
     }
@@ -215,37 +214,8 @@ public class DashboardController {
     }
 
     @FXML
-    private void showCourses() {
-        User currentUser = SessionManager.getInstance().getCurrentUser();
-        if (currentUser != null &&
-                ("ADMIN".equals(currentUser.getRole()) ||
-                        "HR_MANAGER".equals(currentUser.getRole()) ||
-                        "PROJECT_OWNER".equals(currentUser.getRole()))) {
-            loadContent("/fxml/CourseManagement.fxml");
-        } else {
-            // Employees and Gig Workers see the Catalog
-            loadContent("/fxml/UserCourseCatalog.fxml");
-        }
-    }
-
-    @FXML
-    private void showResources() {
-        User currentUser = SessionManager.getInstance().getCurrentUser();
-        // Hide resources for non-admins if they are supposed to access it via Courses
-        if (currentUser != null &&
-                !"ADMIN".equals(currentUser.getRole()) &&
-                !"HR_MANAGER".equals(currentUser.getRole()) &&
-                !"PROJECT_OWNER".equals(currentUser.getRole())) {
-            // For employees, this button should ideally be hidden from sidebar
-            // But if specific routing is needed:
-            return;
-        }
-        loadContent("/fxml/ResourceManagement.fxml");
-    }
-
-    @FXML
-    private void showQuizzes() {
-        loadContent("/fxml/QuizManagement.fxml");
+    private void showTraining() {
+        loadContent("/fxml/Training.fxml");
     }
 
     @FXML
