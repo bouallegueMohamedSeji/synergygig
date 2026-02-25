@@ -46,6 +46,14 @@ public class OfferContractController {
     @FXML private FlowPane offerGrid;
     @FXML private Button filterMktAll, filterMktFullTime, filterMktFreelance, filterMktInternship, filterMktContract;
 
+    // Tab 1: Currency converter
+    @FXML private ComboBox<String> convertToCurrency;
+
+    // Tab 1b: External Job Listings
+    @FXML private HBox externalJobsHeader;
+    @FXML private FlowPane externalJobGrid;
+    @FXML private Button btnRefreshExternal;
+
     // Tab 2: My Offers
     @FXML private VBox myOffersView;
     @FXML private VBox myOffersList;
@@ -88,6 +96,7 @@ public class OfferContractController {
     private List<Offer> allOffers = new ArrayList<>();
     private List<Map<String, String>> aiChatHistory = new ArrayList<>();
     private Contract selectedAiContract;
+    private boolean externalJobsLoaded = false;
 
     @FXML
     public void initialize() {
@@ -98,10 +107,8 @@ public class OfferContractController {
         headerRole.setText(isOwnerOrAdmin ? "Owner View" : "Applicant View");
 
         zaiService = new ZAIService();
-        loadUserNames();
-        loadOfferMap();
 
-        // Setup filter combos
+        // Setup filter combos (UI only, instant)
         filterType.setItems(FXCollections.observableArrayList("All", "FULL_TIME", "PART_TIME", "FREELANCE", "INTERNSHIP", "CONTRACT"));
         filterType.setValue("All");
         filterType.setOnAction(e -> refreshMarketplace());
@@ -109,6 +116,14 @@ public class OfferContractController {
         filterCurrency.setItems(FXCollections.observableArrayList("All", "USD", "EUR", "GBP", "TND"));
         filterCurrency.setValue("All");
         filterCurrency.setOnAction(e -> refreshMarketplace());
+
+        // Currency converter combo (live rates)
+        List<String> convertOptions = new ArrayList<>();
+        convertOptions.add("Original");
+        convertOptions.addAll(java.util.Arrays.asList(CurrencyService.CURRENCIES));
+        convertToCurrency.setItems(FXCollections.observableArrayList(convertOptions));
+        convertToCurrency.setValue("Original");
+        convertToCurrency.setOnAction(e -> refreshMarketplace());
 
         filterAppStatus.setItems(FXCollections.observableArrayList("All", "PENDING", "REVIEWED", "SHORTLISTED", "ACCEPTED", "REJECTED", "WITHDRAWN"));
         filterAppStatus.setValue("All");
@@ -123,7 +138,9 @@ public class OfferContractController {
             tabs.add(new String[]{"📋", "My Offers"});
         }
         tabs.add(new String[]{"📩", "Applications"});
-        tabs.add(new String[]{"📄", "Contracts"});
+        if (isOwnerOrAdmin) {
+            tabs.add(new String[]{"📄", "Contracts"});
+        }
         tabs.add(new String[]{"🤖", "AI Assistant"});
 
         for (String[] tab : tabs) {
@@ -138,11 +155,17 @@ public class OfferContractController {
 
         setupContractsTable();
 
-        // Show first tab
-        if (!tabBar.getChildren().isEmpty()) {
-            Button first = (Button) tabBar.getChildren().get(0);
-            switchTab(first, "Marketplace");
-        }
+        // Load data in background, then trigger first tab
+        AppThreadPool.io(() -> {
+            loadUserNames();
+            loadOfferMap();
+            Platform.runLater(() -> {
+                if (!tabBar.getChildren().isEmpty()) {
+                    Button first = (Button) tabBar.getChildren().get(0);
+                    switchTab(first, "Marketplace");
+                }
+            });
+        });
     }
 
     // ==================== Data Loading ====================
@@ -233,6 +256,11 @@ public class OfferContractController {
         for (Offer o : filtered) {
             offerGrid.getChildren().add(createOfferCard(o));
         }
+
+        // Load external jobs (only first time or if cache expired)
+        if (!externalJobsLoaded) {
+            refreshExternalJobs();
+        }
     }
 
     private VBox createOfferCard(Offer o) {
@@ -260,6 +288,19 @@ public class OfferContractController {
         metaRow.setAlignment(Pos.CENTER_LEFT);
         Label amount = new Label(String.format("%s %.0f", o.getCurrency(), o.getAmount()));
         amount.getStyleClass().add("oc-card-amount");
+
+        // Live currency conversion
+        String targetCur = convertToCurrency.getValue();
+        if (targetCur != null && !"Original".equals(targetCur)
+                && !targetCur.equalsIgnoreCase(o.getCurrency())) {
+            double converted = CurrencyService.convert(o.getAmount(), o.getCurrency(), targetCur);
+            if (converted > 0) {
+                Label convertedLbl = new Label("≈ " + CurrencyService.formatAmount(converted, targetCur));
+                convertedLbl.getStyleClass().add("oc-card-converted");
+                metaRow.getChildren().add(convertedLbl);
+            }
+        }
+
         Label location = new Label(o.getLocation() != null ? "📍 " + o.getLocation() : "");
         location.getStyleClass().add("oc-card-meta");
         metaRow.getChildren().addAll(amount, location);
@@ -288,6 +329,7 @@ public class OfferContractController {
         actions.getChildren().add(btnView);
 
         card.getChildren().addAll(badge, title, desc, metaRow, skills, owner, actions);
+        CardEffects.applyHoverEffect(card);
         return card;
     }
 
@@ -308,23 +350,227 @@ public class OfferContractController {
         refreshMarketplace();
     }
 
-    private void showOfferDetails(Offer o) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Offer Details");
-        alert.setHeaderText(o.getTitle());
+    // ================================================================
+    // EXTERNAL JOB LISTINGS (Remotive, Arbeitnow, Jobicy, RemoteOK)
+    // ================================================================
 
-        String details = String.format(
-            "Type: %s\nStatus: %s\nLocation: %s\nAmount: %s %.2f\n\nRequired Skills:\n%s\n\nDescription:\n%s\n\nPosted by: %s\nDates: %s → %s",
-            o.getOfferType(), o.getStatus(), o.getLocation(), o.getCurrency(), o.getAmount(),
-            o.getRequiredSkills() != null ? o.getRequiredSkills() : "N/A",
-            o.getDescription() != null ? o.getDescription() : "N/A",
-            getUserName(o.getOwnerId()),
-            o.getStartDate() != null ? o.getStartDate().toString() : "TBD",
-            o.getEndDate() != null ? o.getEndDate().toString() : "TBD"
+    private void refreshExternalJobs() {
+        // Show loading indicator
+        externalJobGrid.getChildren().clear();
+        externalJobsHeader.setVisible(true);
+        externalJobsHeader.setManaged(true);
+        externalJobGrid.setVisible(true);
+        externalJobGrid.setManaged(true);
+
+        Label loading = new Label("⏳ Loading external job listings...");
+        loading.getStyleClass().add("oc-empty-label");
+        externalJobGrid.getChildren().add(loading);
+
+        AppThreadPool.io(() -> {
+            List<entities.ExternalJob> jobs = services.ExternalJobService.fetchAll();
+            Platform.runLater(() -> {
+                externalJobGrid.getChildren().clear();
+                if (jobs.isEmpty()) {
+                    Label empty = new Label("No external jobs available at the moment.");
+                    empty.getStyleClass().add("oc-empty-label");
+                    externalJobGrid.getChildren().add(empty);
+                } else {
+                    for (entities.ExternalJob job : jobs) {
+                        externalJobGrid.getChildren().add(createExternalJobCard(job));
+                    }
+                }
+                externalJobsLoaded = true;
+            });
+        });
+    }
+
+    @FXML
+    private void onRefreshExternalJobs() {
+        services.ExternalJobService.clearCache();
+        externalJobsLoaded = false;
+        refreshExternalJobs();
+    }
+
+    private VBox createExternalJobCard(entities.ExternalJob job) {
+        VBox card = new VBox(8);
+        card.getStyleClass().addAll("oc-offer-card", "oc-external-card");
+        card.setPrefWidth(300);
+        card.setPadding(new Insets(16));
+
+        // Source badge + Type badge row
+        HBox badgeRow = new HBox(6);
+        badgeRow.setAlignment(Pos.CENTER_LEFT);
+
+        Label sourceBadge = new Label(job.getSource());
+        sourceBadge.getStyleClass().addAll("oc-badge", "oc-badge-source",
+                "oc-badge-" + job.getSource().toLowerCase().replace(" ", ""));
+
+        Label typeBadge = new Label(job.getJobType());
+        typeBadge.getStyleClass().addAll("oc-badge",
+                "oc-badge-" + job.getJobType().toLowerCase().replace("-", "").replace("_", ""));
+
+        badgeRow.getChildren().addAll(sourceBadge, typeBadge);
+
+        // Title
+        Label title = new Label(job.getTitle());
+        title.getStyleClass().add("oc-card-title");
+        title.setWrapText(true);
+
+        // Company
+        Label company = new Label("🏢 " + (job.getCompany() != null ? job.getCompany() : "Unknown"));
+        company.getStyleClass().add("oc-card-meta");
+
+        // Description snippet
+        Label desc = new Label(job.getDescription() != null && !job.getDescription().isEmpty()
+                ? job.getDescription() : "No description available");
+        desc.getStyleClass().add("oc-card-desc");
+        desc.setWrapText(true);
+        desc.setMaxHeight(50);
+
+        // Meta row: salary & location
+        HBox metaRow = new HBox(12);
+        metaRow.setAlignment(Pos.CENTER_LEFT);
+
+        if (job.getSalary() != null && !job.getSalary().isEmpty()) {
+            Label salary = new Label("💰 " + job.getSalary());
+            salary.getStyleClass().add("oc-card-amount");
+            metaRow.getChildren().add(salary);
+        }
+        if (job.getLocation() != null && !job.getLocation().isEmpty()) {
+            Label loc = new Label("📍 " + job.getLocation());
+            loc.getStyleClass().add("oc-card-meta");
+            metaRow.getChildren().add(loc);
+        }
+
+        // Category
+        Label category = new Label(job.getCategory() != null && !job.getCategory().isEmpty()
+                ? "🏷 " + job.getCategory() : "");
+        category.getStyleClass().add("oc-card-skills");
+        category.setWrapText(true);
+
+        // Action: View Job (opens in browser)
+        HBox actions = new HBox(8);
+        actions.setAlignment(Pos.CENTER_RIGHT);
+        Button btnView = new Button("View Job ↗");
+        btnView.getStyleClass().add("oc-btn-external");
+        btnView.setOnAction(e -> {
+            try {
+                if (Desktop.isDesktopSupported()) {
+                    Desktop.getDesktop().browse(new java.net.URI(job.getUrl()));
+                }
+            } catch (Exception ex) {
+                System.err.println("Failed to open URL: " + ex.getMessage());
+            }
+        });
+        actions.getChildren().add(btnView);
+
+        card.getChildren().addAll(badgeRow, title, company, desc, metaRow, category, actions);
+        CardEffects.applyHoverEffect(card);
+        return card;
+    }
+
+    private void showOfferDetails(Offer o) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Offer Details");
+        dialog.setHeaderText(o.getTitle());
+
+        VBox content = new VBox(12);
+        content.setPadding(new Insets(10));
+        content.setPrefWidth(500);
+
+        // Basic info
+        Label typeStatus = new Label(String.format("Type: %s  •  Status: %s", o.getOfferType(), o.getStatus()));
+        typeStatus.getStyleClass().add("oc-card-meta");
+        typeStatus.setStyle("-fx-font-size: 13;");
+
+        Label loc = new Label("📍 " + (o.getLocation() != null ? o.getLocation() : "N/A"));
+        loc.getStyleClass().add("oc-card-meta");
+
+        Label amountLbl = new Label(String.format("💰 %s %.2f", o.getCurrency(), o.getAmount()));
+        amountLbl.getStyleClass().add("oc-card-amount");
+        amountLbl.setStyle("-fx-font-size: 18;");
+
+        // ── Live currency converter row ──
+        HBox converterRow = new HBox(8);
+        converterRow.setAlignment(Pos.CENTER_LEFT);
+        converterRow.getStyleClass().add("oc-converter-row");
+
+        Label converterIcon = new Label("💱");
+        converterIcon.setStyle("-fx-font-size: 14;");
+
+        ComboBox<String> targetCombo = new ComboBox<>(FXCollections.observableArrayList(CurrencyService.CURRENCIES));
+        targetCombo.getStyleClass().add("oc-combo");
+        targetCombo.setPromptText("Convert to…");
+        targetCombo.setPrefWidth(110);
+
+        Label convertedResult = new Label("");
+        convertedResult.getStyleClass().add("oc-card-converted");
+        convertedResult.setStyle("-fx-font-size: 15;");
+
+        Label rateInfo = new Label("");
+        rateInfo.getStyleClass().add("oc-card-meta");
+        rateInfo.setStyle("-fx-font-size: 10;");
+
+        targetCombo.setOnAction(ev -> {
+            String target = targetCombo.getValue();
+            if (target == null || target.equalsIgnoreCase(o.getCurrency())) {
+                convertedResult.setText("");
+                rateInfo.setText("");
+                return;
+            }
+            AppThreadPool.io(() -> {
+                double converted = CurrencyService.convert(o.getAmount(), o.getCurrency(), target);
+                double rate = CurrencyService.getRate(o.getCurrency(), target);
+                Platform.runLater(() -> {
+                    if (converted > 0) {
+                        convertedResult.setText("≈ " + CurrencyService.formatAmount(converted, target));
+                        rateInfo.setText(String.format("1 %s = %.4f %s (live)", o.getCurrency(), rate, target));
+                    } else {
+                        convertedResult.setText("Unavailable");
+                        rateInfo.setText("");
+                    }
+                });
+            });
+        });
+
+        converterRow.getChildren().addAll(converterIcon, targetCombo, convertedResult);
+
+        // Skills & description
+        Label skillsLbl = new Label("🔧 " + (o.getRequiredSkills() != null ? o.getRequiredSkills() : "N/A"));
+        skillsLbl.getStyleClass().add("oc-card-skills");
+        skillsLbl.setWrapText(true);
+        skillsLbl.setStyle("-fx-font-size: 12;");
+
+        Label descLbl = new Label(o.getDescription() != null ? o.getDescription() : "No description");
+        descLbl.getStyleClass().add("oc-card-desc");
+        descLbl.setWrapText(true);
+        descLbl.setStyle("-fx-font-size: 12;");
+
+        Label ownerLbl = new Label("Posted by: " + getUserName(o.getOwnerId()));
+        ownerLbl.getStyleClass().add("oc-card-meta");
+
+        Label datesLbl = new Label(String.format("📅 %s → %s",
+                o.getStartDate() != null ? o.getStartDate().toString() : "TBD",
+                o.getEndDate() != null ? o.getEndDate().toString() : "TBD"));
+        datesLbl.getStyleClass().add("oc-card-meta");
+
+        Separator sep1 = new Separator();
+        sep1.setStyle("-fx-background-color: #2A2A4A;");
+        Separator sep2 = new Separator();
+        sep2.setStyle("-fx-background-color: #2A2A4A;");
+
+        content.getChildren().addAll(
+                typeStatus, loc, amountLbl,
+                converterRow, rateInfo,
+                sep1, skillsLbl, descLbl,
+                sep2, ownerLbl, datesLbl
         );
-        alert.setContentText(details);
-        alert.getDialogPane().setMinWidth(500);
-        alert.showAndWait();
+
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.getDialogPane().setMinWidth(520);
+        styleDarkDialog(dialog.getDialogPane());
+        dialog.showAndWait();
     }
 
     // ================================================================
@@ -441,6 +687,7 @@ public class OfferContractController {
         grid.add(new Label("End Date:"), 0, 8);   grid.add(dpEnd, 1, 8);
 
         dialog.getDialogPane().setContent(grid);
+        styleDarkDialog(dialog.getDialogPane());
 
         dialog.setResultConverter(btn -> {
             if (btn == ButtonType.OK) {
@@ -502,6 +749,7 @@ public class OfferContractController {
 
     private void deleteOffer(Offer o) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Delete offer '" + o.getTitle() + "'? This will also delete all applications and contracts.", ButtonType.YES, ButtonType.NO);
+        styleDarkDialog(confirm.getDialogPane());
         confirm.showAndWait().ifPresent(btn -> {
             if (btn == ButtonType.YES) {
                 try {
@@ -626,6 +874,7 @@ public class OfferContractController {
             if (a.getAiFeedback() != null) content += "\n\nAI Feedback:\n" + a.getAiFeedback();
             alert.setContentText(content);
             alert.getDialogPane().setMinWidth(500);
+            styleDarkDialog(alert.getDialogPane());
             alert.showAndWait();
         });
         actions.getChildren().add(btnViewCover);
@@ -648,6 +897,7 @@ public class OfferContractController {
         taCover.setPrefRowCount(8);
         content.getChildren().addAll(lbl, taCover);
         dialog.getDialogPane().setContent(content);
+        styleDarkDialog(dialog.getDialogPane());
 
         dialog.setResultConverter(btn -> {
             if (btn == ButtonType.OK) {
@@ -690,7 +940,9 @@ public class OfferContractController {
                     c.setBlockchainHash(hash);
                     try {
                         serviceContract.ajouter(c);
+                        System.out.println("[OfferContract] Contract #" + c.getId() + " created for application #" + a.getId());
                     } catch (Exception contractEx) {
+                        contractEx.printStackTrace();
                         // Rollback application status on contract creation failure
                         a.setStatus("REVIEWED");
                         try { serviceApp.modifier(a); } catch (Exception ignored) {}
@@ -699,6 +951,11 @@ public class OfferContractController {
                         return;
                     }
 
+                    // Show immediate feedback — don't wait for PDF/email
+                    showInfo("✅ Application accepted!\n\nContract #" + c.getId() + " created (DRAFT).\n" +
+                            "Blockchain hash: " + BlockchainVerifier.shortHash(hash) + "\n\n" +
+                            "PDF generation & email sending in progress...");
+
                     String applicantName = getUserName(a.getApplicantId());
                     String ownerName = getUserName(offer.getOwnerId());
 
@@ -706,35 +963,44 @@ public class OfferContractController {
                     AppThreadPool.io(() -> {
                         try {
                             // 1) Generate contract PDF
+                            System.out.println("[OfferContract] Generating PDF for contract #" + c.getId() + "...");
                             File pdf = ContractPdfGenerator.generatePdf(c, offer.getTitle(), ownerName, applicantName);
+                            System.out.println("[OfferContract] PDF generated: " + pdf.getAbsolutePath());
 
                             // 2) Send email with PDF to applicant
                             User applicant = serviceUser.getById(a.getApplicantId());
                             if (applicant != null && applicant.getEmail() != null) {
+                                System.out.println("[OfferContract] Sending email to " + applicant.getEmail() + "...");
                                 EmailService.sendContractEmail(
                                         applicant.getEmail(), applicant.getFirstName(),
                                         ownerName, offer.getTitle(),
                                         offer.getCurrency(), offer.getAmount(),
                                         hash, pdf
                                 );
+                                System.out.println("[OfferContract] Email sent successfully.");
+                            } else {
+                                System.out.println("[OfferContract] No email address for applicant, skipping email.");
                             }
 
                             // 3) Create in-app notification for applicant
                             serviceNotification.notifyContractReady(
                                     a.getApplicantId(), applicantName, offer.getTitle(), c.getId());
+                            System.out.println("[OfferContract] Notification created for applicant.");
 
-                            Platform.runLater(() -> showInfo(
-                                    "Application accepted! Contract created, email sent & applicant notified."));
                         } catch (Exception ex) {
                             ex.printStackTrace();
-                            Platform.runLater(() -> showInfo(
-                                    "Contract created but email sending failed: " + ex.getMessage()));
+                            System.err.println("[OfferContract] Background task failed: " + ex.getMessage());
+                            Platform.runLater(() -> showError(
+                                    "Contract was created but post-processing failed:\n" + ex.getMessage()));
                         }
                     });
+                } else {
+                    showError("Offer not found for this application (ID: " + a.getOfferId() + ").");
                 }
             }
             refreshApplications();
         } catch (SQLException e) {
+            e.printStackTrace();
             showError("Status update failed: " + e.getMessage());
         }
     }
@@ -778,9 +1044,15 @@ public class OfferContractController {
     // ================================================================
 
     private void setupContractsTable() {
+        contractsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        contractsTable.setPlaceholder(new Label("No contracts yet") {{
+            setStyle("-fx-text-fill: #6B6B80; -fx-font-size: 13px;");
+        }});
+
         colContractId.setCellValueFactory(new PropertyValueFactory<>("id"));
-        colContractAmount.setCellValueFactory(new PropertyValueFactory<>("amount"));
         colContractStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
+        // NOTE: colContractAmount uses a custom cell factory that reads from Contract directly,
+        // so no PropertyValueFactory (which returns Double, mismatching the String column type).
 
         // Custom cell factories for rich display
         colContractOffer.setCellFactory(col -> new TableCell<>() {
@@ -934,113 +1206,202 @@ public class OfferContractController {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Contract QR Verification");
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CLOSE);
-        dialog.getDialogPane().setMinWidth(550);
-        dialog.getDialogPane().setMinHeight(500);
+        dialog.getDialogPane().setMinWidth(600);
+        dialog.getDialogPane().setMinHeight(620);
+        dialog.getDialogPane().setStyle("-fx-background-color: #0A090C;");
 
-        VBox root = new VBox(16);
-        root.setPadding(new Insets(20));
+        VBox root = new VBox(14);
+        root.setPadding(new Insets(24));
         root.setAlignment(Pos.TOP_CENTER);
+        root.setStyle("-fx-background-color: #0A090C;");
 
-        // Title
+        // ── Title Section ──
         Label titleLbl = new Label("🔐 Blockchain Contract Verification");
-        titleLbl.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #2C666E;");
+        titleLbl.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #90DDF0;");
 
         Offer offer = offerMap.get(contract.getOfferId());
         String offerTitle = offer != null ? offer.getTitle() : "Contract #" + contract.getId();
-        Label offerLbl = new Label("Offer: " + offerTitle);
-        offerLbl.setStyle("-fx-font-size: 13px; -fx-text-fill: #9E9EA8;");
+        Label offerLbl = new Label("Offer: " + offerTitle + "  |  Contract #" + contract.getId());
+        offerLbl.setStyle("-fx-font-size: 13px; -fx-text-fill: #6B6B80;");
 
-        // QR Code display
+        // ── Status Timeline ──
+        HBox timeline = createContractTimeline(contract);
+
+        // ── QR Code Card ──
         VBox qrBox = new VBox(8);
         qrBox.setAlignment(Pos.CENTER);
-        qrBox.setStyle("-fx-background-color: #14131A; -fx-background-radius: 12; -fx-padding: 20;");
+        qrBox.setStyle("-fx-background-color: #14131A; -fx-background-radius: 14; -fx-padding: 20; " +
+                "-fx-border-color: #1E1E3A; -fx-border-radius: 14; -fx-border-width: 1;");
 
         Label qrTitle = new Label("BLOCKCHAIN QR CODE");
-        qrTitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #90DDF0; -fx-font-weight: bold;");
+        qrTitle.setStyle("-fx-font-size: 11px; -fx-text-fill: #90DDF0; -fx-font-weight: bold; -fx-letter-spacing: 2;");
 
-        // Load QR image
         javafx.scene.image.ImageView qrImageView = new javafx.scene.image.ImageView();
-        qrImageView.setFitWidth(180);
-        qrImageView.setFitHeight(180);
+        qrImageView.setFitWidth(160);
+        qrImageView.setFitHeight(160);
         qrImageView.setPreserveRatio(true);
+
+        ProgressIndicator qrLoader = new ProgressIndicator();
+        qrLoader.setMaxSize(40, 40);
+        qrLoader.setStyle("-fx-progress-color: #90DDF0;");
 
         AppThreadPool.io(() -> {
             try {
                 byte[] qrBytes = ContractPdfGenerator.fetchQrCode(contract.getBlockchainHash());
                 if (qrBytes != null) {
                     javafx.scene.image.Image img = new javafx.scene.image.Image(new java.io.ByteArrayInputStream(qrBytes));
-                    Platform.runLater(() -> qrImageView.setImage(img));
+                    Platform.runLater(() -> {
+                        qrImageView.setImage(img);
+                        qrBox.getChildren().remove(qrLoader);
+                    });
+                } else {
+                    Platform.runLater(() -> {
+                        qrBox.getChildren().remove(qrLoader);
+                        Label noQr = new Label("QR not available");
+                        noQr.setStyle("-fx-text-fill: #6B6B80; -fx-font-size: 11px;");
+                        qrBox.getChildren().add(noQr);
+                    });
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+                Platform.runLater(() -> qrBox.getChildren().remove(qrLoader));
+            }
         });
 
-        qrBox.getChildren().addAll(qrTitle, qrImageView);
+        qrBox.getChildren().addAll(qrTitle, qrLoader, qrImageView);
 
-        // Hash display
+        // ── Hash Display Card ──
+        VBox hashCard = new VBox(6);
+        hashCard.setStyle("-fx-background-color: #14131A; -fx-background-radius: 10; -fx-padding: 14; " +
+                "-fx-border-color: #1E1E3A; -fx-border-radius: 10; -fx-border-width: 1;");
+
+        Label hashLabel = new Label("SHA-256 HASH");
+        hashLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #6B6B80; -fx-font-weight: bold;");
+
         String hash = contract.getBlockchainHash();
-        Label hashLabel = new Label("SHA-256 Hash:");
-        hashLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #6B6B78; -fx-font-weight: bold;");
-
-        TextField hashField = new TextField(hash);
+        TextField hashField = new TextField(hash != null ? hash : "No hash generated");
         hashField.setEditable(false);
-        hashField.setStyle("-fx-font-family: 'Courier New'; -fx-font-size: 10px; -fx-background-color: #1C1B22; -fx-text-fill: #90DDF0; -fx-border-color: #2C666E; -fx-border-radius: 6; -fx-background-radius: 6;");
+        hashField.setStyle("-fx-font-family: 'Courier New'; -fx-font-size: 11px; -fx-background-color: #0F0E11; " +
+                "-fx-text-fill: #90DDF0; -fx-border-color: #2C666E; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8;");
 
-        // Verification input
-        Label verifyLabel = new Label("Enter or paste hash to verify:");
-        verifyLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #9E9EA8;");
+        // Copy button
+        Button btnCopy = new Button("📋 Copy");
+        btnCopy.setStyle("-fx-background-color: #1A1A30; -fx-text-fill: #8A8AFF; -fx-font-size: 11px; " +
+                "-fx-padding: 4 12; -fx-background-radius: 6; -fx-cursor: hand;");
+        btnCopy.setOnAction(e -> {
+            if (hash != null) {
+                javafx.scene.input.Clipboard.getSystemClipboard().setContent(
+                        java.util.Collections.singletonMap(javafx.scene.input.DataFormat.PLAIN_TEXT, hash));
+                btnCopy.setText("✅ Copied!");
+                new Thread(() -> {
+                    try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+                    Platform.runLater(() -> btnCopy.setText("📋 Copy"));
+                }).start();
+            }
+        });
+
+        HBox hashRow = new HBox(8);
+        hashRow.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(hashField, Priority.ALWAYS);
+        hashRow.getChildren().addAll(hashField, btnCopy);
+
+        hashCard.getChildren().addAll(hashLabel, hashRow);
+
+        // ── Verification Input ──
+        VBox verifyCard = new VBox(8);
+        verifyCard.setStyle("-fx-background-color: #14131A; -fx-background-radius: 10; -fx-padding: 14; " +
+                "-fx-border-color: #1E1E3A; -fx-border-radius: 10; -fx-border-width: 1;");
+
+        Label verifyLabel = new Label("VERIFY HASH");
+        verifyLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #6B6B80; -fx-font-weight: bold;");
+
+        Label verifyHint = new Label("Paste the hash from the contract PDF or QR code to verify authenticity");
+        verifyHint.setStyle("-fx-font-size: 11px; -fx-text-fill: #555570;");
 
         TextField verifyInput = new TextField();
-        verifyInput.setPromptText("Paste the blockchain hash from the contract PDF...");
-        verifyInput.setStyle("-fx-font-family: 'Courier New'; -fx-font-size: 10px; -fx-background-color: #0F0E11; -fx-text-fill: #F0EDEE; -fx-border-color: #2C666E; -fx-border-radius: 6; -fx-background-radius: 6;");
+        verifyInput.setPromptText("Paste blockchain hash here...");
+        verifyInput.setStyle("-fx-font-family: 'Courier New'; -fx-font-size: 11px; -fx-background-color: #0F0E11; " +
+                "-fx-text-fill: #F0EDEE; -fx-border-color: #2A2A4A; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8;");
 
         // Result area
+        VBox resultBox = new VBox(6);
+        resultBox.setStyle("-fx-padding: 10;");
         Label resultLabel = new Label();
         resultLabel.setWrapText(true);
-        resultLabel.setStyle("-fx-font-size: 14px; -fx-padding: 10;");
+        Label resultDetail = new Label();
+        resultDetail.setWrapText(true);
+        resultDetail.setStyle("-fx-font-size: 11px; -fx-text-fill: #6B6B80;");
+        resultBox.getChildren().addAll(resultLabel, resultDetail);
 
-        // Buttons
-        HBox btnRow = new HBox(12);
+        // Action Buttons
+        HBox btnRow = new HBox(10);
         btnRow.setAlignment(Pos.CENTER);
 
-        Button btnVerify = new Button("✅ Verify Hash");
-        btnVerify.setStyle("-fx-background-color: linear-gradient(to right, #07393C, #2C666E); -fx-text-fill: #F0EDEE; -fx-font-weight: bold; -fx-padding: 10 24; -fx-background-radius: 8; -fx-cursor: hand;");
+        Button btnVerify = new Button("🔍 Verify Hash");
+        btnVerify.setStyle("-fx-background-color: linear-gradient(to right, #07393C, #2C666E); -fx-text-fill: #F0EDEE; " +
+                "-fx-font-weight: bold; -fx-padding: 10 24; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-size: 13px;");
+
+        Button btnChainCheck = new Button("🔗 Check Chain Integrity");
+        btnChainCheck.setStyle("-fx-background-color: #1A1A30; -fx-text-fill: #8A8AFF; " +
+                "-fx-font-weight: bold; -fx-padding: 10 18; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-size: 12px; " +
+                "-fx-border-color: #2A2A4A; -fx-border-radius: 8;");
 
         Button btnAcceptContract = new Button("✔ Accept & Activate");
-        btnAcceptContract.setStyle("-fx-background-color: linear-gradient(to right, #166534, #22c55e); -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 24; -fx-background-radius: 8; -fx-cursor: hand;");
+        btnAcceptContract.setStyle("-fx-background-color: linear-gradient(to right, #166534, #22c55e); -fx-text-fill: white; " +
+                "-fx-font-weight: bold; -fx-padding: 10 24; -fx-background-radius: 8; -fx-cursor: hand;");
         btnAcceptContract.setVisible(false);
 
-        Button btnReject = new Button("✖ Reject");
-        btnReject.setStyle("-fx-background-color: #dc2626; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 10 24; -fx-background-radius: 8; -fx-cursor: hand;");
+        Button btnReject = new Button("✖ Reject & Dispute");
+        btnReject.setStyle("-fx-background-color: #dc2626; -fx-text-fill: white; " +
+                "-fx-font-weight: bold; -fx-padding: 10 24; -fx-background-radius: 8; -fx-cursor: hand;");
         btnReject.setVisible(false);
 
         btnVerify.setOnAction(e -> {
             String inputHash = verifyInput.getText().trim();
             if (inputHash.isEmpty()) {
                 resultLabel.setText("⚠️ Please enter a hash to verify.");
-                resultLabel.setStyle("-fx-font-size: 14px; -fx-padding: 10; -fx-text-fill: #f59e0b;");
+                resultLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #f59e0b;");
+                resultDetail.setText("");
                 return;
             }
 
-            boolean formatValid = BlockchainVerifier.isValidHash(inputHash);
-            boolean matches = inputHash.equalsIgnoreCase(contract.getBlockchainHash());
+            // Use DB-backed verification with stored hash fallback for API mode
+            BlockchainVerifier.VerificationResult vr = BlockchainVerifier.verifyContract(
+                    contract.getId(), inputHash, contract.getBlockchainHash());
 
-            if (matches) {
-                resultLabel.setText("✅ VERIFIED — Hash matches! Contract is authentic and untampered.");
-                resultLabel.setStyle("-fx-font-size: 14px; -fx-padding: 10; -fx-text-fill: #22c55e; -fx-font-weight: bold;");
+            resultLabel.setText(vr.message.split("\n")[0]);
+            resultDetail.setText(vr.message.contains("\n") ? vr.message.substring(vr.message.indexOf("\n") + 1) : "");
+
+            if (vr.matches) {
+                resultLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #22c55e; -fx-font-weight: bold;");
                 btnAcceptContract.setVisible(true);
                 btnReject.setVisible(true);
                 SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
-            } else if (formatValid) {
-                resultLabel.setText("❌ MISMATCH — Hash is valid format but does NOT match this contract. Possible tampering!");
-                resultLabel.setStyle("-fx-font-size: 14px; -fx-padding: 10; -fx-text-fill: #ef4444; -fx-font-weight: bold;");
+            } else if (vr.hashValid) {
+                resultLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #ef4444; -fx-font-weight: bold;");
                 btnAcceptContract.setVisible(false);
                 btnReject.setVisible(true);
                 SoundManager.getInstance().play(SoundManager.ERROR);
             } else {
-                resultLabel.setText("❌ INVALID — Not a valid SHA-256 hash format.");
-                resultLabel.setStyle("-fx-font-size: 14px; -fx-padding: 10; -fx-text-fill: #ef4444;");
+                resultLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #ef4444;");
                 SoundManager.getInstance().play(SoundManager.ERROR);
             }
+        });
+
+        btnChainCheck.setOnAction(e -> {
+            btnChainCheck.setDisable(true);
+            btnChainCheck.setText("🔗 Checking...");
+            AppThreadPool.io(() -> {
+                BlockchainVerifier.ChainIntegrityResult cir = BlockchainVerifier.verifyChainIntegrity();
+                Platform.runLater(() -> {
+                    btnChainCheck.setDisable(false);
+                    btnChainCheck.setText("🔗 Check Chain Integrity");
+                    resultLabel.setText(cir.message);
+                    resultLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: " +
+                            (cir.intact ? "#22c55e" : "#ef4444") + ";");
+                    resultDetail.setText("Valid blocks: " + cir.validBlocks +
+                            (cir.brokenBlocks > 0 ? "  |  Broken: " + cir.brokenBlocks : ""));
+                });
+            });
         });
 
         btnAcceptContract.setOnAction(e -> {
@@ -1049,15 +1410,19 @@ public class OfferContractController {
                 contract.setSignedAt(new java.sql.Timestamp(System.currentTimeMillis()));
                 serviceContract.modifier(contract);
 
-                // Notify applicant
                 String applicantName = getUserName(contract.getApplicantId());
                 serviceNotification.notifyContractVerified(
                         currentUser.getId(), applicantName, offerTitle, contract.getId());
 
                 resultLabel.setText("✅ Contract verified and moved to PENDING_SIGNATURE!");
-                resultLabel.setStyle("-fx-font-size: 14px; -fx-padding: 10; -fx-text-fill: #22c55e; -fx-font-weight: bold;");
+                resultLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #22c55e; -fx-font-weight: bold;");
+                resultDetail.setText("");
                 btnAcceptContract.setDisable(true);
                 btnReject.setDisable(true);
+                // Update timeline
+                timeline.getChildren().clear();
+                HBox updatedTimeline = createContractTimeline(contract);
+                timeline.getChildren().addAll(updatedTimeline.getChildren());
                 refreshContracts();
                 SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
             } catch (SQLException ex) {
@@ -1070,7 +1435,8 @@ public class OfferContractController {
                 contract.setStatus("DISPUTED");
                 serviceContract.modifier(contract);
                 resultLabel.setText("⚠️ Contract marked as DISPUTED.");
-                resultLabel.setStyle("-fx-font-size: 14px; -fx-padding: 10; -fx-text-fill: #f59e0b; -fx-font-weight: bold;");
+                resultLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #f59e0b; -fx-font-weight: bold;");
+                resultDetail.setText("");
                 btnAcceptContract.setDisable(true);
                 btnReject.setDisable(true);
                 refreshContracts();
@@ -1080,15 +1446,96 @@ public class OfferContractController {
             }
         });
 
-        btnRow.getChildren().addAll(btnVerify, btnAcceptContract, btnReject);
+        verifyCard.getChildren().addAll(verifyLabel, verifyHint, verifyInput);
 
-        root.getChildren().addAll(titleLbl, offerLbl, qrBox, hashLabel, hashField, verifyLabel, verifyInput, btnRow, resultLabel);
+        btnRow.getChildren().addAll(btnVerify, btnChainCheck);
+        HBox actionRow = new HBox(10);
+        actionRow.setAlignment(Pos.CENTER);
+        actionRow.getChildren().addAll(btnAcceptContract, btnReject);
+
+        root.getChildren().addAll(titleLbl, offerLbl, timeline, qrBox, hashCard, verifyCard, btnRow, resultBox, actionRow);
 
         ScrollPane scroll = new ScrollPane(root);
         scroll.setFitToWidth(true);
         scroll.setStyle("-fx-background: #0A090C; -fx-background-color: #0A090C;");
         dialog.getDialogPane().setContent(scroll);
+        dialog.getDialogPane().setStyle("-fx-background-color: #0A090C;");
         dialog.showAndWait();
+    }
+
+    /**
+     * Creates a visual status timeline for a contract.
+     * Shows: DRAFT → PENDING_SIGNATURE → ACTIVE → COMPLETED with current step highlighted.
+     */
+    private HBox createContractTimeline(Contract contract) {
+        HBox timeline = new HBox(0);
+        timeline.setAlignment(Pos.CENTER);
+        timeline.setPadding(new Insets(8, 0, 8, 0));
+
+        String[] steps = {"DRAFT", "PENDING_SIGNATURE", "ACTIVE", "COMPLETED"};
+        String[] labels = {"Draft", "Pending Sign", "Active", "Completed"};
+        String[] icons = {"📝", "✍️", "🟢", "✅"};
+        String currentStatus = contract.getStatus();
+
+        // If status is TERMINATED or DISPUTED, find the last reached step
+        boolean isTerminal = "TERMINATED".equals(currentStatus) || "DISPUTED".equals(currentStatus);
+        int currentIdx = -1;
+        for (int i = 0; i < steps.length; i++) {
+            if (steps[i].equals(currentStatus)) { currentIdx = i; break; }
+        }
+
+        for (int i = 0; i < steps.length; i++) {
+            boolean reached = i <= currentIdx;
+            boolean isCurrent = i == currentIdx;
+
+            // Step circle
+            VBox step = new VBox(2);
+            step.setAlignment(Pos.CENTER);
+
+            Label icon = new Label(icons[i]);
+            icon.setStyle("-fx-font-size: 16px;");
+
+            Label lbl = new Label(labels[i]);
+            lbl.setStyle("-fx-font-size: 10px; -fx-font-weight: " + (isCurrent ? "bold" : "normal") + "; -fx-text-fill: " +
+                    (reached ? "#90DDF0" : "#3A3A5E") + ";");
+
+            Label dot = new Label(isCurrent ? "●" : reached ? "●" : "○");
+            dot.setStyle("-fx-font-size: 14px; -fx-text-fill: " +
+                    (isCurrent ? "#22c55e" : reached ? "#2C666E" : "#2A2A4A") + ";");
+
+            step.getChildren().addAll(icon, dot, lbl);
+
+            timeline.getChildren().add(step);
+
+            // Connector line
+            if (i < steps.length - 1) {
+                Region line = new Region();
+                line.setPrefHeight(2);
+                line.setMinHeight(2);
+                line.setPrefWidth(50);
+                line.setStyle("-fx-background-color: " + (i < currentIdx ? "#2C666E" : "#2A2A4A") + ";");
+                VBox lineWrap = new VBox(line);
+                lineWrap.setAlignment(Pos.CENTER);
+                lineWrap.setPadding(new Insets(14, 4, 0, 4));
+                timeline.getChildren().add(lineWrap);
+            }
+        }
+
+        // Show terminal status badge if applicable
+        if (isTerminal) {
+            Label termBadge = new Label(currentStatus.equals("DISPUTED") ? "⚠️ DISPUTED" : "🛑 TERMINATED");
+            termBadge.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: " +
+                    ("DISPUTED".equals(currentStatus) ? "#f59e0b" : "#ef4444") +
+                    "; -fx-background-color: " +
+                    ("DISPUTED".equals(currentStatus) ? "rgba(245,158,11,0.15)" : "rgba(239,68,68,0.15)") +
+                    "; -fx-padding: 4 12; -fx-background-radius: 10;");
+            VBox termWrap = new VBox(termBadge);
+            termWrap.setAlignment(Pos.CENTER);
+            termWrap.setPadding(new Insets(0, 0, 0, 12));
+            timeline.getChildren().add(termWrap);
+        }
+
+        return timeline;
     }
 
 
@@ -1209,6 +1656,7 @@ public class OfferContractController {
                 addAiMessage("assistant", result);
                 // Ask if they want to apply the terms
                 Alert confirm = new Alert(Alert.AlertType.CONFIRMATION, "Apply these generated terms to the contract?", ButtonType.YES, ButtonType.NO);
+                styleDarkDialog(confirm.getDialogPane());
                 confirm.showAndWait().ifPresent(btn -> {
                     if (btn == ButtonType.YES) {
                         try {
@@ -1394,14 +1842,71 @@ public class OfferContractController {
     // ==================== Utility ====================
 
     private void showInfo(String msg) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION, msg);
-        alert.setHeaderText(null);
-        alert.showAndWait();
+        showStyledPopup("✅ Success", msg, "#22c55e", "rgba(34,197,94,0.12)");
     }
 
     private void showError(String msg) {
-        Alert alert = new Alert(Alert.AlertType.ERROR, msg);
-        alert.setHeaderText("Error");
-        alert.showAndWait();
+        showStyledPopup("❌ Error", msg, "#ef4444", "rgba(239,68,68,0.12)");
+    }
+
+    /**
+     * Apply dark theme to any DialogPane so all popups match our UI.
+     */
+    private void styleDarkDialog(DialogPane pane) {
+        pane.setStyle("-fx-background-color: #0D0D1A;");
+        pane.lookupAll(".label").forEach(n -> n.setStyle("-fx-text-fill: #C0C0D8;"));
+        pane.lookupAll(".text-field").forEach(n ->
+                n.setStyle("-fx-background-color: #14131A; -fx-text-fill: #E0E0F0; -fx-border-color: #2A2A4A; -fx-border-radius: 6; -fx-background-radius: 6;"));
+        pane.lookupAll(".text-area").forEach(n ->
+                n.setStyle("-fx-background-color: #14131A; -fx-text-fill: #E0E0F0; -fx-border-color: #2A2A4A; -fx-border-radius: 6; -fx-background-radius: 6; -fx-control-inner-background: #14131A;"));
+        pane.lookupAll(".combo-box").forEach(n ->
+                n.setStyle("-fx-background-color: #14131A; -fx-mark-color: #8A8AFF;"));
+        pane.lookupAll(".date-picker").forEach(n ->
+                n.setStyle("-fx-background-color: #14131A; -fx-control-inner-background: #14131A;"));
+        pane.lookupAll(".button").forEach(n -> {
+            if (!n.getStyleClass().contains("cancel-button")) {
+                n.setStyle("-fx-background-color: linear-gradient(to right, #07393C, #2C666E); -fx-text-fill: #F0EDEE; -fx-background-radius: 6; -fx-cursor: hand;");
+            } else {
+                n.setStyle("-fx-background-color: #1A1A30; -fx-text-fill: #8A8AFF; -fx-background-radius: 6; -fx-cursor: hand;");
+            }
+        });
+        pane.lookupAll(".content").forEach(n -> n.setStyle("-fx-text-fill: #C0C0D8;"));
+        pane.lookupAll(".header-panel").forEach(n -> n.setStyle("-fx-background-color: #141430;"));
+    }
+
+    /**
+     * Dark-themed styled popup that matches our UI instead of default OS Alert dialogs.
+     */
+    private void showStyledPopup(String title, String msg, String accentColor, String bgTint) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(title.replaceAll("[^\\w\\s]", "").trim());
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
+        dialog.getDialogPane().setStyle("-fx-background-color: #0D0D1A;");
+        dialog.getDialogPane().setMinWidth(420);
+
+        VBox root = new VBox(12);
+        root.setPadding(new Insets(20));
+        root.setAlignment(Pos.TOP_LEFT);
+        root.setStyle("-fx-background-color: #0D0D1A;");
+
+        // Accent top bar
+        Region accent = new Region();
+        accent.setPrefHeight(3);
+        accent.setStyle("-fx-background-color: " + accentColor + "; -fx-background-radius: 2;");
+
+        // Title
+        Label titleLbl = new Label(title);
+        titleLbl.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: " + accentColor + ";");
+
+        // Message in a styled card
+        Label msgLbl = new Label(msg);
+        msgLbl.setWrapText(true);
+        msgLbl.setMaxWidth(380);
+        msgLbl.setStyle("-fx-font-size: 13px; -fx-text-fill: #C0C0D8; -fx-padding: 12; " +
+                "-fx-background-color: " + bgTint + "; -fx-background-radius: 8;");
+
+        root.getChildren().addAll(accent, titleLbl, msgLbl);
+        dialog.getDialogPane().setContent(root);
+        dialog.showAndWait();
     }
 }

@@ -12,6 +12,9 @@ import utils.SessionManager;
 import utils.StyledAlert;
 import javafx.stage.Window;
 
+import utils.AppThreadPool;
+import javafx.application.Platform;
+
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.List;
@@ -42,12 +45,17 @@ public class AdminUsersController {
 
     @FXML
     public void refreshUsers() {
-        try {
-            allUsers = serviceUser.recuperer();
-            applyFilters();
-        } catch (SQLException e) {
-            showAlert("Error", "Failed to load users: " + e.getMessage());
-        }
+        AppThreadPool.io(() -> {
+            try {
+                List<User> users = serviceUser.recuperer();
+                Platform.runLater(() -> {
+                    allUsers = users;
+                    applyFilters();
+                });
+            } catch (SQLException e) {
+                Platform.runLater(() -> showAlert("Error", "Failed to load users: " + e.getMessage()));
+            }
+        });
     }
 
     @FXML

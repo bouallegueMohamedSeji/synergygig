@@ -15,27 +15,39 @@ import java.util.*;
  * Provides AI-powered features: contract generation, risk analysis,
  * applicant scoring, email drafting, chat, sprint planning, and more.
  *
- * Fallback chain (8 attempts):
+ * Fallback chain (12 attempts):
  *   1. Z.AI primary key  → GLM-5
  *   2. Z.AI primary key  → GLM-4.7-Flash
  *   3. Z.AI backup  key  → GLM-5
  *   4. Z.AI backup  key  → GLM-4.7-Flash
- *   5. SiliconFlow key 1 → THUDM/glm-4-9b-chat
- *   6. SiliconFlow key 1 → Qwen/Qwen2.5-7B-Instruct
- *   7. SiliconFlow key 2 → THUDM/glm-4-9b-chat
- *   8. SiliconFlow key 2 → Qwen/Qwen2.5-7B-Instruct
+ *   5. Groq → llama-3.3-70b-versatile
+ *   6. Groq → llama-3.1-8b-instant
+ *   7. OpenCode Zen → GLM-5
+ *   8. OpenCode Zen → GLM-4.7
+ *   9. OpenCode Zen → qwen3-coder
+ *  10. OpenRouter → meta-llama/llama-3.3-70b-instruct:free
+ *  11. OpenRouter → google/gemma-2-9b-it:free
+ *  12. OpenCode Zen → kimi-k2
  */
 public class ZAIService {
 
     // ── Provider endpoints ──────────────────────────────────────────
     private static final String ZAI_URL = "https://api.z.ai/api/paas/v4/chat/completions";
-    private static final String SILICONFLOW_URL = "https://api.siliconflow.cn/v1/chat/completions";
+    private static final String GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+    private static final String OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+    private static final String OPENCODE_URL = "https://opencode.ai/zen/v1/chat/completions";
 
     // ── Models ──────────────────────────────────────────────────────
     private static final String ZAI_PRIMARY   = "glm-5";
     private static final String ZAI_FALLBACK  = "glm-4.7-flash";
-    private static final String SF_PRIMARY    = "THUDM/glm-4-9b-chat";
-    private static final String SF_FALLBACK   = "Qwen/Qwen2.5-7B-Instruct";
+    private static final String GROQ_PRIMARY  = "llama-3.3-70b-versatile";
+    private static final String GROQ_FALLBACK = "llama-3.1-8b-instant";
+    private static final String OR_PRIMARY    = "meta-llama/llama-3.3-70b-instruct:free";
+    private static final String OR_FALLBACK   = "google/gemma-2-9b-it:free";
+    private static final String OC_GLM5       = "glm-5";
+    private static final String OC_GLM47      = "glm-4.7";
+    private static final String OC_QWEN3      = "qwen3-coder";
+    private static final String OC_KIMI       = "kimi-k2";
 
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
@@ -50,8 +62,9 @@ public class ZAIService {
     public ZAIService() {
         String zaiKey       = AppConfig.get("zai.api.key", "");
         String zaiBackup    = AppConfig.get("zai.api.key.backup", "");
-        String sfKey        = AppConfig.get("siliconflow.api.key", "");
-        String sfBackup     = AppConfig.get("siliconflow.api.key.backup", "");
+        String groqKey      = AppConfig.get("groq.api.key", "");
+        String orKey        = AppConfig.get("openrouter.api.key", "");
+        String ocKey        = AppConfig.get("opencode.api.key", "");
 
         // Build ordered fallback chain — skip entries with empty keys
         if (!zaiKey.isEmpty()) {
@@ -62,13 +75,21 @@ public class ZAIService {
             providers.add(new Provider(ZAI_URL, zaiBackup, ZAI_PRIMARY,  "Z.AI-2/GLM-5"));
             providers.add(new Provider(ZAI_URL, zaiBackup, ZAI_FALLBACK, "Z.AI-2/GLM-4.7-Flash"));
         }
-        if (!sfKey.isEmpty()) {
-            providers.add(new Provider(SILICONFLOW_URL, sfKey, SF_PRIMARY,  "SiliconFlow-1/GLM-4-9B"));
-            providers.add(new Provider(SILICONFLOW_URL, sfKey, SF_FALLBACK, "SiliconFlow-1/Qwen2.5-7B"));
+        if (!groqKey.isEmpty()) {
+            providers.add(new Provider(GROQ_URL, groqKey, GROQ_PRIMARY,  "Groq/Llama-3.3-70B"));
+            providers.add(new Provider(GROQ_URL, groqKey, GROQ_FALLBACK, "Groq/Llama-3.1-8B"));
         }
-        if (!sfBackup.isEmpty()) {
-            providers.add(new Provider(SILICONFLOW_URL, sfBackup, SF_PRIMARY,  "SiliconFlow-2/GLM-4-9B"));
-            providers.add(new Provider(SILICONFLOW_URL, sfBackup, SF_FALLBACK, "SiliconFlow-2/Qwen2.5-7B"));
+        if (!ocKey.isEmpty()) {
+            providers.add(new Provider(OPENCODE_URL, ocKey, OC_GLM5,  "OpenCode/GLM-5"));
+            providers.add(new Provider(OPENCODE_URL, ocKey, OC_GLM47, "OpenCode/GLM-4.7"));
+            providers.add(new Provider(OPENCODE_URL, ocKey, OC_QWEN3, "OpenCode/Qwen3-Coder"));
+        }
+        if (!orKey.isEmpty()) {
+            providers.add(new Provider(OPENROUTER_URL, orKey, OR_PRIMARY,  "OpenRouter/Llama-3.3-70B"));
+            providers.add(new Provider(OPENROUTER_URL, orKey, OR_FALLBACK, "OpenRouter/Gemma-2-9B"));
+        }
+        if (!ocKey.isEmpty()) {
+            providers.add(new Provider(OPENCODE_URL, ocKey, OC_KIMI, "OpenCode/Kimi-K2"));
         }
 
         if (providers.isEmpty()) {
@@ -529,6 +550,43 @@ public class ZAIService {
             """;
         String user = String.format("Attendance Summary:\n%s\n\nLeave Summary:\n%s\n\nPayroll Summary:\n%s",
                 attendanceData, leaveData, payrollData);
+        return chat(system, user);
+    }
+
+    // ==================== Course Quiz Generator ====================
+
+    /**
+     * Generate a multiple-choice quiz for a training course.
+     * Returns JSON: {"recommended_timer_seconds": N, "questions": [{"q": "...", "options": ["A","B","C","D"], "answer": 0}, ...]}
+     * The "answer" field is the 0-based index of the correct option.
+     * "recommended_timer_seconds" is the AI-suggested time per question.
+     */
+    public String generateCourseQuiz(String courseTitle, String courseDescription, String difficulty) {
+        String system = """
+            You are an expert course examiner. Generate a multiple-choice quiz to evaluate whether
+            a student has mastered the material of a training course.
+            Return ONLY valid JSON (no markdown, no code fences) with this EXACT structure:
+            {"recommended_timer_seconds": <seconds_per_question>, "questions": [
+              {"q": "<question text>", "options": ["<option A>","<option B>","<option C>","<option D>"], "answer": <0-3>}
+            ]}
+            Rules:
+            - Generate between 15 and 30 questions. YOU decide how many based on the subject breadth:
+              * Narrow/simple subjects: 15 questions
+              * Medium subjects: 20 questions
+              * Broad/complex subjects: 25-30 questions
+            - Each question has exactly 4 options.
+            - "answer" is the 0-based index of the correct option (0, 1, 2, or 3).
+            - Questions should test real understanding, not trivia.
+            - Difficulty level: %s — adjust question complexity accordingly.
+            - Cover different aspects of the course topic thoroughly.
+            - "recommended_timer_seconds" should be 8-20 seconds based on question complexity:
+              BEGINNER: 10-12s, INTERMEDIATE: 12-15s, ADVANCED: 15-20s.
+            - Keep questions concise so they can be answered within the timer.
+            """.formatted(difficulty);
+        String user = String.format(
+            "Generate a quiz for this course:\nTitle: %s\nDescription: %s\nDifficulty: %s",
+            courseTitle, courseDescription != null ? courseDescription : "No description provided", difficulty
+        );
         return chat(system, user);
     }
 

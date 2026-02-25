@@ -182,21 +182,29 @@ public class SoundManager {
     private String loopingKey = null;
 
     private SoundManager() {
-        // Preload all sounds and their variants
-        for (var entry : VARIANTS.entrySet()) {
-            String key = entry.getKey();
-            for (String suffix : entry.getValue()) {
-                String fileKey = key + suffix;           // e.g. "button_click_v2"
-                try {
-                    String path = "/sounds/" + fileKey + ".mp3";
-                    var url = getClass().getResource(path);
-                    if (url != null) {
-                        mediaCache.put(fileKey, new Media(url.toExternalForm()));
-                    }
-                } catch (Exception e) {
-                    System.err.println("SoundManager: failed to load " + fileKey + ": " + e.getMessage());
+        // Lazy init — sounds are loaded on first use, not at startup
+    }
+
+    /**
+     * Load a sound into cache on demand. Returns the Media or null if not found.
+     * Thread-safe via synchronized block on mediaCache.
+     */
+    private Media loadSound(String fileKey) {
+        synchronized (mediaCache) {
+            Media cached = mediaCache.get(fileKey);
+            if (cached != null) return cached;
+            try {
+                String path = "/sounds/" + fileKey + ".mp3";
+                var url = getClass().getResource(path);
+                if (url != null) {
+                    Media media = new Media(url.toExternalForm());
+                    mediaCache.put(fileKey, media);
+                    return media;
                 }
+            } catch (Exception e) {
+                System.err.println("SoundManager: failed to load " + fileKey + ": " + e.getMessage());
             }
+            return null;
         }
     }
 
@@ -239,7 +247,9 @@ public class SoundManager {
     private String resolveKey(String soundKey) {
         String suffix = getSelectedVariant(soundKey);
         String resolved = soundKey + suffix;
-        return mediaCache.containsKey(resolved) ? resolved : soundKey; // fallback to default
+        // Try to load the resolved variant; fall back to base key
+        if (loadSound(resolved) != null) return resolved;
+        return soundKey; // fallback to default
     }
 
     // ═══════════════════════════════════════════
@@ -251,7 +261,7 @@ public class SoundManager {
         if (!isSoundsEnabled()) return;
         if (!isSoundEnabled(soundKey)) return;
 
-        Media media = mediaCache.get(resolveKey(soundKey));
+        Media media = loadSound(resolveKey(soundKey));
         if (media == null) return;
 
         try {
@@ -268,8 +278,8 @@ public class SoundManager {
     /** Play a specific variant directly (for preview). Always plays regardless of enable state. */
     public void playVariant(String soundKey, String suffix) {
         String fileKey = soundKey + (suffix != null ? suffix : "");
-        Media media = mediaCache.get(fileKey);
-        if (media == null) media = mediaCache.get(soundKey);
+        Media media = loadSound(fileKey);
+        if (media == null) media = loadSound(soundKey);
         if (media == null) return;
         try {
             MediaPlayer player = new MediaPlayer(media);
@@ -287,7 +297,7 @@ public class SoundManager {
 
         stopLoop(); // stop any previous loop
 
-        Media media = mediaCache.get(resolveKey(soundKey));
+        Media media = loadSound(resolveKey(soundKey));
         if (media == null) return;
 
         try {

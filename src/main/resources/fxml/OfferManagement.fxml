@@ -39,6 +39,8 @@
                                prefWidth="220" onKeyReleased="#onMarketSearchChanged"/>
                     <ComboBox fx:id="filterType" promptText="Type" styleClass="oc-combo" prefWidth="120"/>
                     <ComboBox fx:id="filterCurrency" promptText="Currency" styleClass="oc-combo" prefWidth="100"/>
+                    <Label text="💱" style="-fx-font-size: 16;"/>
+                    <ComboBox fx:id="convertToCurrency" promptText="Convert to…" styleClass="oc-combo" prefWidth="130"/>
                 </HBox>
 
                 <HBox fx:id="marketFilterBar" spacing="8" alignment="CENTER_LEFT" styleClass="oc-filter-bar">
@@ -51,9 +53,25 @@
 
                 <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
                             style="-fx-background-color: transparent; -fx-border-color: transparent;">
-                    <FlowPane fx:id="offerGrid" hgap="16" vgap="16" styleClass="oc-offer-grid">
-                        <padding><Insets top="4" right="4" bottom="16" left="4"/></padding>
-                    </FlowPane>
+                    <VBox spacing="16">
+                        <FlowPane fx:id="offerGrid" hgap="16" vgap="16" styleClass="oc-offer-grid">
+                            <padding><Insets top="4" right="4" bottom="4" left="4"/></padding>
+                        </FlowPane>
+
+                        <!-- External Job Listings Section -->
+                        <HBox fx:id="externalJobsHeader" alignment="CENTER_LEFT" spacing="10"
+                              visible="false" managed="false" styleClass="oc-external-header">
+                            <padding><Insets top="8" right="4" bottom="0" left="4"/></padding>
+                            <Label text="🌐 External Job Listings" styleClass="oc-section-title"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="btnRefreshExternal" text="🔄 Refresh" styleClass="oc-btn-secondary"
+                                    onAction="#onRefreshExternalJobs"/>
+                        </HBox>
+                        <FlowPane fx:id="externalJobGrid" hgap="16" vgap="16" styleClass="oc-offer-grid"
+                                  visible="false" managed="false">
+                            <padding><Insets top="4" right="4" bottom="16" left="4"/></padding>
+                        </FlowPane>
+                    </VBox>
                 </ScrollPane>
             </VBox>
 

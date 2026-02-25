@@ -5,6 +5,7 @@ import entities.User;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -16,6 +17,7 @@ import javafx.animation.PauseTransition;
 import javafx.util.Duration;
 import utils.AnimatedButton;
 import utils.AppThreadPool;
+import utils.CardEffects;
 import utils.SessionManager;
 import utils.StyledAlert;
 import utils.SoundManager;
@@ -108,10 +110,40 @@ public class InterviewController {
             }
         }
 
-        loadUsers();
         setupCandidateAutocomplete();
         setupDatePicker();
-        loadInterviews();
+
+        // Load users and interviews asynchronously
+        AppThreadPool.io(() -> {
+            // loadUsers populates nameToId, idToName, allCandidateNames
+            try {
+                List<User> users = serviceUser.recuperer();
+                List<Interview> interviews;
+                if ("GIG_WORKER".equals(currentRole)) {
+                    interviews = serviceInterview.getByCandidate(currentUserId);
+                } else {
+                    interviews = serviceInterview.recuperer();
+                }
+                Platform.runLater(() -> {
+                    nameToId.clear();
+                    idToName.clear();
+                    allCandidateNames.clear();
+                    for (User u : users) {
+                        String display = u.getFirstName() + " " + u.getLastName();
+                        idToName.put(u.getId(), display);
+                        String role2 = u.getRole();
+                        if ("HR_MANAGER".equals(role2) || "ADMIN".equals(role2)) continue;
+                        nameToId.put(display, u.getId());
+                        allCandidateNames.add(display);
+                    }
+                    candidateCombo.setItems(allCandidateNames);
+                    allInterviews = interviews;
+                    applyFilters();
+                });
+            } catch (SQLException e) {
+                System.err.println("Failed to load data: " + e.getMessage());
+            }
+        });
     }
 
     // ========== DatePicker Formatter ==========
@@ -595,6 +627,7 @@ public class InterviewController {
             content.getChildren().addAll(dateRow, sep1, peopleRow, sep2, linkRow, sep3, actions);
             card.getChildren().addAll(header, content);
 
+            CardEffects.applyHoverEffect(card);
             cardsPane.getChildren().add(card);
         }
     }

@@ -173,11 +173,15 @@ public class CommunityController implements Stoppable {
             else header.getChildren().add(animNewPostBtn);
         }
 
-        loadUsers();
         loadSavedPosts();
         computeServerTimeOffset();
-        loadFeed();
         initTabs();
+
+        // Load users in background, then load feed when ready
+        AppThreadPool.io(() -> {
+            loadUsers();
+            Platform.runLater(() -> loadFeed());
+        });
 
         // ── Twemoji icon on the image attach button ──
         Platform.runLater(() -> {
@@ -412,6 +416,18 @@ public class CommunityController implements Stoppable {
             }
         }
 
+        // ── Show loading spinner on Post button ──
+        String origText = btnSubmitPost.getText();
+        javafx.scene.Node origGraphic = btnSubmitPost.getGraphic();
+        javafx.scene.control.ProgressIndicator postSpinner = new javafx.scene.control.ProgressIndicator();
+        postSpinner.setMaxSize(16, 16);
+        postSpinner.setPrefSize(16, 16);
+        postSpinner.setStyle("-fx-progress-color: #F0EDEE;");
+        btnSubmitPost.setGraphic(postSpinner);
+        btnSubmitPost.setText("");
+        btnSubmitPost.setDisable(true);
+        btnSubmitPost.setOpacity(0.8);
+
         try {
             Post post = new Post(me.getId(), text != null ? text.trim() : "", pendingImageBase64);
             servicePost.ajouter(post);
@@ -420,6 +436,11 @@ public class CommunityController implements Stoppable {
             loadFeed();
         } catch (SQLException e) {
             showToast("Failed to submit post: " + e.getMessage(), true);
+        } finally {
+            btnSubmitPost.setGraphic(origGraphic);
+            btnSubmitPost.setText(origText);
+            btnSubmitPost.setDisable(false);
+            btnSubmitPost.setOpacity(1.0);
         }
     }
 
@@ -630,11 +651,11 @@ public class CommunityController implements Stoppable {
 
         header.getChildren().addAll(avatar, nameCol);
 
-        // ── Action buttons: save + delete ──
+        // ── 3-dot menu ──
         HBox actionBtns = new HBox(4);
         actionBtns.setAlignment(Pos.CENTER_RIGHT);
 
-        // Bookmark / save button
+        // Bookmark / save button (always visible)
         boolean isSaved = savedPostIds.contains(post.getId());
         Button saveBtn = new Button();
         saveBtn.setGraphic(twemojiIcon(isSaved ? "1f516" : "1f3f7", 18));
@@ -648,14 +669,27 @@ public class CommunityController implements Stoppable {
         });
         actionBtns.getChildren().add(saveBtn);
 
-        // Delete button if mine
+        // Three-dot menu (only for own posts)
         if (post.getAuthorId() == myId) {
-            Button deleteBtn = new Button();
-            deleteBtn.setGraphic(twemojiIcon("1f5d1", 18));
-            deleteBtn.getStyleClass().add("community-action-btn");
-            deleteBtn.setTooltip(new Tooltip("Delete post"));
-            deleteBtn.setOnAction(e -> deletePost(post));
-            actionBtns.getChildren().add(deleteBtn);
+            Button menuBtn = new Button("⋮");
+            menuBtn.getStyleClass().add("community-action-btn");
+            menuBtn.setStyle("-fx-font-size: 18; -fx-font-weight: bold; -fx-padding: 0 6; -fx-min-width: 28; -fx-min-height: 28;");
+            menuBtn.setTooltip(new Tooltip("More options"));
+
+            ContextMenu postMenu = new ContextMenu();
+            postMenu.setStyle("-fx-background-color: #1E1E2E; -fx-background-radius: 10; -fx-border-color: #2A2A3C; -fx-border-radius: 10; -fx-padding: 4;");
+
+            MenuItem editItem = new MenuItem("✏️  Edit post");
+            editItem.setStyle("-fx-text-fill: #E0E0E0; -fx-font-size: 13;");
+            editItem.setOnAction(e -> showEditPostDialog(post));
+
+            MenuItem deleteItem = new MenuItem("🗑️  Delete post");
+            deleteItem.setStyle("-fx-text-fill: #EF4444; -fx-font-size: 13;");
+            deleteItem.setOnAction(e -> deletePost(post));
+
+            postMenu.getItems().addAll(editItem, deleteItem);
+            menuBtn.setOnAction(e -> postMenu.show(menuBtn, Side.BOTTOM, 0, 0));
+            actionBtns.getChildren().add(menuBtn);
         }
         header.getChildren().add(actionBtns);
 
@@ -959,12 +993,12 @@ public class CommunityController implements Stoppable {
         TextField commentField = new TextField();
         commentField.setPromptText("Write a comment...");
         commentField.getStyleClass().add("input-field");
-        commentField.setStyle("-fx-font-size: 12; -fx-pref-height: 34;");
+        commentField.setStyle("-fx-font-size: 13; -fx-pref-height: 40; -fx-padding: 8 12;");
         HBox.setHgrow(commentField, Priority.ALWAYS);
 
         Button sendBtn = new Button("➤");
         sendBtn.getStyleClass().add("btn-primary");
-        sendBtn.setStyle("-fx-font-size: 13; -fx-min-width: 36; -fx-min-height: 34; -fx-padding: 0;");
+        sendBtn.setStyle("-fx-font-size: 13; -fx-min-width: 40; -fx-min-height: 40; -fx-padding: 0;");
         sendBtn.setTooltip(new Tooltip("Send comment"));
         sendBtn.setOnAction(e -> {
             String text = commentField.getText();
@@ -1023,13 +1057,23 @@ public class CommunityController implements Stoppable {
         col.getChildren().addAll(nameRow, contentLabel);
         row.getChildren().addAll(avatar, col);
 
-        // Delete own comments
+        // 3-dot menu for own comments
         if (comment.getAuthorId() == myId) {
-            Button delBtn = new Button("✕");
-            delBtn.getStyleClass().add("community-action-btn");
-            delBtn.setStyle("-fx-font-size: 10; -fx-min-width: 22; -fx-min-height: 22;");
-            delBtn.setTooltip(new Tooltip("Delete comment"));
-            delBtn.setOnAction(e -> {
+            Button menuBtn = new Button("⋮");
+            menuBtn.getStyleClass().add("community-action-btn");
+            menuBtn.setStyle("-fx-font-size: 14; -fx-font-weight: bold; -fx-padding: 0 4; -fx-min-width: 22; -fx-min-height: 22;");
+            menuBtn.setTooltip(new Tooltip("More options"));
+
+            ContextMenu commentMenu = new ContextMenu();
+            commentMenu.setStyle("-fx-background-color: #1E1E2E; -fx-background-radius: 10; -fx-border-color: #2A2A3C; -fx-border-radius: 10; -fx-padding: 4;");
+
+            MenuItem editItem = new MenuItem("✏️  Edit");
+            editItem.setStyle("-fx-text-fill: #E0E0E0; -fx-font-size: 12;");
+            editItem.setOnAction(e -> showEditCommentDialog(comment));
+
+            MenuItem deleteItem = new MenuItem("🗑️  Delete");
+            deleteItem.setStyle("-fx-text-fill: #EF4444; -fx-font-size: 12;");
+            deleteItem.setOnAction(e -> {
                 try {
                     serviceComment.supprimer(comment.getId());
                     SoundManager.getInstance().play(SoundManager.TASK_DELETED);
@@ -1040,7 +1084,10 @@ public class CommunityController implements Stoppable {
                     }
                 } catch (SQLException ex) { ex.printStackTrace(); }
             });
-            row.getChildren().add(delBtn);
+
+            commentMenu.getItems().addAll(editItem, deleteItem);
+            menuBtn.setOnAction(e -> commentMenu.show(menuBtn, Side.BOTTOM, 0, 0));
+            row.getChildren().add(menuBtn);
         }
 
         return row;
@@ -1096,6 +1143,147 @@ public class CommunityController implements Stoppable {
     }
 
     // ═══════════════════════════════════════════
+    //  EDIT POST / COMMENT DIALOGS
+    // ═══════════════════════════════════════════
+
+    private void showEditPostDialog(Post post) {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Edit Post");
+        dialog.initOwner(ownerWindow());
+
+        DialogPane pane = dialog.getDialogPane();
+        pane.setStyle("-fx-background-color: #0D0D1A;");
+        pane.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+        pane.setPrefWidth(500);
+
+        // Title
+        Label title = new Label("✏️ Edit Post");
+        title.setStyle("-fx-text-fill: #8B5CF6; -fx-font-size: 18; -fx-font-weight: bold;");
+
+        // Text area with current content
+        TextArea textArea = new TextArea(post.getContent());
+        textArea.setWrapText(true);
+        textArea.setPrefRowCount(6);
+        textArea.setStyle("-fx-control-inner-background: #1A1A2E; -fx-text-fill: #E0E0E0; " +
+                "-fx-font-size: 14; -fx-border-color: #2A2A3C; -fx-border-radius: 8; " +
+                "-fx-background-radius: 8; -fx-prompt-text-fill: #666;");
+        textArea.setPromptText("Edit your post...");
+
+        // Character count
+        Label charCount = new Label(textArea.getText().length() + " chars");
+        charCount.setStyle("-fx-text-fill: #666; -fx-font-size: 11;");
+        textArea.textProperty().addListener((ob, ov, nv) ->
+                charCount.setText((nv != null ? nv.length() : 0) + " chars"));
+
+        VBox content = new VBox(12, title, textArea, charCount);
+        content.setPadding(new Insets(16));
+        content.setStyle("-fx-background-color: #0D0D1A;");
+        pane.setContent(content);
+
+        ButtonType saveType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+        pane.getButtonTypes().addAll(saveType, cancelType);
+
+        // Style buttons
+        Button saveButton = (Button) pane.lookupButton(saveType);
+        saveButton.setStyle("-fx-background-color: #8B5CF6; -fx-text-fill: white; " +
+                "-fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 8 24;");
+        Button cancelButton = (Button) pane.lookupButton(cancelType);
+        cancelButton.setStyle("-fx-background-color: #2A2A3C; -fx-text-fill: #b0b0b0; " +
+                "-fx-background-radius: 8; -fx-padding: 8 24;");
+
+        // Disable save if empty
+        saveButton.disableProperty().bind(
+                textArea.textProperty().isNull().or(textArea.textProperty().isEmpty()));
+
+        dialog.setResultConverter(bt -> bt == saveType ? textArea.getText().trim() : null);
+
+        dialog.showAndWait().ifPresent(newContent -> {
+            if (!newContent.isEmpty() && !newContent.equals(post.getContent())) {
+                // Bad words check
+                BadWordsService.CheckResult check = BadWordsService.check(newContent);
+                if (check.hasBadWords) {
+                    showToast("Your post contains inappropriate language. Please revise.", true);
+                    return;
+                }
+                try {
+                    post.setContent(newContent);
+                    servicePost.modifier(post);
+                    SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
+                    if (detailPost != null) renderDetailView(post);
+                    else loadFeed();
+                } catch (SQLException e) {
+                    showToast("Failed to edit post: " + e.getMessage(), true);
+                }
+            }
+        });
+    }
+
+    private void showEditCommentDialog(Comment comment) {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Edit Comment");
+        dialog.initOwner(ownerWindow());
+
+        DialogPane pane = dialog.getDialogPane();
+        pane.setStyle("-fx-background-color: #0D0D1A;");
+        pane.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+        pane.setPrefWidth(450);
+
+        // Title
+        Label title = new Label("✏️ Edit Comment");
+        title.setStyle("-fx-text-fill: #8B5CF6; -fx-font-size: 16; -fx-font-weight: bold;");
+
+        // Text field with current content
+        TextArea textArea = new TextArea(comment.getContent());
+        textArea.setWrapText(true);
+        textArea.setPrefRowCount(3);
+        textArea.setStyle("-fx-control-inner-background: #1A1A2E; -fx-text-fill: #E0E0E0; " +
+                "-fx-font-size: 13; -fx-border-color: #2A2A3C; -fx-border-radius: 8; " +
+                "-fx-background-radius: 8;");
+        textArea.setPromptText("Edit your comment...");
+
+        VBox content = new VBox(12, title, textArea);
+        content.setPadding(new Insets(14));
+        content.setStyle("-fx-background-color: #0D0D1A;");
+        pane.setContent(content);
+
+        ButtonType saveType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelType = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+        pane.getButtonTypes().addAll(saveType, cancelType);
+
+        Button saveButton = (Button) pane.lookupButton(saveType);
+        saveButton.setStyle("-fx-background-color: #8B5CF6; -fx-text-fill: white; " +
+                "-fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 8 20;");
+        Button cancelButton = (Button) pane.lookupButton(cancelType);
+        cancelButton.setStyle("-fx-background-color: #2A2A3C; -fx-text-fill: #b0b0b0; " +
+                "-fx-background-radius: 8; -fx-padding: 8 20;");
+
+        saveButton.disableProperty().bind(
+                textArea.textProperty().isNull().or(textArea.textProperty().isEmpty()));
+
+        dialog.setResultConverter(bt -> bt == saveType ? textArea.getText().trim() : null);
+
+        dialog.showAndWait().ifPresent(newContent -> {
+            if (!newContent.isEmpty() && !newContent.equals(comment.getContent())) {
+                BadWordsService.CheckResult check = BadWordsService.check(newContent);
+                if (check.hasBadWords) {
+                    showToast("Your comment contains inappropriate language. Please revise.", true);
+                    return;
+                }
+                try {
+                    comment.setContent(newContent);
+                    serviceComment.modifier(comment);
+                    SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
+                    if (detailPost != null) renderDetailView(detailPost);
+                    else loadFeed();
+                } catch (SQLException e) {
+                    showToast("Failed to edit comment: " + e.getMessage(), true);
+                }
+            }
+        });
+    }
+
+    // ═══════════════════════════════════════════
     //  AVATAR & HELPERS
     // ═══════════════════════════════════════════
 
@@ -1143,14 +1331,13 @@ public class CommunityController implements Stoppable {
     }
 
     /**
+    /**
      * Format a server timestamp into a human-readable relative time.
-     * Handles server timezone offset properly.
+     * Timestamps are already converted to UTC epoch millis during JSON parsing.
      */
-    private String formatTimeAgo(long serverTimestampMs) {
-        // Adjust for server→local time offset
-        long adjustedTimestamp = serverTimestampMs + serverTimeOffsetMs;
+    private String formatTimeAgo(long timestampMs) {
         long now = System.currentTimeMillis();
-        long diff = now - adjustedTimestamp;
+        long diff = now - timestampMs;
 
         // Guard against future timestamps (clock skew)
         if (diff < 0) diff = 0;
@@ -1170,7 +1357,7 @@ public class CommunityController implements Stoppable {
             return weeks + (weeks == 1 ? " week ago" : " weeks ago");
         }
         // Older: show date
-        return new SimpleDateFormat("MMM d, yyyy 'at' h:mm a").format(new Date(adjustedTimestamp));
+        return new SimpleDateFormat("MMM d, yyyy 'at' h:mm a").format(new Date(timestampMs));
     }
 
     private void showToast(String message, boolean isError) {

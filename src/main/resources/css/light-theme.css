@@ -2743,3 +2743,135 @@
 .hr-insight-area { -fx-background-color: white; -fx-text-fill: #1A1A2E; -fx-border-color: #D0D0DC; -fx-control-inner-background: white; }
 .tr-ai-result { -fx-background-color: white; -fx-text-fill: #1A1A2E; -fx-border-color: #D0D0DC; -fx-control-inner-background: white; }
 .pm-ai-result { -fx-background-color: white; -fx-text-fill: #1A1A2E; -fx-border-color: #D0D0DC; -fx-control-inner-background: white; }
+
+/* ═══════════════════════════════════════════════════════════
+   JOB SCANNER MODULE — Light Theme
+   ═══════════════════════════════════════════════════════════ */
+
+.js-module-root { -fx-background-color: #F5F5FA; }
+.js-top-bar { -fx-background-color: #F5F5FA; }
+
+.js-header-title { -fx-text-fill: #1C1C2E; }
+.js-header-status { -fx-text-fill: #6B6B78; }
+
+.js-search-field {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #1C1C2E;
+    -fx-prompt-text-fill: #9CA3AF;
+    -fx-border-color: #E0E0E8;
+}
+.js-search-field:focused {
+    -fx-border-color: #5B5BCC;
+    -fx-effect: dropshadow(gaussian, rgba(91,91,204,0.20), 8, 0, 0, 0);
+}
+
+.js-source-combo {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0E0E8;
+    -fx-text-fill: #1C1C2E;
+}
+.js-source-combo .list-cell {
+    -fx-text-fill: #1C1C2E;
+    -fx-background-color: #FFFFFF;
+}
+.js-source-combo .combo-box-popup .list-view {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0E0E8;
+}
+.js-source-combo .combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: #F0F0F6;
+}
+
+.js-search-btn {
+    -fx-background-color: linear-gradient(to right, #5B5BCC, #7C3AED);
+}
+.js-search-btn:hover {
+    -fx-background-color: linear-gradient(to right, #6B6BDC, #8C4AFD);
+    -fx-effect: dropshadow(gaussian, rgba(91,91,204,0.35), 10, 0, 0, 2);
+}
+
+.js-content-area { -fx-background-color: #F5F5FA; }
+
+.js-empty-title { -fx-text-fill: #6B6B78; }
+.js-empty-subtitle { -fx-text-fill: #9CA3AF; }
+
+.js-spinner { -fx-progress-color: #5B5BCC; }
+.js-loading-text { -fx-text-fill: #6B6B78; }
+
+.js-results-scroll { -fx-background-color: transparent; -fx-background: transparent; }
+.js-results-scroll .viewport { -fx-background-color: transparent; }
+
+.js-job-card {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0E0E8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 2);
+}
+.js-job-card:hover {
+    -fx-border-color: #5B5BCC;
+    -fx-background-color: #FAFAFF;
+    -fx-effect: dropshadow(gaussian, rgba(91,91,204,0.15), 10, 0, 0, 3);
+}
+
+.js-job-title { -fx-text-fill: #1C1C2E; }
+.js-meta-text { -fx-text-fill: #6B6B78; }
+.js-snippet { -fx-text-fill: #888898; }
+
+.js-open-btn {
+    -fx-text-fill: #5B5BCC;
+    -fx-border-color: #5B5BCC;
+}
+.js-open-btn:hover {
+    -fx-background-color: #5B5BCC;
+    -fx-text-fill: white;
+}
+
+/* Filter bar — light */
+.js-filter-label { -fx-text-fill: #6B6B78; }
+.js-filter-combo {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0E0E8;
+    -fx-text-fill: #1C1C2E;
+}
+.js-filter-combo .list-cell {
+    -fx-text-fill: #1C1C2E;
+    -fx-background-color: #FFFFFF;
+}
+.js-filter-combo .combo-box-popup .list-view {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0E0E8;
+}
+.js-filter-combo .combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: #F0F0F6;
+}
+.js-filter-field {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #1C1C2E;
+    -fx-prompt-text-fill: #9CA3AF;
+    -fx-border-color: #E0E0E8;
+}
+.js-filter-field:focused { -fx-border-color: #5B5BCC; }
+.js-reset-btn {
+    -fx-text-fill: #6B6B78;
+    -fx-border-color: #E0E0E8;
+}
+.js-reset-btn:hover {
+    -fx-text-fill: #1C1C2E;
+    -fx-border-color: #5B5BCC;
+}
+
+/* Job type badge — light */
+.js-badge-jobtype {
+    -fx-background-color: rgba(91,91,204,0.10);
+    -fx-text-fill: #5B5BCC;
+}
+.js-type-full-time { -fx-background-color: rgba(22,163,74,0.10); -fx-text-fill: #16A34A; }
+.js-type-part-time { -fx-background-color: rgba(202,138,4,0.10); -fx-text-fill: #CA8A04; }
+.js-type-contract, .js-type-freelance { -fx-background-color: rgba(124,58,237,0.10); -fx-text-fill: #7C3AED; }
+.js-type-internship { -fx-background-color: rgba(37,99,235,0.10); -fx-text-fill: #2563EB; }
+.js-type-temporary { -fx-background-color: rgba(219,39,119,0.10); -fx-text-fill: #DB2777; }
+.js-type-volunteer { -fx-background-color: rgba(13,148,136,0.10); -fx-text-fill: #0D9488; }
+.js-type-hiring { -fx-background-color: rgba(22,163,74,0.10); -fx-text-fill: #16A34A; }
+.js-type-for-hire { -fx-background-color: rgba(234,88,12,0.10); -fx-text-fill: #EA580C; }
+
+/* Muted meta text — light */
+.js-meta-muted { -fx-text-fill: #9CA3AF; }

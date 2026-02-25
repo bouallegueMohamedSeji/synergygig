@@ -30,7 +30,7 @@
                         style="-fx-min-width: 28; -fx-min-height: 28; -fx-font-size: 14;"/>
             </HBox>
             <TextArea fx:id="postTextArea" promptText="Write something..." wrapText="true"
-                      prefRowCount="3" maxHeight="120" styleClass="chat-textarea"/>
+                      prefRowCount="4" maxHeight="200" styleClass="chat-textarea"/>
             <HBox spacing="10" alignment="CENTER_RIGHT">
                 <Button fx:id="btnAttachPostImage" text="📷 Image" onAction="#handleAttachPostImage"
                         styleClass="community-react-btn" style="-fx-font-size: 12;"/>

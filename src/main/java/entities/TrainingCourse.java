@@ -20,6 +20,7 @@ public class TrainingCourse {
     private Date endDate;
     private int createdBy;         // user_id of creator
     private Timestamp createdAt;
+    private int quizTimerSeconds;   // seconds per quiz question (0 = AI decides based on difficulty)
 
     public TrainingCourse() {}
 
@@ -106,6 +107,23 @@ public class TrainingCourse {
 
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+
+    public int getQuizTimerSeconds() { return quizTimerSeconds; }
+    public void setQuizTimerSeconds(int quizTimerSeconds) { this.quizTimerSeconds = quizTimerSeconds; }
+
+    /**
+     * Returns the effective timer per question in seconds.
+     * If admin set a custom value (> 0), use that.
+     * Otherwise, AI decides based on difficulty.
+     */
+    public int getEffectiveQuizTimer() {
+        if (quizTimerSeconds > 0) return quizTimerSeconds;
+        return switch (difficulty != null ? difficulty.toUpperCase() : "BEGINNER") {
+            case "ADVANCED" -> 15;
+            case "INTERMEDIATE" -> 12;
+            default -> 10; // BEGINNER
+        };
+    }
 
     @Override
     public String toString() {

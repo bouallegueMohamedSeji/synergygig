@@ -5,20 +5,19 @@ import entities.Department;
 import utils.ApiClient;
 import utils.AppConfig;
 import utils.MyDatabase;
-
+import utils.InMemoryCache;
 import java.sql.*;
 import java.util.*;
 
 public class ServiceDepartment implements IService<Department> {
 
-    private Connection connection;
     private final boolean useApi;
+
+    private static final String CACHE_KEY = "departments:all";
+    private static final int CACHE_TTL = 300;
 
     public ServiceDepartment() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON helpers ====================
@@ -69,7 +68,8 @@ public class ServiceDepartment implements IService<Department> {
             return;
         }
         String sql = "INSERT INTO departments (name, description, manager_id, allocated_budget) VALUES (?, ?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, d.getName());
             ps.setString(2, d.getDescription());
             if (d.getManagerId() != null) ps.setInt(3, d.getManagerId());
@@ -80,6 +80,7 @@ public class ServiceDepartment implements IService<Department> {
                 if (keys.next()) d.setId(keys.getInt(1));
             }
         }
+        InMemoryCache.evictByPrefix("departments:");
     }
 
     @Override
@@ -94,7 +95,8 @@ public class ServiceDepartment implements IService<Department> {
             return;
         }
         String sql = "UPDATE departments SET name=?, description=?, manager_id=?, allocated_budget=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, d.getName());
             ps.setString(2, d.getDescription());
             if (d.getManagerId() != null) ps.setInt(3, d.getManagerId());
@@ -103,6 +105,7 @@ public class ServiceDepartment implements IService<Department> {
             ps.setInt(5, d.getId());
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("departments:");
     }
 
     @Override
@@ -112,23 +115,33 @@ public class ServiceDepartment implements IService<Department> {
             return;
         }
         // Clear department_id from users first
-        try (PreparedStatement clearUsers = connection.prepareStatement("UPDATE users SET department_id=NULL WHERE department_id=?")) {
-            clearUsers.setInt(1, id);
-            clearUsers.executeUpdate();
+        try (Connection conn = MyDatabase.getInstance().getConnection()) {
+            try (PreparedStatement clearUsers = conn.prepareStatement("UPDATE users SET department_id=NULL WHERE department_id=?")) {
+                clearUsers.setInt(1, id);
+                clearUsers.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM departments WHERE id=?")) {
+                ps.setInt(1, id);
+                ps.executeUpdate();
+            }
         }
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM departments WHERE id=?")) {
-            ps.setInt(1, id);
-            ps.executeUpdate();
-        }
+        InMemoryCache.evictByPrefix("departments:");
     }
 
     @Override
     public List<Department> recuperer() throws SQLException {
         if (useApi) {
-            return jsonArrayToDepartments(ApiClient.get("/departments"));
+            return InMemoryCache.getOrLoad(CACHE_KEY, CACHE_TTL,
+                    () -> jsonArrayToDepartments(ApiClient.get("/departments")));
         }
+        return InMemoryCache.getOrLoadChecked(CACHE_KEY, CACHE_TTL,
+                () -> recupererFromDb());
+    }
+
+    private List<Department> recupererFromDb() throws SQLException {
         List<Department> list = new ArrayList<>();
-        try (Statement st = connection.createStatement();
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM departments ORDER BY id")) {
             while (rs.next()) {
                 list.add(rowToDepartment(rs));
@@ -145,7 +158,8 @@ public class ServiceDepartment implements IService<Department> {
             }
             return null;
         }
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM departments WHERE id=?")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM departments WHERE id=?")) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return rowToDepartment(rs);

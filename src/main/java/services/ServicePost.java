@@ -5,20 +5,19 @@ import entities.Post;
 import utils.ApiClient;
 import utils.AppConfig;
 import utils.MyDatabase;
-
+import utils.InMemoryCache;
 import java.sql.*;
 import java.util.*;
 
 public class ServicePost implements IService<Post> {
 
-    private Connection connection;
     private final boolean useApi;
+
+    private static final String CACHE_KEY = "posts:all";
+    private static final int CACHE_TTL = 30;
 
     public ServicePost() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ============ JSON helpers ============
@@ -26,7 +25,11 @@ public class ServicePost implements IService<Post> {
     private Post jsonToPost(JsonObject obj) {
         Timestamp createdAt = null;
         if (obj.has("created_at") && !obj.get("created_at").isJsonNull()) {
-            createdAt = Timestamp.valueOf(obj.get("created_at").getAsString().replace("T", " "));
+            // Parse as UTC — server stores timestamps in UTC
+            String raw = obj.get("created_at").getAsString().replace("T", " ");
+            if (raw.contains(".")) raw = raw.substring(0, raw.indexOf(".")); // trim fractional seconds
+            java.time.LocalDateTime ldt = java.time.LocalDateTime.parse(raw, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            createdAt = Timestamp.from(ldt.atZone(java.time.ZoneOffset.UTC).toInstant());
         }
         String imageBase64 = null;
         if (obj.has("image_base64") && !obj.get("image_base64").isJsonNull()) {
@@ -66,12 +69,14 @@ public class ServicePost implements IService<Post> {
             return;
         }
         String sql = "INSERT INTO posts (author_id, content, image_base64) VALUES (?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, post.getAuthorId());
             ps.setString(2, post.getContent());
             ps.setString(3, post.getImageBase64());
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("posts:");
     }
 
     @Override
@@ -84,12 +89,14 @@ public class ServicePost implements IService<Post> {
             return;
         }
         String sql = "UPDATE posts SET content = ?, image_base64 = ? WHERE id = ?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, post.getContent());
             ps.setString(2, post.getImageBase64());
             ps.setInt(3, post.getId());
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("posts:");
     }
 
     @Override
@@ -98,20 +105,28 @@ public class ServicePost implements IService<Post> {
             ApiClient.delete("/posts/" + id);
             return;
         }
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM posts WHERE id = ?")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM posts WHERE id = ?")) {
             ps.setInt(1, id);
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("posts:");
     }
 
     @Override
     public List<Post> recuperer() throws SQLException {
         if (useApi) {
-            JsonElement el = ApiClient.get("/posts");
-            return jsonArrayToPosts(el);
+            return InMemoryCache.getOrLoad(CACHE_KEY, CACHE_TTL,
+                    () -> jsonArrayToPosts(ApiClient.get("/posts")));
         }
+        return InMemoryCache.getOrLoadChecked(CACHE_KEY, CACHE_TTL,
+                () -> recupererFromDb());
+    }
+
+    private List<Post> recupererFromDb() throws SQLException {
         List<Post> posts = new ArrayList<>();
-        try (Statement st = connection.createStatement();
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(
                 "SELECT p.*, " +
                 "(SELECT COUNT(*) FROM reactions WHERE post_id = p.id) AS likes_count, " +

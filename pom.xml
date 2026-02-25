@@ -107,6 +107,13 @@
             <version>2.0.31</version>
         </dependency>
 
+        <!-- HikariCP (JDBC connection pool) -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>5.1.0</version>
+        </dependency>
+
         <!-- Apache POI (Excel text extraction) -->
         <dependency>
             <groupId>org.apache.poi</groupId>

@@ -5,20 +5,20 @@ import entities.Offer;
 import utils.ApiClient;
 import utils.AppConfig;
 import utils.MyDatabase;
+import utils.InMemoryCache;
 
 import java.sql.*;
 import java.util.*;
 
 public class ServiceOffer implements IService<Offer> {
 
-    private Connection connection;
     private final boolean useApi;
+
+    private static final String CACHE_KEY = "offers:all";
+    private static final int CACHE_TTL = 120;
 
     public ServiceOffer() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON helpers ====================
@@ -96,7 +96,8 @@ public class ServiceOffer implements IService<Offer> {
             return;
         }
         String sql = "INSERT INTO offers (title, description, offer_type, status, required_skills, location, amount, currency, owner_id, department_id, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, o.getTitle());
             ps.setString(2, o.getDescription());
             ps.setString(3, o.getOfferType());
@@ -115,6 +116,7 @@ public class ServiceOffer implements IService<Offer> {
                 if (keys.next()) o.setId(keys.getInt(1));
             }
         }
+        InMemoryCache.evictByPrefix("offers:");
     }
 
     @Override
@@ -137,7 +139,8 @@ public class ServiceOffer implements IService<Offer> {
             return;
         }
         String sql = "UPDATE offers SET title=?, description=?, offer_type=?, status=?, required_skills=?, location=?, amount=?, currency=?, owner_id=?, department_id=?, start_date=?, end_date=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, o.getTitle());
             ps.setString(2, o.getDescription());
             ps.setString(3, o.getOfferType());
@@ -154,6 +157,7 @@ public class ServiceOffer implements IService<Offer> {
             ps.setInt(13, o.getId());
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("offers:");
     }
 
     @Override
@@ -163,28 +167,37 @@ public class ServiceOffer implements IService<Offer> {
             return;
         }
         // Cascade: delete applications and contracts referencing this offer
-        try (PreparedStatement delApps = connection.prepareStatement("DELETE FROM job_applications WHERE offer_id = ?")) {
-            delApps.setInt(1, id);
-            delApps.executeUpdate();
+        try (Connection conn = MyDatabase.getInstance().getConnection()) {
+            try (PreparedStatement delApps = conn.prepareStatement("DELETE FROM job_applications WHERE offer_id = ?")) {
+                delApps.setInt(1, id);
+                delApps.executeUpdate();
+            }
+            try (PreparedStatement delContracts = conn.prepareStatement("DELETE FROM contracts WHERE offer_id = ?")) {
+                delContracts.setInt(1, id);
+                delContracts.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM offers WHERE id = ?")) {
+                ps.setInt(1, id);
+                ps.executeUpdate();
+            }
         }
-        try (PreparedStatement delContracts = connection.prepareStatement("DELETE FROM contracts WHERE offer_id = ?")) {
-            delContracts.setInt(1, id);
-            delContracts.executeUpdate();
-        }
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM offers WHERE id = ?")) {
-            ps.setInt(1, id);
-            ps.executeUpdate();
-        }
+        InMemoryCache.evictByPrefix("offers:");
     }
 
     @Override
     public List<Offer> recuperer() throws SQLException {
         if (useApi) {
-            JsonElement el = ApiClient.get("/offers");
-            return jsonArrayToOffers(el);
+            return InMemoryCache.getOrLoad(CACHE_KEY, CACHE_TTL,
+                    () -> jsonArrayToOffers(ApiClient.get("/offers")));
         }
+        return InMemoryCache.getOrLoadChecked(CACHE_KEY, CACHE_TTL,
+                () -> recupererFromDb());
+    }
+
+    private List<Offer> recupererFromDb() throws SQLException {
         List<Offer> offers = new ArrayList<>();
-        try (Statement st = connection.createStatement();
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM offers ORDER BY created_at DESC")) {
             while (rs.next()) offers.add(rowToOffer(rs));
         }
@@ -198,7 +211,8 @@ public class ServiceOffer implements IService<Offer> {
             return jsonArrayToOffers(el);
         }
         List<Offer> offers = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM offers WHERE owner_id = ? ORDER BY created_at DESC")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM offers WHERE owner_id = ? ORDER BY created_at DESC")) {
             ps.setInt(1, ownerId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) offers.add(rowToOffer(rs));
@@ -214,7 +228,8 @@ public class ServiceOffer implements IService<Offer> {
             return jsonArrayToOffers(el);
         }
         List<Offer> offers = new ArrayList<>();
-        try (Statement st = connection.createStatement();
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM offers WHERE status='OPEN' ORDER BY created_at DESC")) {
             while (rs.next()) offers.add(rowToOffer(rs));
         }

@@ -11,14 +11,10 @@ import java.util.*;
 
 public class ServiceContract implements IService<Contract> {
 
-    private Connection connection;
     private final boolean useApi;
 
     public ServiceContract() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON helpers ====================
@@ -104,7 +100,8 @@ public class ServiceContract implements IService<Contract> {
             return;
         }
         String sql = "INSERT INTO contracts (offer_id, applicant_id, owner_id, terms, amount, currency, status, risk_score, risk_factors, blockchain_hash, qr_code_url, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, c.getOfferId());
             ps.setInt(2, c.getApplicantId());
             ps.setInt(3, c.getOwnerId());
@@ -147,7 +144,8 @@ public class ServiceContract implements IService<Contract> {
             return;
         }
         String sql = "UPDATE contracts SET offer_id=?, applicant_id=?, owner_id=?, terms=?, amount=?, currency=?, status=?, risk_score=?, risk_factors=?, blockchain_hash=?, qr_code_url=?, start_date=?, end_date=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, c.getOfferId());
             ps.setInt(2, c.getApplicantId());
             ps.setInt(3, c.getOwnerId());
@@ -173,7 +171,8 @@ public class ServiceContract implements IService<Contract> {
             ApiClient.delete("/contracts/" + id);
             return;
         }
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM contracts WHERE id = ?")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM contracts WHERE id = ?")) {
             ps.setInt(1, id);
             ps.executeUpdate();
         }
@@ -186,7 +185,8 @@ public class ServiceContract implements IService<Contract> {
             return jsonArrayToContracts(el);
         }
         List<Contract> list = new ArrayList<>();
-        try (Statement st = connection.createStatement();
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM contracts ORDER BY created_at DESC")) {
             while (rs.next()) list.add(rowToContract(rs));
         }
@@ -200,7 +200,8 @@ public class ServiceContract implements IService<Contract> {
             return jsonArrayToContracts(el);
         }
         List<Contract> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM contracts WHERE owner_id = ? ORDER BY created_at DESC")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM contracts WHERE owner_id = ? ORDER BY created_at DESC")) {
             ps.setInt(1, ownerId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(rowToContract(rs));
@@ -216,7 +217,8 @@ public class ServiceContract implements IService<Contract> {
             return jsonArrayToContracts(el);
         }
         List<Contract> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM contracts WHERE applicant_id = ? ORDER BY created_at DESC")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM contracts WHERE applicant_id = ? ORDER BY created_at DESC")) {
             ps.setInt(1, applicantId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(rowToContract(rs));

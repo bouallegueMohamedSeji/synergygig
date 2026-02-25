@@ -11,14 +11,10 @@ import java.util.*;
 
 public class ServiceProject implements IService<Project> {
 
-    private Connection connection;
     private final boolean useApi;
 
     public ServiceProject() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON helpers ====================
@@ -90,7 +86,8 @@ public class ServiceProject implements IService<Project> {
             return;
         }
         String sql = "INSERT INTO projects (name, description, owner_id, start_date, deadline, status, department_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, p.getName());
             ps.setString(2, p.getDescription());
             ps.setInt(3, p.getManagerId());
@@ -121,7 +118,8 @@ public class ServiceProject implements IService<Project> {
             return;
         }
         String sql = "UPDATE projects SET name=?, description=?, owner_id=?, start_date=?, deadline=?, status=?, department_id=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, p.getName());
             ps.setString(2, p.getDescription());
             ps.setInt(3, p.getManagerId());
@@ -142,13 +140,15 @@ public class ServiceProject implements IService<Project> {
             return;
         }
         // Delete tasks first (cascade)
-        try (PreparedStatement delTasks = connection.prepareStatement("DELETE FROM tasks WHERE project_id = ?")) {
-            delTasks.setInt(1, id);
-            delTasks.executeUpdate();
-        }
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM projects WHERE id = ?")) {
-            ps.setInt(1, id);
-            ps.executeUpdate();
+        try (Connection conn = MyDatabase.getInstance().getConnection()) {
+            try (PreparedStatement delTasks = conn.prepareStatement("DELETE FROM tasks WHERE project_id = ?")) {
+                delTasks.setInt(1, id);
+                delTasks.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement("DELETE FROM projects WHERE id = ?")) {
+                ps.setInt(1, id);
+                ps.executeUpdate();
+            }
         }
     }
 
@@ -159,7 +159,8 @@ public class ServiceProject implements IService<Project> {
             return jsonArrayToProjects(el);
         }
         List<Project> projects = new ArrayList<>();
-        try (Statement st = connection.createStatement();
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM projects ORDER BY created_at DESC")) {
             while (rs.next()) {
                 projects.add(rowToProject(rs));
@@ -175,7 +176,8 @@ public class ServiceProject implements IService<Project> {
             return jsonArrayToProjects(el);
         }
         List<Project> projects = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement(
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
                 "SELECT * FROM projects WHERE owner_id = ? ORDER BY created_at DESC")) {
             ps.setInt(1, managerId);
             try (ResultSet rs = ps.executeQuery()) {

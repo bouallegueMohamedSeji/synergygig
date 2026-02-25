@@ -57,6 +57,11 @@ public class HRModuleController {
     private boolean isHrOrAdmin;
     private Button activeTab;
 
+    // Leave table sort/search state
+    private String leaveSortColumn = "";
+    private boolean leaveSortAsc = true;
+    private String leaveSearchQuery = "";
+
     // Cached data
     private List<User> allUsers = new ArrayList<>();
 
@@ -132,6 +137,32 @@ public class HRModuleController {
     // ==================== OVERVIEW TAB ====================
 
     private void showOverview() {
+        // Show loading placeholder instantly
+        Label loading = new Label("Loading overview...");
+        loading.setStyle("-fx-font-size: 14; -fx-text-fill: #888; -fx-padding: 40;");
+        contentArea.getChildren().setAll(loading);
+
+        // Load all data in background
+        AppThreadPool.io(() -> {
+            try {
+                List<Department> depts = serviceDepartment.recuperer();
+                List<Attendance> attendance = serviceAttendance.recuperer();
+                List<Leave> leaves = serviceLeave.recuperer();
+                List<Payroll> payrolls = servicePayroll.recuperer();
+
+                Platform.runLater(() -> buildOverviewUI(depts, attendance, leaves, payrolls));
+            } catch (SQLException e) {
+                Platform.runLater(() -> {
+                    Label err = new Label("Error loading overview: " + e.getMessage());
+                    err.setStyle("-fx-text-fill: red; -fx-padding: 40;");
+                    contentArea.getChildren().setAll(err);
+                });
+            }
+        });
+    }
+
+    private void buildOverviewUI(List<Department> depts, List<Attendance> attendance,
+                                  List<Leave> leaves, List<Payroll> payrolls) {
         VBox view = new VBox(20);
         view.getStyleClass().add("hr-view");
         view.setPadding(new Insets(24));
@@ -143,40 +174,29 @@ public class HRModuleController {
         HBox statsRow = new HBox(16);
         statsRow.setAlignment(Pos.CENTER_LEFT);
 
-        try {
-            List<Department> depts = serviceDepartment.recuperer();
-            List<Attendance> attendance = serviceAttendance.recuperer();
-            List<Leave> leaves = serviceLeave.recuperer();
-            List<Payroll> payrolls = servicePayroll.recuperer();
+        long totalEmployees = allUsers.stream().filter(u -> !"ADMIN".equals(u.getRole())).count();
+        long presentToday = attendance.stream()
+                .filter(a -> a.getDate() != null && a.getDate().toLocalDate().equals(LocalDate.now()))
+                .filter(a -> "PRESENT".equals(a.getStatus()) || "LATE".equals(a.getStatus()))
+                .count();
+        long pendingLeaves = leaves.stream().filter(l -> "PENDING".equals(l.getStatus())).count();
+        long pendingPayrolls = payrolls.stream().filter(p -> "PENDING".equals(p.getStatus())).count();
 
-            long totalEmployees = allUsers.stream().filter(u -> !"ADMIN".equals(u.getRole())).count();
-            long presentToday = attendance.stream()
-                    .filter(a -> a.getDate() != null && a.getDate().toLocalDate().equals(LocalDate.now()))
-                    .filter(a -> "PRESENT".equals(a.getStatus()) || "LATE".equals(a.getStatus()))
-                    .count();
-            long pendingLeaves = leaves.stream().filter(l -> "PENDING".equals(l.getStatus())).count();
-            long pendingPayrolls = payrolls.stream().filter(p -> "PENDING".equals(p.getStatus())).count();
-
-            statsRow.getChildren().addAll(
-                    createStatCard("👥", "Total Employees", String.valueOf(totalEmployees), "hr-stat-blue"),
-                    createStatCard("🏢", "Departments", String.valueOf(depts.size()), "hr-stat-green"),
-                    createStatCard("✅", "Present Today", String.valueOf(presentToday), "hr-stat-purple"),
-                    createStatCard("📋", "Pending Leaves", String.valueOf(pendingLeaves), "hr-stat-orange"),
-                    createStatCard("💰", "Pending Payroll", String.valueOf(pendingPayrolls), "hr-stat-red")
-            );
-        } catch (SQLException e) {
-            statsRow.getChildren().add(new Label("Error loading stats: " + e.getMessage()));
-        }
+        statsRow.getChildren().addAll(
+                createStatCard("👥", "Total Employees", String.valueOf(totalEmployees), "hr-stat-blue"),
+                createStatCard("🏢", "Departments", String.valueOf(depts.size()), "hr-stat-green"),
+                createStatCard("✅", "Present Today", String.valueOf(presentToday), "hr-stat-purple"),
+                createStatCard("📋", "Pending Leaves", String.valueOf(pendingLeaves), "hr-stat-orange"),
+                createStatCard("💰", "Pending Payroll", String.valueOf(pendingPayrolls), "hr-stat-red")
+        );
 
         // ── API Sections ──
         HBox apiRow = new HBox(16);
         apiRow.setAlignment(Pos.TOP_LEFT);
 
-        // API #1 — Upcoming Public Holidays (Nager.Date)
         VBox holidaySection = createHolidaysSection();
         HBox.setHgrow(holidaySection, Priority.ALWAYS);
 
-        // API #2 — Team Building Activity Suggestion (Bored API)
         VBox activitySection = createTeamBuildingSection();
         HBox.setHgrow(activitySection, Priority.ALWAYS);
 
@@ -185,10 +205,10 @@ public class HRModuleController {
         // Recent activity sections
         VBox recentSection = new VBox(16);
 
-        // Recent leaves
-        VBox recentLeaves = createRecentLeavesSection();
-        // Recent attendance
-        VBox recentAttendance = createRecentAttendanceSection();
+        // Build recent leaves from pre-loaded data
+        VBox recentLeaves = buildRecentLeavesFromData(leaves);
+        // Build recent attendance from pre-loaded data
+        VBox recentAttendance = buildRecentAttendanceFromData(attendance);
 
         recentSection.getChildren().addAll(recentLeaves, recentAttendance);
 
@@ -198,6 +218,92 @@ public class HRModuleController {
         scroll.setFitToWidth(true);
         scroll.getStyleClass().add("hr-scroll");
         contentArea.getChildren().setAll(scroll);
+    }
+
+    /** Build recent leaves section using pre-loaded data (no additional DB query). */
+    private VBox buildRecentLeavesFromData(List<Leave> leaves) {
+        VBox section = new VBox(8);
+        section.getStyleClass().add("hr-section-card");
+        section.setPadding(new Insets(16));
+
+        Label title = new Label("📋 Recent Leave Requests");
+        title.getStyleClass().add("hr-section-title");
+        section.getChildren().add(title);
+
+        List<Leave> recent = leaves.stream().limit(5).collect(Collectors.toList());
+        if (recent.isEmpty()) {
+            section.getChildren().add(new Label("No leave requests yet."));
+        } else {
+            for (Leave l : recent) {
+                HBox row = new HBox(12);
+                row.setAlignment(Pos.CENTER_LEFT);
+                row.getStyleClass().add("hr-list-row");
+                row.setPadding(new Insets(8, 12, 8, 12));
+
+                Label name = new Label(getUserName(l.getUserId()));
+                name.getStyleClass().add("hr-list-name");
+                name.setPrefWidth(160);
+
+                Label type = new Label(l.getType());
+                type.getStyleClass().add("hr-badge");
+                type.setPrefWidth(80);
+
+                Label dates = new Label(l.getStartDate() + " → " + l.getEndDate());
+                dates.getStyleClass().add("hr-list-detail");
+                HBox.setHgrow(dates, Priority.ALWAYS);
+
+                Label status = new Label(l.getStatus());
+                status.getStyleClass().addAll("hr-status-badge", "hr-status-" + l.getStatus().toLowerCase());
+
+                row.getChildren().addAll(name, type, dates, status);
+                section.getChildren().add(row);
+            }
+        }
+        return section;
+    }
+
+    /** Build recent attendance section using pre-loaded data (no additional DB query). */
+    private VBox buildRecentAttendanceFromData(List<Attendance> attendance) {
+        VBox section = new VBox(8);
+        section.getStyleClass().add("hr-section-card");
+        section.setPadding(new Insets(16));
+
+        Label title = new Label("📅 Today's Attendance");
+        title.getStyleClass().add("hr-section-title");
+        section.getChildren().add(title);
+
+        List<Attendance> todayList = attendance.stream()
+                .filter(a -> a.getDate() != null && a.getDate().toLocalDate().equals(LocalDate.now()))
+                .limit(8)
+                .collect(Collectors.toList());
+
+        if (todayList.isEmpty()) {
+            section.getChildren().add(new Label("No attendance records for today."));
+        } else {
+            for (Attendance a : todayList) {
+                HBox row = new HBox(12);
+                row.setAlignment(Pos.CENTER_LEFT);
+                row.getStyleClass().add("hr-list-row");
+                row.setPadding(new Insets(8, 12, 8, 12));
+
+                Label name = new Label(getUserName(a.getUserId()));
+                name.getStyleClass().add("hr-list-name");
+                name.setPrefWidth(160);
+
+                Label checkIn = new Label("In: " + (a.getCheckIn() != null ? a.getCheckIn().toString() : "—"));
+                checkIn.setPrefWidth(100);
+
+                Label checkOut = new Label("Out: " + (a.getCheckOut() != null ? a.getCheckOut().toString() : "—"));
+                checkOut.setPrefWidth(100);
+
+                Label status = new Label(a.getStatus());
+                status.getStyleClass().addAll("hr-status-badge", "hr-status-" + a.getStatus().toLowerCase());
+
+                row.getChildren().addAll(name, checkIn, checkOut, status);
+                section.getChildren().add(row);
+            }
+        }
+        return section;
     }
 
     private VBox createStatCard(String icon, String label, String value, String styleClass) {
@@ -1082,6 +1188,10 @@ public class HRModuleController {
     // ==================== LEAVES TAB ====================
 
     private void showLeaves() {
+        leaveSortColumn = "";
+        leaveSortAsc = true;
+        leaveSearchQuery = "";
+
         VBox view = new VBox(16);
         view.getStyleClass().add("hr-view");
         view.setPadding(new Insets(24));
@@ -1092,6 +1202,12 @@ public class HRModuleController {
         title.getStyleClass().add("hr-view-title");
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        // Search bar
+        TextField searchField = new TextField();
+        searchField.setPromptText("\uD83D\uDD0D Search leaves...");
+        searchField.getStyleClass().add("hr-search-field");
+        searchField.setPrefWidth(200);
 
         // Status filter
         ComboBox<String> statusFilter = new ComboBox<>();
@@ -1106,9 +1222,9 @@ public class HRModuleController {
             showLeaveDialog(null);
         });
 
-        header.getChildren().addAll(title, spacer, statusFilter, requestBtn);
+        header.getChildren().addAll(title, spacer, searchField, statusFilter, requestBtn);
 
-        VBox leaveList = new VBox(8);
+        VBox leaveList = new VBox(0);
 
         view.getChildren().addAll(header, leaveList);
 
@@ -1117,6 +1233,10 @@ public class HRModuleController {
         scroll.getStyleClass().add("hr-scroll");
         contentArea.getChildren().setAll(scroll);
 
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
+            leaveSearchQuery = newVal != null ? newVal.trim().toLowerCase() : "";
+            refreshLeaveList(leaveList, statusFilter.getValue());
+        });
         statusFilter.setOnAction(e -> refreshLeaveList(leaveList, statusFilter.getValue()));
         refreshLeaveList(leaveList, "All");
     }
@@ -1139,27 +1259,73 @@ public class HRModuleController {
                 }
             }
 
+            // Search filter
+            if (!leaveSearchQuery.isEmpty()) {
+                String q = leaveSearchQuery;
+                leaves = leaves.stream().filter(l -> {
+                    String empName = getUserName(l.getUserId()).toLowerCase();
+                    String tp = l.getType() != null ? l.getType().toLowerCase() : "";
+                    String rs = l.getReason() != null ? l.getReason().toLowerCase() : "";
+                    String st = l.getStatus() != null ? l.getStatus().toLowerCase() : "";
+                    String fr = l.getStartDate() != null ? l.getStartDate().toString() : "";
+                    String t = l.getEndDate() != null ? l.getEndDate().toString() : "";
+                    return empName.contains(q) || tp.contains(q) || rs.contains(q) || st.contains(q) || fr.contains(q) || t.contains(q);
+                }).collect(Collectors.toList());
+            }
+
+            // Sort
+            if (!leaveSortColumn.isEmpty()) {
+                Comparator<Leave> cmp = null;
+                switch (leaveSortColumn) {
+                    case "Employee": cmp = Comparator.comparing(l -> getUserName(l.getUserId()).toLowerCase()); break;
+                    case "Type":     cmp = Comparator.comparing(l -> l.getType() != null ? l.getType() : ""); break;
+                    case "From":     cmp = Comparator.comparing(l -> l.getStartDate() != null ? l.getStartDate().toString() : ""); break;
+                    case "To":       cmp = Comparator.comparing(l -> l.getEndDate() != null ? l.getEndDate().toString() : ""); break;
+                    case "Days":     cmp = Comparator.comparingLong(Leave::getDays); break;
+                    case "Reason":   cmp = Comparator.comparing(l -> l.getReason() != null ? l.getReason().toLowerCase() : ""); break;
+                    case "Status":   cmp = Comparator.comparing(l -> l.getStatus() != null ? l.getStatus() : ""); break;
+                }
+                if (cmp != null) {
+                    if (!leaveSortAsc) cmp = cmp.reversed();
+                    leaves.sort(cmp);
+                }
+            }
+
             if (leaves.isEmpty()) {
-                Label empty = new Label("No leave requests found.");
+                Label empty = new Label(leaveSearchQuery.isEmpty() ? "No leave requests found." : "No matching leave requests.");
                 empty.getStyleClass().add("hr-empty-label");
                 container.getChildren().add(empty);
                 return;
             }
 
-            // Header
+            // Sortable header
+            String[] cols = {"Employee", "Type", "From", "To", "Days", "Reason", "Status", "Actions"};
+            double[] widths = {140, 80, 90, 90, 45, 140, 80, 120};
             HBox headerRow = new HBox(12);
             headerRow.getStyleClass().add("hr-table-header");
             headerRow.setPadding(new Insets(8, 12, 8, 12));
-            headerRow.getChildren().addAll(
-                    createColLabel("Employee", 140),
-                    createColLabel("Type", 80),
-                    createColLabel("From", 90),
-                    createColLabel("To", 90),
-                    createColLabel("Days", 45),
-                    createColLabel("Reason", 140),
-                    createColLabel("Status", 80),
-                    createColLabel("Actions", 120)
-            );
+            for (int i = 0; i < cols.length; i++) {
+                String col = cols[i];
+                double w = widths[i];
+                if ("Actions".equals(col)) {
+                    headerRow.getChildren().add(createColLabel(col, w));
+                } else {
+                    String arrow = col.equals(leaveSortColumn) ? (leaveSortAsc ? " \u25B2" : " \u25BC") : "";
+                    Label hdr = createColLabel(col + arrow, w);
+                    hdr.getStyleClass().add("hr-sort-header");
+                    if (col.equals(leaveSortColumn)) hdr.getStyleClass().add("hr-sort-active");
+                    hdr.setOnMouseClicked(ev -> {
+                        if (col.equals(leaveSortColumn)) {
+                            leaveSortAsc = !leaveSortAsc;
+                        } else {
+                            leaveSortColumn = col;
+                            leaveSortAsc = true;
+                        }
+                        refreshLeaveList(container, statusFilter);
+                    });
+                    headerRow.getChildren().add(hdr);
+                }
+            }
             container.getChildren().add(headerRow);
 
             for (Leave l : leaves) {
@@ -1170,10 +1336,10 @@ public class HRModuleController {
 
                 Label name = createColLabel(getUserName(l.getUserId()), 140);
                 Label type = createColLabel(l.getType(), 80);
-                Label from = createColLabel(l.getStartDate() != null ? l.getStartDate().toString() : "—", 90);
-                Label to = createColLabel(l.getEndDate() != null ? l.getEndDate().toString() : "—", 90);
+                Label from = createColLabel(l.getStartDate() != null ? l.getStartDate().toString() : "\u2014", 90);
+                Label to = createColLabel(l.getEndDate() != null ? l.getEndDate().toString() : "\u2014", 90);
                 Label days = createColLabel(String.valueOf(l.getDays()), 45);
-                Label reason = createColLabel(l.getReason() != null ? l.getReason() : "—", 140);
+                Label reason = createColLabel(l.getReason() != null ? l.getReason() : "\u2014", 140);
 
                 Label status = new Label(l.getStatus());
                 status.getStyleClass().addAll("hr-status-badge", "hr-status-" + l.getStatus().toLowerCase());
@@ -1184,7 +1350,7 @@ public class HRModuleController {
                 actions.setAlignment(Pos.CENTER_LEFT);
 
                 if (isHrOrAdmin && "PENDING".equals(l.getStatus())) {
-                    Button approveBtn = new Button("✓");
+                    Button approveBtn = new Button("\u2713");
                     approveBtn.getStyleClass().addAll("hr-icon-btn", "hr-success-btn");
                     approveBtn.setOnAction(e -> {
                         SoundManager.getInstance().play(SoundManager.LEAVE_APPROVED);
@@ -1197,7 +1363,7 @@ public class HRModuleController {
                         }
                     });
 
-                    Button rejectBtn = new Button("✗");
+                    Button rejectBtn = new Button("\u2717");
                     rejectBtn.getStyleClass().addAll("hr-icon-btn", "hr-danger-btn");
                     rejectBtn.setOnAction(e -> {
                         SoundManager.getInstance().play(SoundManager.LEAVE_REJECTED);
@@ -1212,7 +1378,7 @@ public class HRModuleController {
                     actions.getChildren().addAll(approveBtn, rejectBtn);
                 }
 
-                Button deleteBtn = new Button("🗑");
+                Button deleteBtn = new Button("\uD83D\uDDD1");
                 deleteBtn.getStyleClass().addAll("hr-icon-btn", "hr-danger-btn");
                 deleteBtn.setOnAction(e -> {
                     SoundManager.getInstance().play(SoundManager.TASK_DELETED);

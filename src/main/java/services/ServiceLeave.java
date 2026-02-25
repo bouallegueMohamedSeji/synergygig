@@ -5,20 +5,20 @@ import entities.Leave;
 import utils.ApiClient;
 import utils.AppConfig;
 import utils.MyDatabase;
+import utils.InMemoryCache;
 
 import java.sql.*;
 import java.util.*;
 
 public class ServiceLeave implements IService<Leave> {
 
-    private Connection connection;
     private final boolean useApi;
+
+    private static final String CACHE_KEY = "leaves:all";
+    private static final int CACHE_TTL = 120;
 
     public ServiceLeave() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON helpers ====================
@@ -77,7 +77,8 @@ public class ServiceLeave implements IService<Leave> {
             return;
         }
         String sql = "INSERT INTO leaves (user_id, type, start_date, end_date, reason, status) VALUES (?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, l.getUserId());
             ps.setString(2, l.getType());
             ps.setDate(3, l.getStartDate());
@@ -89,6 +90,7 @@ public class ServiceLeave implements IService<Leave> {
                 if (keys.next()) l.setId(keys.getInt(1));
             }
         }
+        InMemoryCache.evictByPrefix("leaves:");
     }
 
     @Override
@@ -105,7 +107,8 @@ public class ServiceLeave implements IService<Leave> {
             return;
         }
         String sql = "UPDATE leaves SET user_id=?, type=?, start_date=?, end_date=?, reason=?, status=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, l.getUserId());
             ps.setString(2, l.getType());
             ps.setDate(3, l.getStartDate());
@@ -115,6 +118,7 @@ public class ServiceLeave implements IService<Leave> {
             ps.setInt(7, l.getId());
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("leaves:");
     }
 
     @Override
@@ -123,19 +127,28 @@ public class ServiceLeave implements IService<Leave> {
             ApiClient.delete("/leaves/" + id);
             return;
         }
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM leaves WHERE id=?")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM leaves WHERE id=?")) {
             ps.setInt(1, id);
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("leaves:");
     }
 
     @Override
     public List<Leave> recuperer() throws SQLException {
         if (useApi) {
-            return jsonArrayToList(ApiClient.get("/leaves"));
+            return InMemoryCache.getOrLoad(CACHE_KEY, CACHE_TTL,
+                    () -> jsonArrayToList(ApiClient.get("/leaves")));
         }
+        return InMemoryCache.getOrLoadChecked(CACHE_KEY, CACHE_TTL,
+                () -> recupererFromDb());
+    }
+
+    private List<Leave> recupererFromDb() throws SQLException {
         List<Leave> list = new ArrayList<>();
-        try (Statement st = connection.createStatement();
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM leaves ORDER BY start_date DESC")) {
             while (rs.next()) list.add(rowToLeave(rs));
         }
@@ -147,7 +160,8 @@ public class ServiceLeave implements IService<Leave> {
             return jsonArrayToList(ApiClient.get("/leaves/user/" + userId));
         }
         List<Leave> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM leaves WHERE user_id=? ORDER BY start_date DESC")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM leaves WHERE user_id=? ORDER BY start_date DESC")) {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(rowToLeave(rs));
@@ -161,7 +175,8 @@ public class ServiceLeave implements IService<Leave> {
             return jsonArrayToList(ApiClient.get("/leaves/status/" + status));
         }
         List<Leave> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM leaves WHERE status=? ORDER BY start_date DESC")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM leaves WHERE status=? ORDER BY start_date DESC")) {
             ps.setString(1, status);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(rowToLeave(rs));

@@ -5,7 +5,7 @@ import entities.ChatRoom;
 import utils.ApiClient;
 import utils.AppConfig;
 import utils.MyDatabase;
-
+import utils.InMemoryCache;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,14 +14,13 @@ import java.util.Map;
 
 public class ServiceChatRoom implements IService<ChatRoom> {
 
-    private Connection connection;
     private final boolean useApi;
+
+    private static final String CACHE_KEY = "chatrooms:all";
+    private static final int CACHE_TTL = 60;
 
     public ServiceChatRoom() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON helpers ====================
@@ -65,12 +64,14 @@ public class ServiceChatRoom implements IService<ChatRoom> {
             return;
         }
         String req = "INSERT INTO chat_rooms (name, type, created_by) VALUES (?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setString(1, room.getName());
             ps.setString(2, room.getType() != null ? room.getType() : "group");
             ps.setInt(3, room.getCreatedBy());
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("chatrooms:");
     }
 
     @Override
@@ -82,11 +83,13 @@ public class ServiceChatRoom implements IService<ChatRoom> {
             return;
         }
         String req = "UPDATE chat_rooms SET name=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setString(1, room.getName());
             ps.setInt(2, room.getId());
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("chatrooms:");
     }
 
     @Override
@@ -96,20 +99,29 @@ public class ServiceChatRoom implements IService<ChatRoom> {
             return;
         }
         String req = "DELETE FROM chat_rooms WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setInt(1, id);
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("chatrooms:");
     }
 
     @Override
     public List<ChatRoom> recuperer() throws SQLException {
         if (useApi) {
-            return jsonArrayToRooms(ApiClient.get("/chatrooms"));
+            return InMemoryCache.getOrLoad(CACHE_KEY, CACHE_TTL,
+                    () -> jsonArrayToRooms(ApiClient.get("/chatrooms")));
         }
+        return InMemoryCache.getOrLoadChecked(CACHE_KEY, CACHE_TTL,
+                () -> recupererFromDb());
+    }
+
+    private List<ChatRoom> recupererFromDb() throws SQLException {
         List<ChatRoom> rooms = new ArrayList<>();
         String req = "SELECT * FROM chat_rooms ORDER BY created_at DESC";
-        try (PreparedStatement ps = connection.prepareStatement(req);
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 rooms.add(new ChatRoom(
@@ -143,7 +155,8 @@ public class ServiceChatRoom implements IService<ChatRoom> {
         }
         // Try to find existing
         String req = "SELECT * FROM chat_rooms WHERE name=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setString(1, name);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -163,12 +176,15 @@ public class ServiceChatRoom implements IService<ChatRoom> {
 
     /** Returns total chat room count without loading all rows. */
     public int count() throws SQLException {
-        if (useApi) {
-            return recuperer().size();
-        }
-        try (Statement st = connection.createStatement();
-             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM chat_rooms")) {
-            return rs.next() ? rs.getInt(1) : 0;
-        }
+        return InMemoryCache.getOrLoadChecked("chatrooms:count", 30, () -> {
+            if (useApi) {
+                return recuperer().size();
+            }
+            try (Connection conn = MyDatabase.getInstance().getConnection();
+                 Statement st = conn.createStatement();
+                 ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM chat_rooms")) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        });
     }
 }

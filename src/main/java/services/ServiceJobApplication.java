@@ -11,14 +11,10 @@ import java.util.*;
 
 public class ServiceJobApplication implements IService<JobApplication> {
 
-    private Connection connection;
     private final boolean useApi;
 
     public ServiceJobApplication() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON helpers ====================
@@ -77,7 +73,8 @@ public class ServiceJobApplication implements IService<JobApplication> {
             return;
         }
         String sql = "INSERT INTO job_applications (offer_id, applicant_id, cover_letter, status) VALUES (?, ?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, a.getOfferId());
             ps.setInt(2, a.getApplicantId());
             ps.setString(3, a.getCoverLetter());
@@ -103,7 +100,8 @@ public class ServiceJobApplication implements IService<JobApplication> {
             return;
         }
         String sql = "UPDATE job_applications SET offer_id=?, applicant_id=?, cover_letter=?, status=?, ai_score=?, ai_feedback=?, reviewed_at=NOW() WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, a.getOfferId());
             ps.setInt(2, a.getApplicantId());
             ps.setString(3, a.getCoverLetter());
@@ -122,7 +120,8 @@ public class ServiceJobApplication implements IService<JobApplication> {
             ApiClient.delete("/applications/" + id);
             return;
         }
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM job_applications WHERE id = ?")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM job_applications WHERE id = ?")) {
             ps.setInt(1, id);
             ps.executeUpdate();
         }
@@ -135,7 +134,8 @@ public class ServiceJobApplication implements IService<JobApplication> {
             return jsonArrayToApplications(el);
         }
         List<JobApplication> list = new ArrayList<>();
-        try (Statement st = connection.createStatement();
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM job_applications ORDER BY applied_at DESC")) {
             while (rs.next()) list.add(rowToApplication(rs));
         }
@@ -149,7 +149,8 @@ public class ServiceJobApplication implements IService<JobApplication> {
             return jsonArrayToApplications(el);
         }
         List<JobApplication> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM job_applications WHERE offer_id = ? ORDER BY applied_at DESC")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM job_applications WHERE offer_id = ? ORDER BY applied_at DESC")) {
             ps.setInt(1, offerId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(rowToApplication(rs));
@@ -165,7 +166,8 @@ public class ServiceJobApplication implements IService<JobApplication> {
             return jsonArrayToApplications(el);
         }
         List<JobApplication> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM job_applications WHERE applicant_id = ? ORDER BY applied_at DESC")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM job_applications WHERE applicant_id = ? ORDER BY applied_at DESC")) {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(rowToApplication(rs));

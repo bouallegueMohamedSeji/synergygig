@@ -5,7 +5,7 @@ import entities.Interview;
 import utils.ApiClient;
 import utils.AppConfig;
 import utils.MyDatabase;
-
+import utils.InMemoryCache;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,14 +14,13 @@ import java.util.Map;
 
 public class ServiceInterview implements IService<Interview> {
 
-    private Connection connection;
     private final boolean useApi;
+
+    private static final String CACHE_KEY = "interviews:all";
+    private static final int CACHE_TTL = 60;
 
     public ServiceInterview() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON helpers ====================
@@ -69,13 +68,15 @@ public class ServiceInterview implements IService<Interview> {
             return;
         }
         String req = "INSERT INTO interviews (organizer_id, candidate_id, date_time, status, meet_link) VALUES (?, ?, ?, 'PENDING', ?)";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setInt(1, interview.getOrganizerId());
             ps.setInt(2, interview.getCandidateId());
             ps.setTimestamp(3, interview.getDateTime());
             ps.setString(4, interview.getMeetLink());
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("interviews:");
     }
 
     @Override
@@ -91,7 +92,8 @@ public class ServiceInterview implements IService<Interview> {
             return;
         }
         String req = "UPDATE interviews SET organizer_id=?, candidate_id=?, date_time=?, status=?, meet_link=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setInt(1, interview.getOrganizerId());
             ps.setInt(2, interview.getCandidateId());
             ps.setTimestamp(3, interview.getDateTime());
@@ -100,6 +102,7 @@ public class ServiceInterview implements IService<Interview> {
             ps.setInt(6, interview.getId());
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("interviews:");
     }
 
     @Override
@@ -109,20 +112,29 @@ public class ServiceInterview implements IService<Interview> {
             return;
         }
         String req = "DELETE FROM interviews WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setInt(1, id);
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("interviews:");
     }
 
     @Override
     public List<Interview> recuperer() throws SQLException {
         if (useApi) {
-            return jsonArrayToInterviews(ApiClient.get("/interviews"));
+            return InMemoryCache.getOrLoad(CACHE_KEY, CACHE_TTL,
+                    () -> jsonArrayToInterviews(ApiClient.get("/interviews")));
         }
+        return InMemoryCache.getOrLoadChecked(CACHE_KEY, CACHE_TTL,
+                () -> recupererFromDb());
+    }
+
+    private List<Interview> recupererFromDb() throws SQLException {
         List<Interview> interviews = new ArrayList<>();
         String req = "SELECT * FROM interviews";
-        try (PreparedStatement ps = connection.prepareStatement(req);
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 interviews.add(new Interview(
@@ -143,7 +155,8 @@ public class ServiceInterview implements IService<Interview> {
         }
         List<Interview> interviews = new ArrayList<>();
         String req = "SELECT * FROM interviews WHERE organizer_id=? ORDER BY date_time DESC";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setInt(1, organizerId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -166,7 +179,8 @@ public class ServiceInterview implements IService<Interview> {
         }
         List<Interview> interviews = new ArrayList<>();
         String req = "SELECT * FROM interviews WHERE candidate_id=? ORDER BY date_time DESC";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setInt(1, candidateId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {

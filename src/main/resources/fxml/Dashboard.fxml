@@ -166,6 +166,16 @@
                                 </graphic>
                             </Button>
 
+                            <Button fx:id="btnJobScanner" onAction="#showJobScanner"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="🔍" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="Job Scanner" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
+
                             <Button fx:id="btnCommunity" onAction="#showCommunity"
                                     styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
                                 <graphic>

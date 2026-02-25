@@ -11,14 +11,10 @@ import java.util.*;
 
 public class ServiceTask implements IService<Task> {
 
-    private Connection connection;
     private final boolean useApi;
 
     public ServiceTask() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON helpers ====================
@@ -79,7 +75,8 @@ public class ServiceTask implements IService<Task> {
             return;
         }
         String sql = "INSERT INTO tasks (project_id, assigned_to, title, description, status, priority, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, t.getProjectId());
             if (t.getAssigneeId() > 0) ps.setInt(2, t.getAssigneeId()); else ps.setNull(2, Types.INTEGER);
             ps.setString(3, t.getTitle());
@@ -109,7 +106,8 @@ public class ServiceTask implements IService<Task> {
             return;
         }
         String sql = "UPDATE tasks SET project_id=?, assigned_to=?, title=?, description=?, status=?, priority=?, due_date=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, t.getProjectId());
             if (t.getAssigneeId() > 0) ps.setInt(2, t.getAssigneeId()); else ps.setNull(2, Types.INTEGER);
             ps.setString(3, t.getTitle());
@@ -130,7 +128,8 @@ public class ServiceTask implements IService<Task> {
             ApiClient.put("/tasks/" + taskId, body);
             return;
         }
-        try (PreparedStatement ps = connection.prepareStatement("UPDATE tasks SET status = ? WHERE id = ?")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("UPDATE tasks SET status = ? WHERE id = ?")) {
             ps.setString(1, newStatus);
             ps.setInt(2, taskId);
             ps.executeUpdate();
@@ -143,7 +142,8 @@ public class ServiceTask implements IService<Task> {
             ApiClient.delete("/tasks/" + id);
             return;
         }
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM tasks WHERE id = ?")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM tasks WHERE id = ?")) {
             ps.setInt(1, id);
             ps.executeUpdate();
         }
@@ -156,7 +156,8 @@ public class ServiceTask implements IService<Task> {
             return jsonArrayToTasks(el);
         }
         List<Task> tasks = new ArrayList<>();
-        try (Statement st = connection.createStatement();
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM tasks ORDER BY created_at DESC")) {
             while (rs.next()) tasks.add(rowToTask(rs));
         }
@@ -170,7 +171,8 @@ public class ServiceTask implements IService<Task> {
             return jsonArrayToTasks(el);
         }
         List<Task> tasks = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement(
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
                 "SELECT * FROM tasks WHERE project_id = ? ORDER BY FIELD(priority,'HIGH','MEDIUM','LOW'), created_at DESC")) {
             ps.setInt(1, projectId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -187,7 +189,8 @@ public class ServiceTask implements IService<Task> {
             return jsonArrayToTasks(el);
         }
         List<Task> tasks = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement(
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
                 "SELECT * FROM tasks WHERE assigned_to = ? ORDER BY created_at DESC")) {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {

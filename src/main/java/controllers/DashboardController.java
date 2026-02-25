@@ -87,6 +87,7 @@ public class DashboardController {
     @FXML private Button btnOffers;
     @FXML private Button btnTraining;
     @FXML private Button btnCommunity;
+    @FXML private Button btnJobScanner;
     @FXML private Button btnAiAssistant;
 
     // Content area
@@ -249,8 +250,9 @@ public class DashboardController {
         // Start global incoming call poller
         startIncomingCallPoller();
 
-        // Connect SignalingService for real-time notifications
-        connectSignaling(currentUser.getId());
+        // Connect SignalingService for real-time notifications (off FX thread — WebSocket .join() blocks)
+        final int sigUserId = currentUser.getId();
+        AppThreadPool.io(() -> connectSignaling(sigUserId));
 
         // Initialize notification bell
         notificationPanel = new NotificationPanel();
@@ -364,41 +366,68 @@ public class DashboardController {
     }
 
     private void loadDashboardStats() {
-        try {
-            List<User> allUsers = serviceUser.recuperer();
-            int totalUsers = allUsers.size();
-            statTotalUsers.setText(String.valueOf(totalUsers));
+        // Run DB queries on background thread to avoid freezing the UI
+        AppThreadPool.io(() -> {
+            try {
+                // Fire all 4 data fetches in parallel
+                CompletableFuture<List<User>> usersFuture = CompletableFuture.supplyAsync(() -> {
+                    try { return serviceUser.recuperer(); }
+                    catch (Exception e) { return java.util.Collections.emptyList(); }
+                });
+                CompletableFuture<List<Interview>> interviewsFuture = CompletableFuture.supplyAsync(() -> {
+                    try { return serviceInterview.recuperer(); }
+                    catch (Exception e) { return java.util.Collections.emptyList(); }
+                });
+                CompletableFuture<Integer> chatRoomsFuture = CompletableFuture.supplyAsync(() -> {
+                    try { return serviceChatRoom.count(); }
+                    catch (Exception e) { return 0; }
+                });
+                CompletableFuture<Integer> messagesFuture = CompletableFuture.supplyAsync(() -> {
+                    try { return serviceMessage.count(); }
+                    catch (Exception e) { return 0; }
+                });
 
-            long employees = allUsers.stream()
-                    .filter(u -> u.getRole().equals("EMPLOYEE") || u.getRole().equals("PROJECT_OWNER"))
-                    .count();
-            statEmployees.setText(String.valueOf(employees));
+                // Wait for all to complete (parallel, not sequential)
+                CompletableFuture.allOf(usersFuture, interviewsFuture, chatRoomsFuture, messagesFuture)
+                        .join();
 
-            long gigWorkers = allUsers.stream()
-                    .filter(u -> u.getRole().equals("GIG_WORKER"))
-                    .count();
-            statGigWorkers.setText(String.valueOf(gigWorkers));
+                List<User> allUsers = usersFuture.join();
+                int totalUsers = allUsers.size();
 
-            // Interviews count
-            List<Interview> allInterviews = serviceInterview.recuperer();
-            statInterviews.setText(String.valueOf(allInterviews.size()));
+                long employees = allUsers.stream()
+                        .filter(u -> u.getRole().equals("EMPLOYEE") || u.getRole().equals("PROJECT_OWNER"))
+                        .count();
 
-            long pendingInterviews = allInterviews.stream()
-                    .filter(i -> "PENDING".equals(i.getStatus()))
-                    .count();
-            statPendingInterviews.setText(String.valueOf(pendingInterviews));
-            statInterviewsTrend.setText(pendingInterviews + " pending");
+                long gigWorkers = allUsers.stream()
+                        .filter(u -> u.getRole().equals("GIG_WORKER"))
+                        .count();
 
-            // Chat & messages
-            int chatRooms = serviceChatRoom.count();
-            statChatRooms.setText(String.valueOf(chatRooms));
+                List<Interview> allInterviews = interviewsFuture.join();
+                int interviewCount = allInterviews.size();
 
-            int totalMessages = serviceMessage.count();
-            statMessages.setText(String.valueOf(totalMessages));
+                long pendingInterviews = allInterviews.stream()
+                        .filter(i -> "PENDING".equals(i.getStatus()))
+                        .count();
 
-        } catch (SQLException e) {
-            System.err.println("Failed to load stats: " + e.getMessage());
-        }
+                int chatRooms = chatRoomsFuture.join();
+                int totalMessages = messagesFuture.join();
+
+                // Update UI on FX thread
+                javafx.application.Platform.runLater(() -> {
+                    statTotalUsers.setText(String.valueOf(totalUsers));
+                    statEmployees.setText(String.valueOf(employees));
+                    statGigWorkers.setText(String.valueOf(gigWorkers));
+                    statInterviews.setText(String.valueOf(interviewCount));
+                    statPendingInterviews.setText(String.valueOf(pendingInterviews));
+                    statInterviewsTrend.setText(pendingInterviews + " pending");
+                    statChatRooms.setText(String.valueOf(chatRooms));
+                    statMessages.setText(String.valueOf(totalMessages));
+                });
+
+            } catch (Exception e) {
+                System.err.println("Failed to load stats: " + e.getMessage());
+            }
+        });
     }
 
     // ========== Active Button Tracking ==========
@@ -407,7 +436,7 @@ public class DashboardController {
         List<Button> allButtons = Arrays.asList(
                 btnDashboard, btnManageUsers, btnHrDashboard,
                 btnMessages, btnRecruitment, btnProjects,
-                btnOffers, btnTraining, btnCommunity
+                btnOffers, btnTraining, btnJobScanner, btnCommunity
         );
         for (Button btn : allButtons) {
             btn.getStyleClass().remove("sidebar-btn-active");
@@ -422,7 +451,7 @@ public class DashboardController {
         List<Button> allButtons = Arrays.asList(
                 btnDashboard, btnManageUsers, btnHrDashboard,
                 btnMessages, btnRecruitment, btnProjects,
-                btnOffers, btnTraining, btnCommunity
+                btnOffers, btnTraining, btnJobScanner, btnCommunity
         );
         for (Button btn : allButtons) {
             btn.getStyleClass().remove("sidebar-btn-active");
@@ -504,6 +533,7 @@ public class DashboardController {
             btnTooltipMap.put(btnProjects, "Projects");
             btnTooltipMap.put(btnOffers, "Offers");
             btnTooltipMap.put(btnTraining, "Training");
+            btnTooltipMap.put(btnJobScanner, "Job Scanner");
             btnTooltipMap.put(btnCommunity, "Community");
         }
         btnTooltipMap.forEach((btn, tip) -> btn.setTooltip(new Tooltip(tip)));
@@ -608,6 +638,12 @@ public class DashboardController {
     private void showCommunity() {
         setActiveButton(btnCommunity);
         loadContent("/fxml/Community.fxml");
+    }
+
+    @FXML
+    private void showJobScanner() {
+        setActiveButton(btnJobScanner);
+        loadContent("/fxml/JobScanner.fxml");
     }
 
     @FXML

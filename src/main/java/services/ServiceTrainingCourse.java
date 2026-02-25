@@ -5,20 +5,19 @@ import entities.TrainingCourse;
 import utils.ApiClient;
 import utils.AppConfig;
 import utils.MyDatabase;
-
+import utils.InMemoryCache;
 import java.sql.*;
 import java.util.*;
 
 public class ServiceTrainingCourse implements IService<TrainingCourse> {
 
-    private Connection connection;
     private final boolean useApi;
+
+    private static final String CACHE_KEY = "courses:all";
+    private static final int CACHE_TTL = 120;
 
     public ServiceTrainingCourse() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON helpers ====================
@@ -36,7 +35,7 @@ public class ServiceTrainingCourse implements IService<TrainingCourse> {
         if (obj.has("end_date") && !obj.get("end_date").isJsonNull()) {
             endDate = java.sql.Date.valueOf(obj.get("end_date").getAsString());
         }
-        return new TrainingCourse(
+        TrainingCourse tc = new TrainingCourse(
                 obj.get("id").getAsInt(),
                 obj.has("title") && !obj.get("title").isJsonNull() ? obj.get("title").getAsString() : "",
                 obj.has("description") && !obj.get("description").isJsonNull() ? obj.get("description").getAsString() : "",
@@ -52,6 +51,10 @@ public class ServiceTrainingCourse implements IService<TrainingCourse> {
                 obj.has("created_by") && !obj.get("created_by").isJsonNull() ? obj.get("created_by").getAsInt() : 0,
                 createdAt
         );
+        if (obj.has("quiz_timer_seconds") && !obj.get("quiz_timer_seconds").isJsonNull()) {
+            tc.setQuizTimerSeconds(obj.get("quiz_timer_seconds").getAsInt());
+        }
+        return tc;
     }
 
     private List<TrainingCourse> jsonArrayToList(JsonElement el) {
@@ -75,7 +78,8 @@ public class ServiceTrainingCourse implements IService<TrainingCourse> {
         String sql = "INSERT INTO training_courses (title, description, category, difficulty, duration_hours, " +
                 "instructor_name, mega_link, thumbnail_url, max_participants, status, start_date, end_date, created_by) " +
                 "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, c.getTitle());
             ps.setString(2, c.getDescription());
             ps.setString(3, c.getCategory());
@@ -94,6 +98,7 @@ public class ServiceTrainingCourse implements IService<TrainingCourse> {
                 if (keys.next()) c.setId(keys.getInt(1));
             }
         }
+        InMemoryCache.evictByPrefix("courses:");
     }
 
     @Override
@@ -104,7 +109,8 @@ public class ServiceTrainingCourse implements IService<TrainingCourse> {
         }
         String sql = "UPDATE training_courses SET title=?, description=?, category=?, difficulty=?, duration_hours=?, " +
                 "instructor_name=?, mega_link=?, thumbnail_url=?, max_participants=?, status=?, start_date=?, end_date=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, c.getTitle());
             ps.setString(2, c.getDescription());
             ps.setString(3, c.getCategory());
@@ -120,22 +126,34 @@ public class ServiceTrainingCourse implements IService<TrainingCourse> {
             ps.setInt(13, c.getId());
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("courses:");
     }
 
     @Override
     public void supprimer(int id) throws SQLException {
         if (useApi) { ApiClient.delete("/training_courses/" + id); return; }
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM training_courses WHERE id=?")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM training_courses WHERE id=?")) {
             ps.setInt(1, id);
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("courses:");
     }
 
     @Override
     public List<TrainingCourse> recuperer() throws SQLException {
-        if (useApi) return jsonArrayToList(ApiClient.get("/training_courses"));
+        if (useApi) {
+            return InMemoryCache.getOrLoad(CACHE_KEY, CACHE_TTL,
+                    () -> jsonArrayToList(ApiClient.get("/training_courses")));
+        }
+        return InMemoryCache.getOrLoadChecked(CACHE_KEY, CACHE_TTL,
+                () -> recupererFromDb());
+    }
+
+    private List<TrainingCourse> recupererFromDb() throws SQLException {
         List<TrainingCourse> list = new ArrayList<>();
-        try (Statement st = connection.createStatement();
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM training_courses ORDER BY created_at DESC")) {
             while (rs.next()) list.add(rowToCourse(rs));
         }
@@ -145,7 +163,8 @@ public class ServiceTrainingCourse implements IService<TrainingCourse> {
     public List<TrainingCourse> getActive() throws SQLException {
         if (useApi) return jsonArrayToList(ApiClient.get("/training_courses/status/ACTIVE"));
         List<TrainingCourse> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM training_courses WHERE status='ACTIVE' ORDER BY created_at DESC");
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM training_courses WHERE status='ACTIVE' ORDER BY created_at DESC");
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) list.add(rowToCourse(rs));
         }
@@ -155,7 +174,8 @@ public class ServiceTrainingCourse implements IService<TrainingCourse> {
     public List<TrainingCourse> getByCategory(String category) throws SQLException {
         if (useApi) return jsonArrayToList(ApiClient.get("/training_courses/category/" + category));
         List<TrainingCourse> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM training_courses WHERE category=? ORDER BY created_at DESC")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM training_courses WHERE category=? ORDER BY created_at DESC")) {
             ps.setString(1, category);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(rowToCourse(rs));
@@ -190,6 +210,7 @@ public class ServiceTrainingCourse implements IService<TrainingCourse> {
         body.put("start_date", c.getStartDate() != null ? c.getStartDate().toString() : null);
         body.put("end_date", c.getEndDate() != null ? c.getEndDate().toString() : null);
         body.put("created_by", c.getCreatedBy());
+        body.put("quiz_timer_seconds", c.getQuizTimerSeconds());
         return body;
     }
 }

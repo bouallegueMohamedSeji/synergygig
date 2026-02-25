@@ -20,6 +20,7 @@ import services.ServiceTask;
 import services.ServiceUser;
 import services.ZAIService;
 import utils.DialogHelper;
+import utils.CardEffects;
 import utils.SessionManager;
 import utils.SoundManager;
 
@@ -114,7 +115,17 @@ public class ProjectManagementController {
             projectSubtitle.setText("Projects and tasks assigned to you");
         }
 
-        loadUsers();
+        // Load users in background, projects already loads async
+        AppThreadPool.io(() -> {
+            try {
+                List<User> users = serviceUser.recuperer();
+                Platform.runLater(() -> {
+                    for (User u : users) userCache.put(u.getId(), u);
+                });
+            } catch (SQLException e) {
+                System.err.println("⚠ Failed to load users: " + e.getMessage());
+            }
+        });
         loadProjects();
     }
 
@@ -249,6 +260,8 @@ public class ProjectManagementController {
         card.setOnMouseClicked(e -> openProjectDetail(project));
         card.setCursor(javafx.scene.Cursor.HAND);
 
+        CardEffects.applyWobbleEffect(card);
+
         return card;
     }
 
@@ -380,17 +393,18 @@ public class ProjectManagementController {
 
         for (Task task : tasks) {
             VBox card = buildTaskCard(task);
+            VBox pinnedCard = CardEffects.apply3DPinEffect(card);
             switch (task.getStatus()) {
                 case "TODO":
-                    colTodo.getChildren().add(card);
+                    colTodo.getChildren().add(pinnedCard);
                     todo++;
                     break;
                 case "IN_PROGRESS":
-                    colInProgress.getChildren().add(card);
+                    colInProgress.getChildren().add(pinnedCard);
                     inProg++;
                     break;
                 case "DONE":
-                    colDone.getChildren().add(card);
+                    colDone.getChildren().add(pinnedCard);
                     done++;
                     break;
             }

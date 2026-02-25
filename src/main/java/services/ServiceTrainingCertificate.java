@@ -11,14 +11,10 @@ import java.util.*;
 
 public class ServiceTrainingCertificate implements IService<TrainingCertificate> {
 
-    private Connection connection;
     private final boolean useApi;
 
     public ServiceTrainingCertificate() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON helpers ====================
@@ -57,7 +53,8 @@ public class ServiceTrainingCertificate implements IService<TrainingCertificate>
             return;
         }
         String sql = "INSERT INTO training_certificates (enrollment_id, user_id, course_id, certificate_number) VALUES (?,?,?,?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, c.getEnrollmentId());
             ps.setInt(2, c.getUserId());
             ps.setInt(3, c.getCourseId());
@@ -76,7 +73,8 @@ public class ServiceTrainingCertificate implements IService<TrainingCertificate>
             return;
         }
         String sql = "UPDATE training_certificates SET enrollment_id=?, user_id=?, course_id=?, certificate_number=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, c.getEnrollmentId());
             ps.setInt(2, c.getUserId());
             ps.setInt(3, c.getCourseId());
@@ -89,7 +87,8 @@ public class ServiceTrainingCertificate implements IService<TrainingCertificate>
     @Override
     public void supprimer(int id) throws SQLException {
         if (useApi) { ApiClient.delete("/training_certificates/" + id); return; }
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM training_certificates WHERE id=?")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM training_certificates WHERE id=?")) {
             ps.setInt(1, id);
             ps.executeUpdate();
         }
@@ -99,7 +98,8 @@ public class ServiceTrainingCertificate implements IService<TrainingCertificate>
     public List<TrainingCertificate> recuperer() throws SQLException {
         if (useApi) return jsonArrayToList(ApiClient.get("/training_certificates"));
         List<TrainingCertificate> list = new ArrayList<>();
-        try (Statement st = connection.createStatement();
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM training_certificates ORDER BY issued_at DESC")) {
             while (rs.next()) list.add(rowToCertificate(rs));
         }
@@ -109,7 +109,8 @@ public class ServiceTrainingCertificate implements IService<TrainingCertificate>
     public List<TrainingCertificate> getByUser(int userId) throws SQLException {
         if (useApi) return jsonArrayToList(ApiClient.get("/training_certificates/user/" + userId));
         List<TrainingCertificate> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM training_certificates WHERE user_id=? ORDER BY issued_at DESC")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM training_certificates WHERE user_id=? ORDER BY issued_at DESC")) {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(rowToCertificate(rs));

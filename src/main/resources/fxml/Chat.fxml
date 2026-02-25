@@ -121,7 +121,7 @@
                                 style="-fx-font-size: 16; -fx-min-width: 36; -fx-min-height: 40;"/>
                         <TextArea fx:id="messageArea" promptText="Type a message... (Shift+Enter for new line)"
                                   HBox.hgrow="ALWAYS" styleClass="chat-textarea"
-                                  wrapText="true" prefRowCount="2" maxHeight="120"/>
+                                  wrapText="true" prefRowCount="3" maxHeight="200"/>
                         <Button fx:id="btnSend" text="Send" onAction="#handleSendMessage" styleClass="btn-primary"
                                 style="-fx-min-width: 70; -fx-min-height: 40;"/>
                     </HBox>

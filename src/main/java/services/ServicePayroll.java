@@ -5,20 +5,20 @@ import entities.Payroll;
 import utils.ApiClient;
 import utils.AppConfig;
 import utils.MyDatabase;
+import utils.InMemoryCache;
 
 import java.sql.*;
 import java.util.*;
 
 public class ServicePayroll implements IService<Payroll> {
 
-    private Connection connection;
     private final boolean useApi;
+
+    private static final String CACHE_KEY = "payrolls:all";
+    private static final int CACHE_TTL = 120;
 
     public ServicePayroll() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON helpers ====================
@@ -88,7 +88,8 @@ public class ServicePayroll implements IService<Payroll> {
         }
         String sql = "INSERT INTO payrolls (user_id, month, year, amount, base_salary, bonus, deductions, net_salary, total_hours_worked, hourly_rate, status) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, p.getUserId());
             ps.setDate(2, p.getMonth());
             if (p.getYear() != null) ps.setInt(3, p.getYear());
@@ -106,6 +107,7 @@ public class ServicePayroll implements IService<Payroll> {
                 if (keys.next()) p.setId(keys.getInt(1));
             }
         }
+        InMemoryCache.evictByPrefix("payrolls:");
     }
 
     @Override
@@ -128,7 +130,8 @@ public class ServicePayroll implements IService<Payroll> {
         }
         String sql = "UPDATE payrolls SET user_id=?, month=?, year=?, amount=?, base_salary=?, bonus=?, deductions=?, " +
                 "net_salary=?, total_hours_worked=?, hourly_rate=?, status=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, p.getUserId());
             ps.setDate(2, p.getMonth());
             if (p.getYear() != null) ps.setInt(3, p.getYear());
@@ -144,6 +147,7 @@ public class ServicePayroll implements IService<Payroll> {
             ps.setInt(12, p.getId());
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("payrolls:");
     }
 
     @Override
@@ -152,19 +156,28 @@ public class ServicePayroll implements IService<Payroll> {
             ApiClient.delete("/payrolls/" + id);
             return;
         }
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM payrolls WHERE id=?")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM payrolls WHERE id=?")) {
             ps.setInt(1, id);
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("payrolls:");
     }
 
     @Override
     public List<Payroll> recuperer() throws SQLException {
         if (useApi) {
-            return jsonArrayToList(ApiClient.get("/payrolls"));
+            return InMemoryCache.getOrLoad(CACHE_KEY, CACHE_TTL,
+                    () -> jsonArrayToList(ApiClient.get("/payrolls")));
         }
+        return InMemoryCache.getOrLoadChecked(CACHE_KEY, CACHE_TTL,
+                () -> recupererFromDb());
+    }
+
+    private List<Payroll> recupererFromDb() throws SQLException {
         List<Payroll> list = new ArrayList<>();
-        try (Statement st = connection.createStatement();
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM payrolls ORDER BY month DESC")) {
             while (rs.next()) list.add(rowToPayroll(rs));
         }
@@ -176,7 +189,8 @@ public class ServicePayroll implements IService<Payroll> {
             return jsonArrayToList(ApiClient.get("/payrolls/user/" + userId));
         }
         List<Payroll> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM payrolls WHERE user_id=? ORDER BY month DESC")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM payrolls WHERE user_id=? ORDER BY month DESC")) {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(rowToPayroll(rs));

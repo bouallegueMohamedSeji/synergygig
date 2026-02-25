@@ -11,14 +11,10 @@ import java.util.*;
 
 public class ServiceTrainingEnrollment implements IService<TrainingEnrollment> {
 
-    private Connection connection;
     private final boolean useApi;
 
     public ServiceTrainingEnrollment() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON helpers ====================
@@ -65,7 +61,8 @@ public class ServiceTrainingEnrollment implements IService<TrainingEnrollment> {
             return;
         }
         String sql = "INSERT INTO training_enrollments (course_id, user_id, status, progress, score) VALUES (?,?,?,?,?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, e.getCourseId());
             ps.setInt(2, e.getUserId());
             ps.setString(3, e.getStatus());
@@ -85,7 +82,8 @@ public class ServiceTrainingEnrollment implements IService<TrainingEnrollment> {
             return;
         }
         String sql = "UPDATE training_enrollments SET status=?, progress=?, score=?, completed_at=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, e.getStatus());
             ps.setInt(2, e.getProgress());
             if (e.getScore() != null) ps.setDouble(3, e.getScore()); else ps.setNull(3, Types.DOUBLE);
@@ -98,7 +96,8 @@ public class ServiceTrainingEnrollment implements IService<TrainingEnrollment> {
     @Override
     public void supprimer(int id) throws SQLException {
         if (useApi) { ApiClient.delete("/training_enrollments/" + id); return; }
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM training_enrollments WHERE id=?")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM training_enrollments WHERE id=?")) {
             ps.setInt(1, id);
             ps.executeUpdate();
         }
@@ -108,7 +107,8 @@ public class ServiceTrainingEnrollment implements IService<TrainingEnrollment> {
     public List<TrainingEnrollment> recuperer() throws SQLException {
         if (useApi) return jsonArrayToList(ApiClient.get("/training_enrollments"));
         List<TrainingEnrollment> list = new ArrayList<>();
-        try (Statement st = connection.createStatement();
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM training_enrollments ORDER BY enrolled_at DESC")) {
             while (rs.next()) list.add(rowToEnrollment(rs));
         }
@@ -118,7 +118,8 @@ public class ServiceTrainingEnrollment implements IService<TrainingEnrollment> {
     public List<TrainingEnrollment> getByUser(int userId) throws SQLException {
         if (useApi) return jsonArrayToList(ApiClient.get("/training_enrollments/user/" + userId));
         List<TrainingEnrollment> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM training_enrollments WHERE user_id=? ORDER BY enrolled_at DESC")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM training_enrollments WHERE user_id=? ORDER BY enrolled_at DESC")) {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(rowToEnrollment(rs));
@@ -130,7 +131,8 @@ public class ServiceTrainingEnrollment implements IService<TrainingEnrollment> {
     public List<TrainingEnrollment> getByCourse(int courseId) throws SQLException {
         if (useApi) return jsonArrayToList(ApiClient.get("/training_enrollments/course/" + courseId));
         List<TrainingEnrollment> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM training_enrollments WHERE course_id=? ORDER BY enrolled_at DESC")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM training_enrollments WHERE course_id=? ORDER BY enrolled_at DESC")) {
             ps.setInt(1, courseId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(rowToEnrollment(rs));
@@ -152,18 +154,20 @@ public class ServiceTrainingEnrollment implements IService<TrainingEnrollment> {
             ApiClient.put("/training_enrollments/" + enrollId + "/progress", body);
             return;
         }
-        if (progress >= 100) {
-            try (PreparedStatement ps = connection.prepareStatement(
-                    "UPDATE training_enrollments SET progress=100, status='COMPLETED', completed_at=NOW() WHERE id=?")) {
-                ps.setInt(1, enrollId);
-                ps.executeUpdate();
-            }
-        } else {
-            try (PreparedStatement ps = connection.prepareStatement(
-                    "UPDATE training_enrollments SET progress=?, status='IN_PROGRESS' WHERE id=?")) {
-                ps.setInt(1, progress);
-                ps.setInt(2, enrollId);
-                ps.executeUpdate();
+        try (Connection conn = MyDatabase.getInstance().getConnection()) {
+            if (progress >= 100) {
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE training_enrollments SET progress=100, status='COMPLETED', completed_at=NOW() WHERE id=?")) {
+                    ps.setInt(1, enrollId);
+                    ps.executeUpdate();
+                }
+            } else {
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE training_enrollments SET progress=?, status='IN_PROGRESS' WHERE id=?")) {
+                    ps.setInt(1, progress);
+                    ps.setInt(2, enrollId);
+                    ps.executeUpdate();
+                }
             }
         }
     }

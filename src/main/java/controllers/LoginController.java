@@ -148,31 +148,46 @@ public class LoginController {
             return;
         }
 
-        try {
-            User user = serviceUser.login(email, password);
-            if (user != null) {
-                if (!user.isVerified()) {
-                    showAlert("Email Not Verified",
-                            "Please check your inbox and verify\nyour email before signing in.", "error");
-                    return;
-                }
-                if (!user.isActive()) {
-                    showAlert("Account Frozen",
-                            "Your account has been frozen.\nPlease contact an administrator.", "error");
-                    return;
-                }
-                SessionManager.getInstance().setCurrentUser(user);
-                SoundManager.getInstance().play(SoundManager.LOGIN_SUCCESS);
-                if (sparkleCanvas != null) sparkleCanvas.stopAnimation();
-                loadScene("/fxml/Dashboard.fxml");
-            } else {
-                SoundManager.getInstance().play(SoundManager.LOGIN_FAILED);
-                showAlert("Login Failed", "Incorrect email or password.\nPlease try again.", "error");
+        // Disable button to prevent double-click, show loading state
+        signInBtn.setDisable(true);
+        String originalText = signInBtn.getText();
+        signInBtn.setText("Signing in…");
+
+        AppThreadPool.io(() -> {
+            try {
+                User user = serviceUser.login(email, password);
+                Platform.runLater(() -> {
+                    signInBtn.setDisable(false);
+                    signInBtn.setText(originalText);
+                    if (user != null) {
+                        if (!user.isVerified()) {
+                            showAlert("Email Not Verified",
+                                    "Please check your inbox and verify\nyour email before signing in.", "error");
+                            return;
+                        }
+                        if (!user.isActive()) {
+                            showAlert("Account Frozen",
+                                    "Your account has been frozen.\nPlease contact an administrator.", "error");
+                            return;
+                        }
+                        SessionManager.getInstance().setCurrentUser(user);
+                        SoundManager.getInstance().play(SoundManager.LOGIN_SUCCESS);
+                        if (sparkleCanvas != null) sparkleCanvas.stopAnimation();
+                        loadScene("/fxml/Dashboard.fxml");
+                    } else {
+                        SoundManager.getInstance().play(SoundManager.LOGIN_FAILED);
+                        showAlert("Login Failed", "Incorrect email or password.\nPlease try again.", "error");
+                    }
+                });
+            } catch (SQLException e) {
+                Platform.runLater(() -> {
+                    signInBtn.setDisable(false);
+                    signInBtn.setText(originalText);
+                    showAlert("Error", "A database error occurred.\nPlease try again later.", "error");
+                    System.err.println(e.getClass().getSimpleName() + ": " + e.getMessage());
+                });
             }
-        } catch (SQLException e) {
-            showAlert("Error", "A database error occurred.\nPlease try again later.", "error");
-            System.err.println(e.getClass().getSimpleName() + ": " + e.getMessage());
-        }
+        });
     }
 
     @FXML
@@ -206,6 +221,15 @@ public class LoginController {
                 if (result.get("success").getAsBoolean()) {
                     int userId = result.get("user_id").getAsInt();
                     double confidence = result.has("confidence") ? result.get("confidence").getAsDouble() : 0;
+
+                    // Reject low-confidence matches (below 50%)
+                    if (confidence < 0.50) {
+                        SoundManager.getInstance().play(SoundManager.FACE_FAILED);
+                        showAlert("Face Login Failed",
+                                "Match confidence too low (" + String.format("%.0f%%", confidence * 100)
+                                + "). Please try again or use password login.", "error");
+                        return;
+                    }
 
                     try {
                         User user = FaceRecognitionUtil.getUserById(userId);

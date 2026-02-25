@@ -5,20 +5,19 @@ import entities.Attendance;
 import utils.ApiClient;
 import utils.AppConfig;
 import utils.MyDatabase;
-
+import utils.InMemoryCache;
 import java.sql.*;
 import java.util.*;
 
 public class ServiceAttendance implements IService<Attendance> {
 
-    private Connection connection;
     private final boolean useApi;
+
+    private static final String CACHE_KEY = "attendance:all";
+    private static final int CACHE_TTL = 60;
 
     public ServiceAttendance() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON helpers ====================
@@ -110,7 +109,8 @@ public class ServiceAttendance implements IService<Attendance> {
             return;
         }
         String sql = "INSERT INTO attendance (user_id, date, check_in, check_out, status) VALUES (?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, a.getUserId());
             ps.setDate(2, a.getDate());
             ps.setTime(3, a.getCheckIn());
@@ -121,6 +121,7 @@ public class ServiceAttendance implements IService<Attendance> {
                 if (keys.next()) a.setId(keys.getInt(1));
             }
         }
+        InMemoryCache.evictByPrefix("attendance:");
     }
 
     @Override
@@ -136,7 +137,8 @@ public class ServiceAttendance implements IService<Attendance> {
             return;
         }
         String sql = "UPDATE attendance SET user_id=?, date=?, check_in=?, check_out=?, status=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, a.getUserId());
             ps.setDate(2, a.getDate());
             ps.setTime(3, a.getCheckIn());
@@ -145,6 +147,7 @@ public class ServiceAttendance implements IService<Attendance> {
             ps.setInt(6, a.getId());
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("attendance:");
     }
 
     @Override
@@ -153,19 +156,28 @@ public class ServiceAttendance implements IService<Attendance> {
             ApiClient.delete("/attendance/" + id);
             return;
         }
-        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM attendance WHERE id=?")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("DELETE FROM attendance WHERE id=?")) {
             ps.setInt(1, id);
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("attendance:");
     }
 
     @Override
     public List<Attendance> recuperer() throws SQLException {
         if (useApi) {
-            return jsonArrayToList(ApiClient.get("/attendance"));
+            return InMemoryCache.getOrLoad(CACHE_KEY, CACHE_TTL,
+                    () -> jsonArrayToList(ApiClient.get("/attendance")));
         }
+        return InMemoryCache.getOrLoadChecked(CACHE_KEY, CACHE_TTL,
+                () -> recupererFromDb());
+    }
+
+    private List<Attendance> recupererFromDb() throws SQLException {
         List<Attendance> list = new ArrayList<>();
-        try (Statement st = connection.createStatement();
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM attendance ORDER BY date DESC")) {
             while (rs.next()) list.add(rowToAttendance(rs));
         }
@@ -177,7 +189,8 @@ public class ServiceAttendance implements IService<Attendance> {
             return jsonArrayToList(ApiClient.get("/attendance/user/" + userId));
         }
         List<Attendance> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM attendance WHERE user_id=? ORDER BY date DESC")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM attendance WHERE user_id=? ORDER BY date DESC")) {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(rowToAttendance(rs));
@@ -191,7 +204,8 @@ public class ServiceAttendance implements IService<Attendance> {
             return jsonArrayToList(ApiClient.get("/attendance/date/" + date.toString()));
         }
         List<Attendance> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM attendance WHERE date=? ORDER BY user_id")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM attendance WHERE date=? ORDER BY user_id")) {
             ps.setDate(1, date);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(rowToAttendance(rs));
@@ -209,7 +223,8 @@ public class ServiceAttendance implements IService<Attendance> {
             List<Attendance> todayList = jsonArrayToList(ApiClient.get("/attendance/date/" + today.toString()));
             return todayList.stream().filter(a -> a.getUserId() == userId).findFirst().orElse(null);
         }
-        try (PreparedStatement ps = connection.prepareStatement("SELECT * FROM attendance WHERE user_id=? AND date=?")) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT * FROM attendance WHERE user_id=? AND date=?")) {
             ps.setInt(1, userId);
             ps.setDate(2, today);
             try (ResultSet rs = ps.executeQuery()) {

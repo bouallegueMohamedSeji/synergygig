@@ -5,6 +5,7 @@ import entities.User;
 import utils.ApiClient;
 import utils.AppConfig;
 import utils.MyDatabase;
+import utils.InMemoryCache;
 
 import org.mindrot.jbcrypt.BCrypt;
 
@@ -16,14 +17,15 @@ import java.util.Map;
 
 public class ServiceUser implements IService<User> {
 
-    private Connection connection;
     private final boolean useApi;
+
+    /** Redis cache key for the full user list. */
+    private static final String CACHE_KEY = "users:all";
+    /** Cache TTL in seconds (2 minutes). */
+    private static final int CACHE_TTL = 120;
 
     public ServiceUser() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ==================== JSON → Entity helpers ====================
@@ -107,7 +109,8 @@ public class ServiceUser implements IService<User> {
             return;
         }
         String req = "INSERT INTO users (email, password, first_name, last_name, role) VALUES (?, ?, ?, ?, ?)";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setString(1, user.getEmail());
             ps.setString(2, hashed);
             ps.setString(3, user.getFirstName());
@@ -115,6 +118,7 @@ public class ServiceUser implements IService<User> {
             ps.setString(5, user.getRole());
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("users:");
         System.out.println("✅ User added: " + user.getEmail());
     }
 
@@ -146,7 +150,8 @@ public class ServiceUser implements IService<User> {
             user.setPassword(pw);
         }
         String req = "UPDATE users SET email=?, password=?, first_name=?, last_name=?, role=?, avatar_path=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setString(1, user.getEmail());
             ps.setString(2, pw);
             ps.setString(3, user.getFirstName());
@@ -156,6 +161,7 @@ public class ServiceUser implements IService<User> {
             ps.setInt(7, user.getId());
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("users:");
         System.out.println("✅ User updated: " + user.getEmail());
     }
 
@@ -168,11 +174,13 @@ public class ServiceUser implements IService<User> {
             return;
         }
         String req = "UPDATE users SET avatar_path=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setString(1, avatarPath);
             ps.setInt(2, userId);
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("users:");
         System.out.println("✅ Avatar updated for user id=" + userId);
     }
 
@@ -184,21 +192,31 @@ public class ServiceUser implements IService<User> {
             return;
         }
         String req = "DELETE FROM users WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setInt(1, id);
             ps.executeUpdate();
         }
+        InMemoryCache.evictByPrefix("users:");
         System.out.println("✅ User deleted: id=" + id);
     }
 
     @Override
     public List<User> recuperer() throws SQLException {
         if (useApi) {
-            return jsonArrayToUsers(ApiClient.get("/users"));
+            return InMemoryCache.getOrLoad(CACHE_KEY, CACHE_TTL,
+                    () -> jsonArrayToUsers(ApiClient.get("/users")));
         }
+        return InMemoryCache.getOrLoadChecked(CACHE_KEY, CACHE_TTL,
+                () -> recupererFromDb());
+    }
+
+    /** Direct DB fetch (bypasses cache). */
+    private List<User> recupererFromDb() throws SQLException {
         List<User> users = new ArrayList<>();
         String req = "SELECT * FROM users";
-        try (PreparedStatement ps = connection.prepareStatement(req);
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 User user = new User(
@@ -231,7 +249,8 @@ public class ServiceUser implements IService<User> {
         }
         String req = "SELECT * FROM users WHERE email=?";
         User user = null;
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -244,7 +263,7 @@ public class ServiceUser implements IService<User> {
                         match = password.equals(storedHash);
                         if (match) {
                             String upgraded = BCrypt.hashpw(password, BCrypt.gensalt());
-                            try (PreparedStatement up = connection.prepareStatement(
+                            try (PreparedStatement up = conn.prepareStatement(
                                     "UPDATE users SET password=? WHERE email=?")) {
                                 up.setString(1, upgraded);
                                 up.setString(2, email);
@@ -281,7 +300,8 @@ public class ServiceUser implements IService<User> {
             return false;
         }
         String req = "SELECT COUNT(*) FROM users WHERE email=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -301,7 +321,8 @@ public class ServiceUser implements IService<User> {
             return;
         }
         String req = "UPDATE users SET role=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setString(1, newRole);
             ps.setInt(2, userId);
             ps.executeUpdate();
@@ -321,7 +342,8 @@ public class ServiceUser implements IService<User> {
             return;
         }
         String req = "UPDATE users SET department_id=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             if (departmentId != null) {
                 ps.setInt(1, departmentId);
             } else {
@@ -345,7 +367,8 @@ public class ServiceUser implements IService<User> {
             return;
         }
         String req = "UPDATE users SET is_active=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setBoolean(1, active);
             ps.setInt(2, userId);
             ps.executeUpdate();
@@ -364,7 +387,8 @@ public class ServiceUser implements IService<User> {
             return;
         }
         String req = "UPDATE users SET is_online=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setBoolean(1, online);
             ps.setInt(2, userId);
             ps.executeUpdate();
@@ -377,7 +401,8 @@ public class ServiceUser implements IService<User> {
         }
         List<User> users = new ArrayList<>();
         String req = "SELECT * FROM users WHERE role=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setString(1, role);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -408,7 +433,8 @@ public class ServiceUser implements IService<User> {
             return;
         }
         String req = "UPDATE users SET face_encoding=? WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setString(1, faceEncoding);
             ps.setInt(2, userId);
             ps.executeUpdate();
@@ -425,7 +451,8 @@ public class ServiceUser implements IService<User> {
             return null;
         }
         String req = "SELECT * FROM users WHERE id=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setInt(1, userId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -487,7 +514,8 @@ public class ServiceUser implements IService<User> {
         // JDBC mode: check email exists, generate OTP locally
         String req = "SELECT first_name FROM users WHERE email=?";
         String firstName;
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setString(1, email);
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
@@ -553,7 +581,8 @@ public class ServiceUser implements IService<User> {
         }
         // JDBC mode: update password
         String req = "UPDATE users SET password=? WHERE email=?";
-        try (PreparedStatement ps = connection.prepareStatement(req)) {
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setString(1, hashed);
             ps.setString(2, email);
             return ps.executeUpdate() > 0;

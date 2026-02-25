@@ -14,14 +14,10 @@ import java.util.*;
  */
 public class ServiceProjectMember {
 
-    private Connection connection;
     private final boolean useApi;
 
     public ServiceProjectMember() {
         useApi = AppConfig.isApiMode();
-        if (!useApi) {
-            connection = MyDatabase.getInstance().getConnection();
-        }
     }
 
     // ── Lightweight member info ──
@@ -69,7 +65,8 @@ public class ServiceProjectMember {
         }
         // JDBC fallback
         List<ProjectMember> list = new ArrayList<>();
-        try (PreparedStatement ps = connection.prepareStatement(
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
                 "SELECT pm.id, pm.project_id, pm.user_id, pm.role, " +
                 "u.first_name, u.last_name, u.email, u.role as user_role, u.department_id " +
                 "FROM project_members pm JOIN users u ON pm.user_id = u.id " +
@@ -107,7 +104,8 @@ public class ServiceProjectMember {
             ApiClient.post("/projects/" + projectId + "/members", body);
             return;
         }
-        try (PreparedStatement ps = connection.prepareStatement(
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
                 "INSERT IGNORE INTO project_members (project_id, user_id, role) VALUES (?, ?, ?)")) {
             ps.setInt(1, projectId);
             ps.setInt(2, userId);
@@ -122,7 +120,8 @@ public class ServiceProjectMember {
             ApiClient.delete("/projects/" + projectId + "/members/" + userId);
             return;
         }
-        try (PreparedStatement ps = connection.prepareStatement(
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
                 "DELETE FROM project_members WHERE project_id = ? AND user_id = ?")) {
             ps.setInt(1, projectId);
             ps.setInt(2, userId);
@@ -141,7 +140,8 @@ public class ServiceProjectMember {
         }
         // JDBC fallback
         int added = 0;
-        try (PreparedStatement ps = connection.prepareStatement(
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
                 "SELECT id FROM users WHERE department_id = ?")) {
             ps.setInt(1, departmentId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -164,7 +164,8 @@ public class ServiceProjectMember {
             ApiClient.put("/projects/" + projectId + "/department", body);
             return;
         }
-        try (PreparedStatement ps = connection.prepareStatement(
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
                 "UPDATE projects SET department_id = ? WHERE id = ?")) {
             if (departmentId != null) ps.setInt(1, departmentId);
             else ps.setNull(1, java.sql.Types.INTEGER);

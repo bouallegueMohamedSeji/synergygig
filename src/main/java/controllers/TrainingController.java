@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import entities.*;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -16,6 +17,7 @@ import javafx.stage.FileChooser;
 import services.*;
 import utils.AppConfig;
 import utils.AppThreadPool;
+import utils.CardEffects;
 import utils.SessionManager;
 import utils.SoundManager;
 import utils.TrainingCertificatePdf;
@@ -35,6 +37,21 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Arc;
+import javafx.scene.shape.ArcType;
+import javafx.scene.shape.StrokeLineCap;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 
 public class TrainingController {
 
@@ -68,7 +85,6 @@ public class TrainingController {
         headerRole.setText(isHrOrAdmin ? "Manager View" : "Learner View");
 
         loadUserNames();
-        loadCourseMap();
 
         List<String[]> tabs = new ArrayList<>();
         tabs.add(new String[]{"📊", "Dashboard"});
@@ -89,10 +105,16 @@ public class TrainingController {
             tabBar.getChildren().add(btn);
         }
 
-        if (!tabBar.getChildren().isEmpty()) {
-            Button first = (Button) tabBar.getChildren().get(0);
-            switchTab(first, "Dashboard");
-        }
+        // Load course map in background, then trigger first tab
+        AppThreadPool.io(() -> {
+            loadCourseMap();
+            Platform.runLater(() -> {
+                if (!tabBar.getChildren().isEmpty()) {
+                    Button first = (Button) tabBar.getChildren().get(0);
+                    switchTab(first, "Dashboard");
+                }
+            });
+        });
     }
 
     private void loadUserNames() {
@@ -572,14 +594,26 @@ public class TrainingController {
                     }
                 } catch (SQLException ignored) {}
 
+                // Sort: enrolled courses first, then by title
+                List<TrainingCourse> filtered = new ArrayList<>();
                 for (TrainingCourse c : courses) {
                     if (!searchText.isEmpty() && !c.getTitle().toLowerCase().contains(searchText)
                             && !c.getDescription().toLowerCase().contains(searchText)) continue;
                     if (!"All Categories".equals(catVal) && !catVal.equals(c.getCategory())) continue;
                     if (!"All Levels".equals(diffVal) && !diffVal.equals(c.getDifficulty())) continue;
+                    filtered.add(c);
+                }
+                filtered.sort((a, b) -> {
+                    boolean aEnrolled = enrolledCourseIds.contains(a.getId());
+                    boolean bEnrolled = enrolledCourseIds.contains(b.getId());
+                    if (aEnrolled != bEnrolled) return aEnrolled ? -1 : 1;
+                    return a.getTitle().compareToIgnoreCase(b.getTitle());
+                });
 
+                for (TrainingCourse c : filtered) {
                     VBox card = createCourseCard(c, enrolledCourseIds.contains(c.getId()));
-                    courseGrid.getChildren().add(card);
+                    StackPane cometCard = CardEffects.applyCometEffect(card);
+                    courseGrid.getChildren().add(cometCard);
                 }
                 if (courseGrid.getChildren().isEmpty()) {
                     Label noResults = new Label("No courses match your filters");
@@ -603,13 +637,32 @@ public class TrainingController {
     }
 
     private VBox createCourseCard(TrainingCourse course, boolean isEnrolled) {
-        VBox card = new VBox(10);
+        VBox card = new VBox(0);
         card.getStyleClass().add("tr-course-card");
-        card.setPadding(new Insets(16));
-        card.setPrefWidth(280);
+        if (isEnrolled) card.getStyleClass().add("tr-course-card-enrolled");
+        card.setPrefWidth(290);
+        card.setMaxWidth(290);
 
-        // Category + Difficulty badges
-        HBox badges = new HBox(8);
+        // ── Top color banner (category-based gradient) ──
+        StackPane banner = new StackPane();
+        banner.setPrefHeight(8);
+        banner.setMinHeight(8);
+        String bannerColor = switch (course.getCategory() != null ? course.getCategory() : "") {
+            case "TECHNICAL" -> "#4A9EFF";
+            case "SOFT_SKILLS" -> "#F472B6";
+            case "COMPLIANCE" -> "#FBBF24";
+            case "ONBOARDING" -> "#4ADE80";
+            case "LEADERSHIP" -> "#C084FC";
+            default -> "#8A8AFF";
+        };
+        banner.setStyle("-fx-background-color: " + bannerColor + "; -fx-background-radius: 14 14 0 0;");
+
+        // ── Content area ──
+        VBox content = new VBox(10);
+        content.setPadding(new Insets(14, 16, 16, 16));
+
+        // Badges row
+        HBox badges = new HBox(6);
         badges.setAlignment(Pos.CENTER_LEFT);
 
         Label catBadge = new Label(formatCategory(course.getCategory()));
@@ -620,27 +673,44 @@ public class TrainingController {
 
         badges.getChildren().addAll(catBadge, diffBadge);
 
+        if (isEnrolled) {
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+            Label enrolledBadge = new Label("✅ ENROLLED");
+            enrolledBadge.setStyle("-fx-text-fill: #4ADE80; -fx-font-size: 10px; -fx-font-weight: bold; " +
+                    "-fx-background-color: rgba(74,222,128,0.12); -fx-padding: 3 8; -fx-background-radius: 8;");
+            badges.getChildren().addAll(spacer, enrolledBadge);
+        }
+
         // Title
         Label titleLabel = new Label(course.getTitle());
         titleLabel.getStyleClass().add("tr-card-title");
         titleLabel.setWrapText(true);
+        titleLabel.setMaxHeight(44);
 
-        // Description
-        Label desc = new Label(truncate(course.getDescription(), 100));
+        // Description (2 lines max)
+        Label desc = new Label(truncate(course.getDescription(), 80));
         desc.getStyleClass().add("tr-card-desc");
         desc.setWrapText(true);
+        desc.setMaxHeight(36);
 
-        // Info row
-        HBox infoRow = new HBox(12);
-        infoRow.setAlignment(Pos.CENTER_LEFT);
+        // ── Stats row ──
+        HBox statsRow = new HBox(10);
+        statsRow.setAlignment(Pos.CENTER_LEFT);
+        statsRow.setPadding(new Insets(4, 0, 0, 0));
 
         Label durationLabel = new Label("⏱ " + course.getDurationHours() + "h");
         durationLabel.getStyleClass().add("tr-card-info");
 
-        Label instructorLabel = new Label("👤 " + course.getInstructorName());
+        Label instructorLabel = new Label("👤 " + (course.getInstructorName() != null && !course.getInstructorName().isEmpty()
+                ? course.getInstructorName() : "—"));
         instructorLabel.getStyleClass().add("tr-card-info");
+        instructorLabel.setMaxWidth(120);
 
-        infoRow.getChildren().addAll(durationLabel, instructorLabel);
+        Label timerLabel = new Label("⏰ " + course.getEffectiveQuizTimer() + "s/q");
+        timerLabel.setStyle("-fx-text-fill: #8A8AFF; -fx-font-size: 11px;");
+
+        statsRow.getChildren().addAll(durationLabel, instructorLabel, timerLabel);
 
         // Dates
         HBox dateRow = new HBox(8);
@@ -652,29 +722,51 @@ public class TrainingController {
             dateRow.getChildren().add(dateLabel);
         }
 
-        // Action buttons
+        // ── Separator ──
+        Region sep = new Region();
+        sep.setPrefHeight(1);
+        sep.setStyle("-fx-background-color: #2A2A3E;");
+
+        // ── Action row ──
         HBox actions = new HBox(8);
-        actions.setAlignment(Pos.CENTER_LEFT);
+        actions.setAlignment(Pos.CENTER);
+        actions.setPadding(new Insets(4, 0, 0, 0));
 
         if (isEnrolled) {
-            Label enrolledLabel = new Label("✅ Enrolled");
-            enrolledLabel.getStyleClass().add("tr-enrolled-label");
-            actions.getChildren().add(enrolledLabel);
+            Button viewBtn = new Button("📖 Continue Learning");
+            viewBtn.setStyle("-fx-background-color: rgba(74,222,128,0.15); -fx-text-fill: #4ADE80; " +
+                    "-fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 8 20; " +
+                    "-fx-background-radius: 8; -fx-cursor: hand;");
+            viewBtn.setOnAction(e -> {
+                // Switch to My Learning tab
+                for (javafx.scene.Node node : tabBar.getChildren()) {
+                    if (node instanceof Button btn && btn.getText().contains("My Learning")) {
+                        switchTab(btn, "My Learning");
+                        break;
+                    }
+                }
+            });
+            actions.getChildren().add(viewBtn);
+
+            if (course.getMegaLink() != null && !course.getMegaLink().isEmpty()) {
+                Button megaBtn = new Button("☁");
+                megaBtn.getStyleClass().add("tr-mega-btn");
+                megaBtn.setStyle("-fx-background-color: #D32F2F; -fx-text-fill: white; -fx-font-size: 12px; " +
+                        "-fx-padding: 8 12; -fx-background-radius: 8; -fx-cursor: hand;");
+                megaBtn.setOnAction(e -> openMegaLink(course.getMegaLink()));
+                actions.getChildren().add(megaBtn);
+            }
         } else {
-            Button enrollBtn = new Button("📝 Enroll");
+            Button enrollBtn = new Button("📝 Enroll Now");
             enrollBtn.getStyleClass().add("tr-enroll-btn");
+            enrollBtn.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(enrollBtn, Priority.ALWAYS);
             enrollBtn.setOnAction(e -> enrollInCourse(course));
             actions.getChildren().add(enrollBtn);
         }
 
-        if (course.getMegaLink() != null && !course.getMegaLink().isEmpty()) {
-            Button megaBtn = new Button("☁ Open Course");
-            megaBtn.getStyleClass().add("tr-mega-btn");
-            megaBtn.setOnAction(e -> openMegaLink(course.getMegaLink()));
-            actions.getChildren().add(megaBtn);
-        }
-
-        card.getChildren().addAll(badges, titleLabel, desc, infoRow, dateRow, actions);
+        content.getChildren().addAll(badges, titleLabel, desc, statsRow, dateRow, sep, actions);
+        card.getChildren().addAll(banner, content);
         return card;
     }
 
@@ -685,6 +777,7 @@ public class TrainingController {
 
             // Try n8n webhook (fire-and-forget)
             triggerN8nWebhook("enroll", Map.of(
+                    "user_id", currentUser.getId(),
                     "user_name", getUserName(currentUser.getId()),
                     "user_email", currentUser.getEmail() != null ? currentUser.getEmail() : "",
                     "course_title", course.getTitle(),
@@ -715,72 +808,132 @@ public class TrainingController {
         Label title = new Label("My Learning");
         title.getStyleClass().add("tr-view-title");
 
-        VBox courseList = new VBox(12);
+        VBox courseList = new VBox(14);
 
         try {
             List<TrainingEnrollment> enrollments = serviceEnrollment.getByUser(currentUser.getId());
+            // Remove dropped, sort: in-progress first, then enrolled, then completed
+            enrollments.removeIf(en -> "DROPPED".equals(en.getStatus()));
+            enrollments.sort((a, b) -> {
+                int order = statusOrder(a.getStatus()) - statusOrder(b.getStatus());
+                if (order != 0) return order;
+                return b.getEnrolledAt() != null && a.getEnrolledAt() != null
+                        ? b.getEnrolledAt().compareTo(a.getEnrolledAt()) : 0;
+            });
 
             if (enrollments.isEmpty()) {
-                Label empty = new Label("You haven't enrolled in any courses yet.\nGo to the Catalog to browse and enroll!");
-                empty.getStyleClass().add("tr-empty-text");
-                empty.setWrapText(true);
-                courseList.getChildren().add(empty);
+                VBox emptyState = new VBox(12);
+                emptyState.setAlignment(Pos.CENTER);
+                emptyState.setPadding(new Insets(60, 0, 0, 0));
+                Label emptyIcon = new Label("📚");
+                emptyIcon.setStyle("-fx-font-size: 48px;");
+                Label emptyText = new Label("You haven't enrolled in any courses yet.");
+                emptyText.setStyle("-fx-text-fill: #8B8BA0; -fx-font-size: 16px;");
+                Button browseBtn = new Button("Browse Catalog →");
+                browseBtn.getStyleClass().add("tr-enroll-btn");
+                browseBtn.setOnAction(e -> {
+                    for (javafx.scene.Node node : tabBar.getChildren()) {
+                        if (node instanceof Button btn && btn.getText().contains("Catalog")) {
+                            switchTab(btn, "Catalog");
+                            break;
+                        }
+                    }
+                });
+                emptyState.getChildren().addAll(emptyIcon, emptyText, browseBtn);
+                courseList.getChildren().add(emptyState);
             } else {
                 for (TrainingEnrollment en : enrollments) {
-                    if ("DROPPED".equals(en.getStatus())) continue;
                     TrainingCourse course = courseMap.get(en.getCourseId());
                     if (course == null) continue;
 
-                    VBox card = new VBox(10);
-                    card.getStyleClass().add("tr-learning-card");
-                    card.setPadding(new Insets(16));
+                    boolean isCompleted = "COMPLETED".equals(en.getStatus());
 
-                    HBox topRow = new HBox(12);
+                    // ── Card root ──
+                    HBox card = new HBox(0);
+                    card.getStyleClass().add("tr-learning-card");
+                    if (isCompleted) card.getStyleClass().add("tr-learning-card-completed");
+
+                    // ── Left color accent bar ──
+                    Region accentBar = new Region();
+                    accentBar.setPrefWidth(5);
+                    accentBar.setMinWidth(5);
+                    String accentColor = isCompleted ? "#4ADE80" : (en.getProgress() > 0 ? "#FBBF24" : "#4A9EFF");
+                    accentBar.setStyle("-fx-background-color: " + accentColor + "; -fx-background-radius: 12 0 0 12;");
+
+                    // ── Content section ──
+                    VBox content = new VBox(8);
+                    content.setPadding(new Insets(14, 16, 14, 14));
+                    HBox.setHgrow(content, Priority.ALWAYS);
+
+                    // Row 1: Title + Status badge
+                    HBox topRow = new HBox(10);
                     topRow.setAlignment(Pos.CENTER_LEFT);
 
                     Label courseName = new Label(course.getTitle());
-                    courseName.getStyleClass().add("tr-card-title");
+                    courseName.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #E0E0E8;");
+                    courseName.setWrapText(true);
                     HBox.setHgrow(courseName, Priority.ALWAYS);
                     courseName.setMaxWidth(Double.MAX_VALUE);
 
-                    Label statusLabel = new Label(en.getStatus().replace("_", " "));
+                    Label statusLabel = new Label(isCompleted ? "✅ COMPLETED" : en.getStatus().replace("_", " "));
                     statusLabel.getStyleClass().add("tr-badge-" + en.getStatus().toLowerCase().replace("_", "-"));
+                    statusLabel.setStyle(statusLabel.getStyle() + "; -fx-font-size: 10px; -fx-font-weight: bold; -fx-padding: 3 10;");
 
                     topRow.getChildren().addAll(courseName, statusLabel);
 
-                    // Progress
-                    HBox progressRow = new HBox(12);
+                    // Row 2: Category + Difficulty + Duration + Timer
+                    HBox metaRow = new HBox(8);
+                    metaRow.setAlignment(Pos.CENTER_LEFT);
+
+                    Label catBadge = new Label(formatCategory(course.getCategory()));
+                    catBadge.getStyleClass().addAll("tr-badge", "tr-badge-" + course.getCategory().toLowerCase().replace("_", "-"));
+
+                    Label diffBadge = new Label(course.getDifficulty());
+                    diffBadge.getStyleClass().addAll("tr-badge", "tr-badge-" + course.getDifficulty().toLowerCase());
+
+                    Label durLabel = new Label("⏱ " + course.getDurationHours() + "h");
+                    durLabel.setStyle("-fx-text-fill: #6B6B80; -fx-font-size: 11px;");
+
+                    Label timerLabel = new Label("⏰ " + course.getEffectiveQuizTimer() + "s/q");
+                    timerLabel.setStyle("-fx-text-fill: #8A8AFF; -fx-font-size: 11px;");
+
+                    metaRow.getChildren().addAll(catBadge, diffBadge, durLabel, timerLabel);
+
+                    // Row 3: Progress bar
+                    HBox progressRow = new HBox(10);
                     progressRow.setAlignment(Pos.CENTER_LEFT);
 
                     ProgressBar pb = new ProgressBar(en.getProgress() / 100.0);
-                    pb.setPrefWidth(300);
-                    pb.setPrefHeight(12);
+                    pb.setPrefHeight(10);
+                    pb.setMaxHeight(10);
                     pb.getStyleClass().add("tr-progress-bar");
                     HBox.setHgrow(pb, Priority.ALWAYS);
 
                     Label pctLabel = new Label(en.getProgress() + "%");
-                    pctLabel.getStyleClass().add("tr-progress-pct");
+                    pctLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: " +
+                            (isCompleted ? "#4ADE80" : en.getProgress() > 0 ? "#FBBF24" : "#8B8BA0") + ";");
+                    pctLabel.setMinWidth(40);
 
-                    progressRow.getChildren().addAll(pb, pctLabel);
+                    if (en.getScore() != null && en.getScore() > 0) {
+                        Label scoreLabel = new Label("🏆 " + String.format("%.0f%%", en.getScore()));
+                        scoreLabel.setStyle("-fx-text-fill: #FBBF24; -fx-font-size: 12px; -fx-font-weight: bold;");
+                        progressRow.getChildren().addAll(pb, pctLabel, scoreLabel);
+                    } else {
+                        progressRow.getChildren().addAll(pb, pctLabel);
+                    }
 
-                    // Actions
+                    // Row 4: Actions
                     HBox actions = new HBox(8);
                     actions.setAlignment(Pos.CENTER_LEFT);
+                    actions.setPadding(new Insets(4, 0, 0, 0));
 
-                    if (!"COMPLETED".equals(en.getStatus())) {
-                        Spinner<Integer> progressSpinner = new Spinner<>(0, 100, en.getProgress(), 10);
-                        progressSpinner.setPrefWidth(90);
-                        progressSpinner.setEditable(true);
-                        progressSpinner.getStyleClass().add("tr-progress-spinner");
-
-                        Button updateBtn = new Button("📊 Update Progress");
-                        updateBtn.getStyleClass().add("tr-action-btn");
-                        updateBtn.setOnAction(e -> {
-                            int newProg = progressSpinner.getValue();
-                            updateEnrollmentProgress(en, newProg, course);
-                        });
-
-                        actions.getChildren().addAll(progressSpinner, updateBtn);
+                    if (!isCompleted) {
+                        Button quizBtn = new Button("📝 Take Quiz");
+                        quizBtn.setStyle("-fx-background-color: #2C666E; -fx-text-fill: white; " +
+                                "-fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 7 18; " +
+                                "-fx-background-radius: 8; -fx-cursor: hand;");
+                        quizBtn.setOnAction(e -> showQuizDialog(en, course));
+                        actions.getChildren().add(quizBtn);
                     }
 
                     if (course.getMegaLink() != null && !course.getMegaLink().isEmpty()) {
@@ -790,23 +943,19 @@ public class TrainingController {
                         actions.getChildren().add(megaBtn);
                     }
 
-                    if (!"COMPLETED".equals(en.getStatus())) {
-                        Button dropBtn = new Button("🗑 Drop");
-                        dropBtn.getStyleClass().add("tr-drop-btn");
+                    if (!isCompleted) {
+                        Region actionSpacer = new Region();
+                        HBox.setHgrow(actionSpacer, Priority.ALWAYS);
+                        Button dropBtn = new Button("Drop");
+                        dropBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #6B6B80; " +
+                                "-fx-font-size: 11px; -fx-padding: 5 10; -fx-cursor: hand; " +
+                                "-fx-border-color: #3A3A5E; -fx-border-width: 1; -fx-border-radius: 6; -fx-background-radius: 6;");
                         dropBtn.setOnAction(e -> dropEnrollment(en));
-                        actions.getChildren().add(dropBtn);
+                        actions.getChildren().addAll(actionSpacer, dropBtn);
                     }
 
-                    // Course info
-                    HBox info = new HBox(16);
-                    info.setAlignment(Pos.CENTER_LEFT);
-                    Label catLabel = new Label(formatCategory(course.getCategory()));
-                    catLabel.getStyleClass().addAll("tr-badge", "tr-badge-" + course.getCategory().toLowerCase().replace("_", "-"));
-                    Label durLabel = new Label("⏱ " + course.getDurationHours() + "h");
-                    durLabel.getStyleClass().add("tr-card-info");
-                    info.getChildren().addAll(catLabel, durLabel);
-
-                    card.getChildren().addAll(topRow, progressRow, info, actions);
+                    content.getChildren().addAll(topRow, metaRow, progressRow, actions);
+                    card.getChildren().addAll(accentBar, content);
                     courseList.getChildren().add(card);
                 }
             }
@@ -828,6 +977,7 @@ public class TrainingController {
                 generateCertificate(enrollment, course);
 
                 triggerN8nWebhook("complete", Map.of(
+                        "user_id", currentUser.getId(),
                         "user_name", getUserName(currentUser.getId()),
                         "user_email", currentUser.getEmail() != null ? currentUser.getEmail() : "",
                         "course_title", course.getTitle(),
@@ -844,6 +994,641 @@ public class TrainingController {
         } catch (SQLException ex) {
             showAlert(Alert.AlertType.ERROR, "Error", "Could not update progress: " + ex.getMessage());
         }
+    }
+
+    // ================================================================
+    // AI QUIZ DIALOG
+    // ================================================================
+
+    private void showQuizDialog(TrainingEnrollment enrollment, TrainingCourse course) {
+        // Show loading dialog while AI generates quiz
+        javafx.stage.Stage loadingStage = new javafx.stage.Stage();
+        loadingStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        loadingStage.initOwner(rootPane.getScene().getWindow());
+        loadingStage.setTitle("Generating Quiz...");
+
+        VBox loadingBox = new VBox(16);
+        loadingBox.setAlignment(Pos.CENTER);
+        loadingBox.setPadding(new Insets(40));
+        loadingBox.setStyle("-fx-background-color: #1a1a2e;");
+        ProgressIndicator spinner = new ProgressIndicator();
+        spinner.setPrefSize(60, 60);
+        Label loadingLabel = new Label("🤖 AI is generating your quiz for:\n" + course.getTitle());
+        loadingLabel.setStyle("-fx-text-fill: #90DDF0; -fx-font-size: 14px; -fx-text-alignment: center;");
+        loadingLabel.setWrapText(true);
+        Label tipLabel = new Label("Questions are based on the course content and difficulty level (" + course.getDifficulty() + ")");
+        tipLabel.setStyle("-fx-text-fill: #7a7a9a; -fx-font-size: 11px;");
+        loadingBox.getChildren().addAll(spinner, loadingLabel, tipLabel);
+        javafx.scene.Scene loadingScene = new javafx.scene.Scene(loadingBox, 420, 200);
+        loadingStage.setScene(loadingScene);
+        loadingStage.setResizable(false);
+        loadingStage.show();
+
+        // Generate quiz on background thread
+        AppThreadPool.io(() -> {
+            try {
+                ZAIService zai = new ZAIService();
+                String rawResponse = zai.generateCourseQuiz(
+                        course.getTitle(),
+                        course.getDescription(),
+                        course.getDifficulty()
+                );
+
+                // Clean response — strip markdown code fences, find JSON object
+                String jsonStr = rawResponse.trim();
+                if (jsonStr.startsWith("```")) {
+                    jsonStr = jsonStr.replaceAll("^```[a-zA-Z]*\\n?", "").replaceAll("```$", "").trim();
+                }
+                // Extract JSON object between first { and last }
+                int firstBrace = jsonStr.indexOf('{');
+                int lastBrace = jsonStr.lastIndexOf('}');
+                if (firstBrace == -1 || lastBrace == -1 || lastBrace <= firstBrace) {
+                    throw new RuntimeException("AI did not return valid JSON. Response: " +
+                            (jsonStr.length() > 120 ? jsonStr.substring(0, 120) + "..." : jsonStr));
+                }
+                jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+
+                JsonObject quizJson = com.google.gson.JsonParser.parseString(jsonStr).getAsJsonObject();
+                JsonArray questions = quizJson.getAsJsonArray("questions");
+
+                if (questions == null || questions.isEmpty()) {
+                    throw new RuntimeException("AI returned no questions. Please try again.");
+                }
+
+                // If AI suggested a recommended timer and admin hasn't set a custom one, use AI's suggestion
+                if (course.getQuizTimerSeconds() <= 0 && quizJson.has("recommended_timer_seconds")) {
+                    try {
+                        int aiTimer = quizJson.get("recommended_timer_seconds").getAsInt();
+                        if (aiTimer >= 5 && aiTimer <= 60) {
+                            course.setQuizTimerSeconds(aiTimer);
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                Platform.runLater(() -> {
+                    loadingStage.close();
+                    displayQuizDialog(enrollment, course, questions);
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    loadingStage.close();
+                    showAlert(Alert.AlertType.ERROR, "Quiz Generation Failed",
+                            "Could not generate quiz: " + ex.getMessage() + "\nPlease try again.");
+                });
+            }
+        });
+    }
+
+    private void displayQuizDialog(TrainingEnrollment enrollment, TrainingCourse course, JsonArray questions) {
+        javafx.stage.Stage quizStage = new javafx.stage.Stage();
+        quizStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        quizStage.initOwner(rootPane.getScene().getWindow());
+        quizStage.setTitle("📝 Quiz: " + course.getTitle());
+
+        // ── Build the question queue ──
+        List<Integer> questionQueue = new ArrayList<>();
+        for (int i = 0; i < questions.size(); i++) questionQueue.add(i);
+        int originalTotal = questions.size();
+        int timerSec = course.getEffectiveQuizTimer();
+
+        // Track answers: questionIndex → selectedOptionIndex (-1 = timeout / unanswered)
+        Map<Integer, Integer> answerMap = new LinkedHashMap<>();
+        // Track per-question correct/wrong
+        List<Boolean> resultLog = new ArrayList<>(); // true = correct, false = wrong/timeout
+
+        // Stats
+        int[] stats = {0, 0, 0}; // [correct, wrong, streak]
+
+        // ── Root layout ──
+        VBox root = new VBox(0);
+        root.setStyle("-fx-background-color: #0f0f1e;");
+        root.setPrefSize(760, 620);
+
+        // ══ TOP BAR: progress + question counter + streak + quit ══
+        HBox topBar = new HBox(12);
+        topBar.setAlignment(Pos.CENTER_LEFT);
+        topBar.setPadding(new Insets(16, 24, 12, 24));
+        topBar.setStyle("-fx-background-color: #161630;");
+
+        // Progress bar
+        ProgressBar quizProgress = new ProgressBar(0);
+        quizProgress.setPrefHeight(8);
+        quizProgress.setPrefWidth(200);
+        quizProgress.setStyle("-fx-accent: #8A8AFF;");
+        HBox.setHgrow(quizProgress, Priority.ALWAYS);
+
+        Label questionCounter = new Label("1/" + originalTotal);
+        questionCounter.setStyle("-fx-text-fill: #8B8BA0; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+        Label streakLabel = new Label("🔥 0");
+        streakLabel.setStyle("-fx-text-fill: #FBBF24; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+        Label scoreDisplay = new Label("⭐ 0");
+        scoreDisplay.setStyle("-fx-text-fill: #4ADE80; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+        Button quitBtn = new Button("✕");
+        quitBtn.setStyle("-fx-background-color: rgba(248,113,113,0.15); -fx-text-fill: #F87171; " +
+                "-fx-font-size: 16px; -fx-background-radius: 20; -fx-padding: 4 10; -fx-cursor: hand;");
+
+        topBar.getChildren().addAll(quizProgress, questionCounter, streakLabel, scoreDisplay, quitBtn);
+
+        // ══ CENTER: Timer ring + Question + Options ══
+        StackPane centerPane = new StackPane();
+        centerPane.setStyle("-fx-background-color: #0f0f1e;");
+        VBox.setVgrow(centerPane, Priority.ALWAYS);
+
+        VBox questionContainer = new VBox(14);
+        questionContainer.setAlignment(Pos.CENTER);
+        questionContainer.setPadding(new Insets(12, 32, 12, 32));
+        questionContainer.setMaxWidth(700);
+
+        // ── Circular Timer ──
+        StackPane timerRing = new StackPane();
+        timerRing.setPrefSize(70, 70);
+        timerRing.setMaxSize(70, 70);
+
+        Circle bgCircle = new Circle(30);
+        bgCircle.setFill(Color.TRANSPARENT);
+        bgCircle.setStroke(Color.web("#2A2A3E"));
+        bgCircle.setStrokeWidth(4);
+
+        Arc timerArc = new Arc(0, 0, 30, 30, 90, 360);
+        timerArc.setType(ArcType.OPEN);
+        timerArc.setFill(Color.TRANSPARENT);
+        timerArc.setStroke(Color.web("#8A8AFF"));
+        timerArc.setStrokeWidth(4);
+        timerArc.setStrokeLineCap(StrokeLineCap.ROUND);
+
+        Label timerText = new Label(String.valueOf(timerSec));
+        timerText.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #E0E0E8;");
+
+        timerRing.getChildren().addAll(bgCircle, timerArc, timerText);
+
+        // ── Question text ──
+        Label questionLabel = new Label();
+        questionLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #E0E0FF; " +
+                "-fx-text-alignment: center; -fx-line-spacing: 4;");
+        questionLabel.setWrapText(true);
+        questionLabel.setMaxWidth(620);
+        questionLabel.setAlignment(Pos.CENTER);
+        questionLabel.setMinHeight(Region.USE_PREF_SIZE);
+
+        // ── Difficulty badge ──
+        Label diffBadge = new Label(course.getDifficulty());
+        diffBadge.getStyleClass().addAll("tr-badge", "tr-badge-" + course.getDifficulty().toLowerCase());
+
+        // ── Options grid (2x2 like Quizizz) ──
+        GridPane optionsGrid = new GridPane();
+        optionsGrid.setHgap(12);
+        optionsGrid.setVgap(12);
+        optionsGrid.setAlignment(Pos.CENTER);
+        optionsGrid.setMaxWidth(620);
+
+        // Option colors (Quizizz style)
+        String[] optColors = {"#E14B4B", "#2D70AE", "#D89E00", "#298F47"};
+        String[] optIcons = {"◆", "●", "▲", "■"};
+
+        Button[] optionBtns = new Button[4];
+        for (int i = 0; i < 4; i++) {
+            Button btn = new Button();
+            btn.setWrapText(true);
+            btn.setPrefSize(295, 80);
+            btn.setMaxWidth(295);
+            btn.setMinHeight(70);
+            btn.setStyle("-fx-background-color: " + optColors[i] + "; -fx-text-fill: white; " +
+                    "-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 10; " +
+                    "-fx-cursor: hand; -fx-padding: 12 16; -fx-alignment: CENTER;");
+            optionBtns[i] = btn;
+            int col = i % 2;
+            int row = i / 2;
+            optionsGrid.add(btn, col, row);
+            // Make columns equal width
+            if (i < 2) {
+                ColumnConstraints cc = new ColumnConstraints();
+                cc.setPercentWidth(50);
+                cc.setHgrow(Priority.ALWAYS);
+                optionsGrid.getColumnConstraints().add(cc);
+            }
+        }
+
+        // ── Feedback overlay ──
+        Label feedbackLabel = new Label();
+        feedbackLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-padding: 8 20; " +
+                "-fx-background-radius: 12;");
+        feedbackLabel.setVisible(false);
+
+        questionContainer.getChildren().addAll(timerRing, diffBadge, questionLabel, optionsGrid, feedbackLabel);
+        centerPane.getChildren().add(questionContainer);
+
+        // ── Bottom bar: timer info ──
+        HBox bottomBar = new HBox(16);
+        bottomBar.setAlignment(Pos.CENTER);
+        bottomBar.setPadding(new Insets(12, 24, 16, 24));
+        bottomBar.setStyle("-fx-background-color: #161630;");
+
+        Label timerInfo = new Label("⏱ " + timerSec + "s per question");
+        timerInfo.setStyle("-fx-text-fill: #6B6B80; -fx-font-size: 12px;");
+
+        Label wrongPenalty = new Label("🎯 Pass: 70%");
+        wrongPenalty.setStyle("-fx-text-fill: #FBBF24; -fx-font-size: 12px; -fx-font-weight: bold;");
+
+        Label courseLabel = new Label("📚 " + course.getTitle());
+        courseLabel.setStyle("-fx-text-fill: #8B8BA0; -fx-font-size: 12px;");
+        courseLabel.setMaxWidth(200);
+
+        bottomBar.getChildren().addAll(timerInfo, wrongPenalty, courseLabel);
+
+        root.getChildren().addAll(topBar, centerPane, bottomBar);
+
+        javafx.scene.Scene scene = new javafx.scene.Scene(root, 760, 620);
+        // Apply main stylesheet if available
+        try {
+            scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+        } catch (Exception ignored) {}
+        quizStage.setScene(scene);
+        quizStage.setResizable(false);
+        quizStage.show();
+
+        // ══════════════════════════════════════════════
+        // QUIZ ENGINE — one question at a time with timer
+        // ══════════════════════════════════════════════
+
+        Timeline[] currentTimer = {null};
+        int[] queueIndex = {0};
+        int[] answeredCorrectly = {0};      // unique correct answers
+        Set<Integer> correctlyAnswered = new HashSet<>();  // track which original questions were answered correctly
+
+        Runnable[] showQuestion = new Runnable[1];
+        showQuestion[0] = () -> {
+            if (queueIndex[0] >= questionQueue.size()) {
+                // Quiz complete!
+                if (currentTimer[0] != null) currentTimer[0].stop();
+                quizStage.close();
+
+                // Build ToggleGroups for results display (compatibility with showQuizResults)
+                List<ToggleGroup> fakeGroups = new ArrayList<>();
+                for (int i = 0; i < originalTotal; i++) {
+                    ToggleGroup tg = new ToggleGroup();
+                    RadioButton rb = new RadioButton();
+                    rb.setUserData(answerMap.getOrDefault(i, -1));
+                    rb.setToggleGroup(tg);
+                    tg.selectToggle(rb);
+                    fakeGroups.add(tg);
+                }
+
+                int finalCorrect = correctlyAnswered.size();
+                double scorePercent = (finalCorrect * 100.0) / originalTotal;
+                boolean passed = scorePercent >= 70.0;
+                showQuizResults(enrollment, course, questions, fakeGroups, finalCorrect, originalTotal, scorePercent, passed);
+                return;
+            }
+
+            int qIdx = questionQueue.get(queueIndex[0]);
+            JsonObject q = questions.get(qIdx).getAsJsonObject();
+            String qText = q.get("q").getAsString();
+            JsonArray opts = q.getAsJsonArray("options");
+            int correctIdx = q.get("answer").getAsInt();
+
+            // Update UI
+            int displayNum = Math.min(queueIndex[0] + 1, questionQueue.size());
+            questionCounter.setText(displayNum + "/" + questionQueue.size());
+            double progress = (double) queueIndex[0] / questionQueue.size();
+            quizProgress.setProgress(progress);
+            questionLabel.setText(qText);
+            feedbackLabel.setVisible(false);
+
+            // Set option texts
+            for (int i = 0; i < 4 && i < opts.size(); i++) {
+                optionBtns[i].setText(optIcons[i] + "  " + opts.get(i).getAsString());
+                optionBtns[i].setDisable(false);
+                optionBtns[i].setOpacity(1.0);
+                optionBtns[i].setStyle("-fx-background-color: " + optColors[i] + "; -fx-text-fill: white; " +
+                        "-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 10; " +
+                        "-fx-cursor: hand; -fx-padding: 12 16; -fx-alignment: CENTER;");
+            }
+
+            // Reset and start timer
+            if (currentTimer[0] != null) currentTimer[0].stop();
+
+            IntegerProperty timeLeft = new SimpleIntegerProperty(timerSec);
+            timerText.setText(String.valueOf(timerSec));
+            timerArc.setLength(360);
+
+            // Color transitions: green > yellow > red
+            Timeline timer = new Timeline();
+            for (int sec = timerSec; sec >= 0; sec--) {
+                final int s = sec;
+                KeyFrame kf = new KeyFrame(javafx.util.Duration.seconds(timerSec - sec), e -> {
+                    timerText.setText(String.valueOf(s));
+                    double fraction = (double) s / timerSec;
+                    timerArc.setLength(360 * fraction);
+
+                    // Color the arc and text based on time remaining
+                    if (fraction > 0.5) {
+                        timerArc.setStroke(Color.web("#4ADE80")); // green
+                        timerText.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #4ADE80;");
+                    } else if (fraction > 0.25) {
+                        timerArc.setStroke(Color.web("#FBBF24")); // yellow
+                        timerText.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #FBBF24;");
+                    } else {
+                        timerArc.setStroke(Color.web("#F87171")); // red
+                        timerText.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: #F87171;");
+                    }
+                });
+                timer.getKeyFrames().add(kf);
+            }
+
+            // On timeout
+            timer.setOnFinished(e -> {
+                // Time's up = wrong
+                stats[1]++;  // wrong count
+                stats[2] = 0; // reset streak
+                streakLabel.setText("🔥 " + stats[2]);
+                resultLog.add(false);
+
+                for (Button btn : optionBtns) btn.setDisable(true);
+
+                // Flash correct answer
+                optionBtns[correctIdx].setStyle("-fx-background-color: #4ADE80; -fx-text-fill: white; " +
+                        "-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 10; " +
+                        "-fx-padding: 12 16; -fx-alignment: CENTER; " +
+                        "-fx-border-color: white; -fx-border-width: 3; -fx-border-radius: 10;");
+
+                feedbackLabel.setText("⏰ Time's up!");
+                feedbackLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-padding: 8 20; " +
+                        "-fx-background-radius: 12; -fx-text-fill: #F87171; -fx-background-color: rgba(248,113,113,0.12);");
+                feedbackLabel.setVisible(true);
+
+                SoundManager.getInstance().play(SoundManager.ERROR);
+
+                // Proceed to next after 1.5s delay
+                Timeline delay = new Timeline(new KeyFrame(javafx.util.Duration.millis(1500), ev -> {
+                    queueIndex[0]++;
+                    showQuestion[0].run();
+                }));
+                delay.play();
+            });
+
+            currentTimer[0] = timer;
+            timer.play();
+
+            // ── Option click handlers ──
+            for (int i = 0; i < 4; i++) {
+                final int optIdx = i;
+                optionBtns[i].setOnAction(ev -> {
+                    timer.stop();
+                    for (Button btn : optionBtns) btn.setDisable(true);
+
+                    boolean isCorrect = optIdx == correctIdx;
+                    answerMap.put(qIdx, optIdx);
+
+                    if (isCorrect) {
+                        stats[0]++;  // correct
+                        stats[2]++; // streak
+                        correctlyAnswered.add(qIdx);
+                        resultLog.add(true);
+
+                        // Green flash on selected button
+                        optionBtns[optIdx].setStyle("-fx-background-color: #4ADE80; -fx-text-fill: white; " +
+                                "-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 10; " +
+                                "-fx-padding: 12 16; -fx-alignment: CENTER; " +
+                                "-fx-border-color: white; -fx-border-width: 3; -fx-border-radius: 10;");
+
+                        feedbackLabel.setText("✅ Correct! +" + (100 * stats[2]) + " pts");
+                        feedbackLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-padding: 8 20; " +
+                                "-fx-background-radius: 12; -fx-text-fill: #4ADE80; -fx-background-color: rgba(74,222,128,0.12);");
+
+                        SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
+                    } else {
+                        stats[1]++;  // wrong
+                        stats[2] = 0; // reset streak
+                        resultLog.add(false);
+
+                        // Red flash on selected, green on correct
+                        optionBtns[optIdx].setStyle("-fx-background-color: #F87171; -fx-text-fill: white; " +
+                                "-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 10; " +
+                                "-fx-padding: 12 16; -fx-alignment: CENTER; " +
+                                "-fx-border-color: white; -fx-border-width: 3; -fx-border-radius: 10;");
+                        optionBtns[correctIdx].setStyle("-fx-background-color: #4ADE80; -fx-text-fill: white; " +
+                                "-fx-font-size: 14px; -fx-font-weight: bold; -fx-background-radius: 10; " +
+                                "-fx-padding: 12 16; -fx-alignment: CENTER; " +
+                                "-fx-border-color: white; -fx-border-width: 3; -fx-border-radius: 10;");
+
+                        // Dim incorrect other options
+                        for (int k = 0; k < 4; k++) {
+                            if (k != optIdx && k != correctIdx) {
+                                optionBtns[k].setOpacity(0.3);
+                            }
+                        }
+
+                        feedbackLabel.setText("❌ Wrong!");
+                        feedbackLabel.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-padding: 8 20; " +
+                                "-fx-background-radius: 12; -fx-text-fill: #F87171; -fx-background-color: rgba(248,113,113,0.12);");
+
+                        SoundManager.getInstance().play(SoundManager.ERROR);
+                    }
+
+                    feedbackLabel.setVisible(true);
+                    streakLabel.setText("🔥 " + stats[2]);
+                    scoreDisplay.setText("⭐ " + correctlyAnswered.size() + "/" + originalTotal);
+
+                    // Advance after 1.2s
+                    Timeline delay = new Timeline(new KeyFrame(javafx.util.Duration.millis(1200), e -> {
+                        queueIndex[0]++;
+                        showQuestion[0].run();
+                    }));
+                    delay.play();
+                });
+            }
+        };
+
+        // Start quiz
+        showQuestion[0].run();
+
+        // Quit button
+        quitBtn.setOnAction(e -> {
+            if (currentTimer[0] != null) currentTimer[0].stop();
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Are you sure you want to quit the quiz? Your progress will be lost.",
+                    ButtonType.YES, ButtonType.NO);
+            confirm.setHeaderText("Quit Quiz?");
+            confirm.showAndWait().ifPresent(btn -> {
+                if (btn == ButtonType.YES) quizStage.close();
+            });
+        });
+
+        quizStage.setOnCloseRequest(e -> {
+            if (currentTimer[0] != null) currentTimer[0].stop();
+        });
+    }
+
+    private void showQuizResults(TrainingEnrollment enrollment, TrainingCourse course,
+                                  JsonArray questions, List<ToggleGroup> toggleGroups,
+                                  int correct, int total, double scorePercent, boolean passed) {
+        javafx.stage.Stage resultStage = new javafx.stage.Stage();
+        resultStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        resultStage.initOwner(rootPane.getScene().getWindow());
+        resultStage.setTitle(passed ? "🎉 Quiz Passed!" : "❌ Quiz Failed");
+
+        ScrollPane scroll = new ScrollPane();
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: #1a1a2e; -fx-background-color: #1a1a2e;");
+
+        VBox root = new VBox(16);
+        root.setPadding(new Insets(24));
+        root.setAlignment(Pos.TOP_CENTER);
+        root.setStyle("-fx-background-color: #1a1a2e;");
+
+        // Result header
+        Label resultIcon = new Label(passed ? "🎉" : "😔");
+        resultIcon.setStyle("-fx-font-size: 48px;");
+
+        Label resultTitle = new Label(passed ? "Congratulations! You Passed!" : "Quiz Not Passed");
+        resultTitle.setStyle("-fx-font-size: 22px; -fx-font-weight: bold; -fx-text-fill: "
+                + (passed ? "#4CAF50;" : "#FF6B6B;"));
+
+        Label scoreLabel = new Label(String.format("Score: %d/%d (%.0f%%)", correct, total, scorePercent));
+        scoreLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #e0e0ff;");
+
+        // Progress bar for score
+        ProgressBar scorePb = new ProgressBar(scorePercent / 100.0);
+        scorePb.setPrefWidth(400);
+        scorePb.setPrefHeight(16);
+        scorePb.setStyle(passed
+                ? "-fx-accent: #4CAF50;"
+                : "-fx-accent: #FF6B6B;");
+
+        Label passThreshold = new Label("Pass threshold: 70%  |  Your score: " + String.format("%.0f%%", scorePercent));
+        passThreshold.setStyle("-fx-font-size: 12px; -fx-text-fill: #7a7a9a;");
+
+        root.getChildren().addAll(resultIcon, resultTitle, scoreLabel, scorePb, passThreshold);
+
+        // Show answer review
+        Region divider = new Region();
+        divider.setPrefHeight(1);
+        divider.setStyle("-fx-background-color: #333366;");
+        Label reviewTitle = new Label("📋 Answer Review");
+        reviewTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #90DDF0;");
+        root.getChildren().addAll(divider, reviewTitle);
+
+        String[] letters = {"A", "B", "C", "D"};
+        for (int i = 0; i < total; i++) {
+            JsonObject q = questions.get(i).getAsJsonObject();
+            int correctIdx = q.get("answer").getAsInt();
+            int selectedIdx = (int) toggleGroups.get(i).getSelectedToggle().getUserData();
+            boolean isCorrect = selectedIdx == correctIdx;
+            JsonArray options = q.getAsJsonArray("options");
+
+            VBox reviewCard = new VBox(6);
+            reviewCard.setPadding(new Insets(12));
+            reviewCard.setStyle("-fx-background-color: " + (isCorrect ? "#1a3a1a" : "#3a1a1a")
+                    + "; -fx-background-radius: 8; -fx-border-color: "
+                    + (isCorrect ? "#4CAF50" : "#FF6B6B") + "; -fx-border-radius: 8; -fx-border-width: 1;");
+
+            Label qText = new Label((isCorrect ? "✅ " : "❌ ") + "Q" + (i + 1) + ". " + q.get("q").getAsString());
+            qText.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #e0e0ff;");
+            qText.setWrapText(true);
+
+            Label yourAnswer = new Label("Your answer: " + letters[selectedIdx] + ") " + options.get(selectedIdx).getAsString());
+            yourAnswer.setStyle("-fx-font-size: 12px; -fx-text-fill: " + (isCorrect ? "#4CAF50;" : "#FF6B6B;"));
+
+            reviewCard.getChildren().addAll(qText, yourAnswer);
+
+            if (!isCorrect) {
+                Label correctAnswer = new Label("Correct answer: " + letters[correctIdx] + ") " + options.get(correctIdx).getAsString());
+                correctAnswer.setStyle("-fx-font-size: 12px; -fx-text-fill: #4CAF50;");
+                reviewCard.getChildren().add(correctAnswer);
+            }
+
+            root.getChildren().add(reviewCard);
+        }
+
+        // Action buttons
+        HBox btnRow = new HBox(12);
+        btnRow.setAlignment(Pos.CENTER);
+        btnRow.setPadding(new Insets(16, 0, 8, 0));
+
+        if (passed) {
+            // Auto-complete the course and generate certificate
+            try {
+                enrollment.setScore(scorePercent);
+                enrollment.setProgress(100);
+                enrollment.setStatus("COMPLETED");
+                enrollment.setCompletedAt(new Timestamp(System.currentTimeMillis()));
+                serviceEnrollment.modifier(enrollment);
+
+                generateCertificate(enrollment, course);
+
+                triggerN8nWebhook("complete", Map.of(
+                        "user_id", currentUser.getId(),
+                        "user_name", getUserName(currentUser.getId()),
+                        "user_email", currentUser.getEmail() != null ? currentUser.getEmail() : "",
+                        "course_title", course.getTitle(),
+                        "course_id", course.getId(),
+                        "quiz_score", String.format("%.0f%%", scorePercent),
+                        "completed_at", new Timestamp(System.currentTimeMillis()).toString()
+                ));
+
+                SoundManager.getInstance().play(SoundManager.AI_COMPLETE);
+            } catch (SQLException ex) {
+                System.err.println("Failed to complete enrollment: " + ex.getMessage());
+            }
+
+            Label certMsg = new Label("🏆 A certificate has been generated! Check the Certificates tab.");
+            certMsg.setStyle("-fx-font-size: 14px; -fx-text-fill: #4CAF50; -fx-font-weight: bold;");
+            certMsg.setWrapText(true);
+            root.getChildren().add(certMsg);
+
+            Button closeBtn = new Button("🎉 Close & View Certificates");
+            closeBtn.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 14px; "
+                    + "-fx-padding: 10 24; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-weight: bold;");
+            closeBtn.setOnAction(ev -> {
+                resultStage.close();
+                loadCourseMap();
+                showMyLearningTab();
+            });
+            btnRow.getChildren().add(closeBtn);
+        } else {
+            // Save the score but don't complete
+            try {
+                enrollment.setScore(scorePercent);
+                serviceEnrollment.modifier(enrollment);
+            } catch (SQLException ex) {
+                System.err.println("Failed to save score: " + ex.getMessage());
+            }
+
+            Label failMsg = new Label("You need at least 70% to pass. Study the course material and try again!");
+            failMsg.setStyle("-fx-font-size: 13px; -fx-text-fill: #FF6B6B;");
+            failMsg.setWrapText(true);
+            root.getChildren().add(failMsg);
+
+            Button retryBtn = new Button("🔄 Retry Quiz");
+            retryBtn.setStyle("-fx-background-color: #2C666E; -fx-text-fill: white; -fx-font-size: 14px; "
+                    + "-fx-padding: 10 24; -fx-background-radius: 8; -fx-cursor: hand;");
+            retryBtn.setOnAction(ev -> {
+                resultStage.close();
+                showQuizDialog(enrollment, course);
+            });
+
+            Button closeBtn = new Button("Close");
+            closeBtn.setStyle("-fx-background-color: #444; -fx-text-fill: #ccc; -fx-font-size: 13px; "
+                    + "-fx-padding: 10 24; -fx-background-radius: 8; -fx-cursor: hand;");
+            closeBtn.setOnAction(ev -> {
+                resultStage.close();
+                loadCourseMap();
+                showMyLearningTab();
+            });
+
+            btnRow.getChildren().addAll(retryBtn, closeBtn);
+        }
+
+        root.getChildren().add(btnRow);
+        scroll.setContent(root);
+
+        javafx.scene.Scene scene = new javafx.scene.Scene(scroll, 680, 700);
+        resultStage.setScene(scene);
+        resultStage.setResizable(true);
+        resultStage.show();
     }
 
     private void generateCertificate(TrainingEnrollment enrollment, TrainingCourse course) {
@@ -1407,6 +2192,14 @@ public class TrainingController {
         DatePicker endPicker = new DatePicker(existing != null && existing.getEndDate() != null ?
                 existing.getEndDate().toLocalDate() : LocalDate.now().plusMonths(1));
 
+        // Quiz timer per question (0 = AI decides based on difficulty)
+        Spinner<Integer> quizTimerSpinner = new Spinner<>(0, 120,
+                existing != null ? existing.getQuizTimerSeconds() : 0);
+        quizTimerSpinner.setEditable(true);
+        Label timerHint = new Label("0 = AI auto (BEGINNER: 10s, INTERMEDIATE: 12s, ADVANCED: 15s)");
+        timerHint.setStyle("-fx-text-fill: #6B6B80; -fx-font-size: 10px; -fx-font-style: italic;");
+        VBox timerBox = new VBox(2, quizTimerSpinner, timerHint);
+
         int row = 0;
         grid.add(new Label("Title:"), 0, row); grid.add(titleField, 1, row++);
         grid.add(new Label("Description:"), 0, row); grid.add(descField, 1, row++);
@@ -1419,6 +2212,7 @@ public class TrainingController {
         grid.add(new Label("Status:"), 0, row); grid.add(statusBox, 1, row++);
         grid.add(new Label("Start Date:"), 0, row); grid.add(startPicker, 1, row++);
         grid.add(new Label("End Date:"), 0, row); grid.add(endPicker, 1, row++);
+        grid.add(new Label("⏱ Quiz Timer (s):"), 0, row); grid.add(timerBox, 1, row++);
 
         dialog.getDialogPane().setContent(grid);
 
@@ -1436,6 +2230,7 @@ public class TrainingController {
                 c.setStatus(statusBox.getValue());
                 c.setStartDate(startPicker.getValue() != null ? Date.valueOf(startPicker.getValue()) : null);
                 c.setEndDate(endPicker.getValue() != null ? Date.valueOf(endPicker.getValue()) : null);
+                c.setQuizTimerSeconds(quizTimerSpinner.getValue());
                 if (existing == null) c.setCreatedBy(currentUser.getId());
                 return c;
             }
@@ -1521,6 +2316,15 @@ public class TrainingController {
             case "ONBOARDING" -> "🚀 Onboarding";
             case "LEADERSHIP" -> "👑 Leadership";
             default -> cat;
+        };
+    }
+
+    private int statusOrder(String status) {
+        return switch (status == null ? "" : status) {
+            case "IN_PROGRESS" -> 0;
+            case "ENROLLED" -> 1;
+            case "COMPLETED" -> 2;
+            default -> 3;
         };
     }
 

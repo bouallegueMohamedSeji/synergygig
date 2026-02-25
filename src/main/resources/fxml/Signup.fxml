@@ -98,7 +98,7 @@
                         </VBox>
 
                         <VBox spacing="4">
-                            <Button text="Create Account  →" onAction="#handleSignup"
+                            <Button fx:id="signUpBtn" text="Create Account  →" onAction="#handleSignup"
                                     maxWidth="Infinity" styleClass="auth-btn-primary"/>
                             <Region styleClass="auth-btn-glow" maxWidth="Infinity"/>
                         </VBox>

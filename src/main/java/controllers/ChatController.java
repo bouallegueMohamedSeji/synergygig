@@ -29,6 +29,7 @@ import utils.BadWordsService;
 import utils.AIAssistantService;
 import utils.ApiClient;
 import utils.AudioCallService;
+import utils.CardEffects;
 import utils.DocumentExtractor;
 import utils.ScreenShareService;
 import utils.AppThreadPool;
@@ -45,6 +46,7 @@ import java.io.File;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -152,9 +154,15 @@ public class ChatController implements Stoppable {
     @FXML
     public void initialize() {
         loadFavorites();
-        loadUsers();
-        ensureAIRoom();
-        loadRooms();
+
+        // Load users + ensure AI room in parallel, then load rooms
+        AppThreadPool.io(() -> {
+            CompletableFuture<Void> users = CompletableFuture.runAsync(() -> loadUsers());
+            CompletableFuture<Void> aiRoom = CompletableFuture.runAsync(() -> ensureAIRoom());
+            CompletableFuture.allOf(users, aiRoom).join(); // parallel, not sequential
+            // Now fetch rooms + render on FX thread
+            loadRoomsAsync(null);
+        });
 
         // Show empty state initially, hide chat content
         showEmptyState();
@@ -247,16 +255,16 @@ public class ChatController implements Stoppable {
             return t;
         });
         // Messages: network call on background thread
-        scheduler.scheduleAtFixedRate(this::pollMessagesBackground, 2, 2, TimeUnit.SECONDS);
-        // Re-sort rooms every 5s so conversations with new messages bubble to top
+        scheduler.scheduleAtFixedRate(this::pollMessagesBackground, 2, 3, TimeUnit.SECONDS);
+        // Re-sort rooms every 15s so conversations with new messages bubble to top
         scheduler.scheduleAtFixedRate(() -> {
             refreshRoomOrder();
-        }, 5, 5, TimeUnit.SECONDS);
-        // Refresh user cache (online status) every 10s
+        }, 10, 15, TimeUnit.SECONDS);
+        // Refresh user cache (online status) every 20s
         scheduler.scheduleAtFixedRate(() -> {
             loadUsers();
             Platform.runLater(() -> roomsList.refresh());
-        }, 10, 10, TimeUnit.SECONDS);
+        }, 15, 20, TimeUnit.SECONDS);
         // Poll for incoming calls on background thread
         scheduler.scheduleAtFixedRate(this::pollIncomingCallsBackground, 2, 3, TimeUnit.SECONDS);
 
@@ -351,7 +359,7 @@ public class ChatController implements Stoppable {
             favoriteRoomIds.add(roomId);
         }
         saveFavorites();
-        loadRooms(); // re-sort with new favorites
+        loadRoomsAsync(null); // re-sort with new favorites
     }
 
     private void ensureAIRoom() {
@@ -368,11 +376,47 @@ public class ChatController implements Stoppable {
         } catch (SQLException e) { System.err.println("Chat: loadUsers failed — " + e.getMessage()); }
     }
 
+    /**
+     * Fetch rooms on a background thread and update the ListView on FX thread.
+     * @param selectRoomName if non-null, auto-selects the room with this name after loading.
+     */
+    private void loadRoomsAsync(String selectRoomName) {
+        AppThreadPool.io(() -> {
+            try {
+                List<ChatRoom> visible = fetchFilteredRooms();
+                Platform.runLater(() -> {
+                    roomsList.getItems().setAll(visible);
+                    if (selectRoomName != null) {
+                        for (ChatRoom r : roomsList.getItems()) {
+                            if (r.getName().equals(selectRoomName)) {
+                                roomsList.getSelectionModel().select(r);
+                                break;
+                            }
+                        }
+                    }
+                });
+            } catch (SQLException e) {
+                System.err.println("Chat: loadRoomsAsync failed — " + e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Synchronous room load — only call from FX thread when data is guaranteed cached.
+     * Falls through to API/DB if cache is empty.
+     */
     private void loadRooms() {
         try {
-            User me = SessionManager.getInstance().getCurrentUser();
-            int myId = me != null ? me.getId() : 0;
-            List<ChatRoom> rooms = serviceChat.recuperer();
+            List<ChatRoom> visible = fetchFilteredRooms();
+            roomsList.getItems().setAll(visible);
+        } catch (SQLException e) { System.err.println("Chat: loadRooms failed — " + e.getMessage()); }
+    }
+
+    /** Fetch, filter, and sort rooms. Thread-safe — can be called from any thread. */
+    private List<ChatRoom> fetchFilteredRooms() throws SQLException {
+        User me = SessionManager.getInstance().getCurrentUser();
+        int myId = me != null ? me.getId() : 0;
+        List<ChatRoom> rooms = serviceChat.recuperer();
 
             List<ChatRoom> visible = new ArrayList<>();
             ChatRoom aiRoom = null;
@@ -409,8 +453,7 @@ public class ChatController implements Stoppable {
                 return 0;
             });
             if (aiRoom != null) visible.add(0, aiRoom);
-            roomsList.getItems().setAll(visible);
-        } catch (SQLException e) { System.err.println("Chat: loadRooms failed — " + e.getMessage()); }
+            return visible;
     }
 
     // ═══════════════════════════════════════════
@@ -530,32 +573,39 @@ public class ChatController implements Stoppable {
         int a = Math.min(me.getId(), other.getId());
         int b = Math.max(me.getId(), other.getId());
         String roomName = "dm_" + a + "_" + b;
-        try {
-            serviceChat.getOrCreateRoom(roomName);
-            loadRooms();
-            for (ChatRoom r : roomsList.getItems()) {
-                if (r.getName().equals(roomName)) { roomsList.getSelectionModel().select(r); break; }
+        AppThreadPool.io(() -> {
+            try {
+                serviceChat.getOrCreateRoom(roomName);
+                Platform.runLater(() -> {
+                    loadRooms();
+                    for (ChatRoom r : roomsList.getItems()) {
+                        if (r.getName().equals(roomName)) { roomsList.getSelectionModel().select(r); break; }
+                    }
+                });
+            } catch (SQLException e) {
+                System.err.println("Chat: openDM failed — " + e.getMessage());
+                Platform.runLater(() -> showInputError("Failed to open DM."));
             }
-        } catch (SQLException e) {
-            System.err.println("Chat: openDM failed — " + e.getMessage());
-            Platform.runLater(() -> showInputError("Failed to open DM."));
-        }
+        });
     }
 
     @FXML
     private void handleCreateRoom() {
         String name = roomNameField.getText().trim();
         if (!name.isEmpty()) {
-            try {
-                User me = SessionManager.getInstance().getCurrentUser();
-                serviceChat.ajouter(new ChatRoom(name, "group", me != null ? me.getId() : 0));
-                roomNameField.clear();
-                hideSearch();
-                loadRooms();
-            } catch (SQLException e) {
-                System.err.println("Chat: createRoom failed — " + e.getMessage());
-                showInputError("Failed to create room.");
-            }
+            User me = SessionManager.getInstance().getCurrentUser();
+            int creatorId = me != null ? me.getId() : 0;
+            roomNameField.clear();
+            hideSearch();
+            AppThreadPool.io(() -> {
+                try {
+                    serviceChat.ajouter(new ChatRoom(name, "group", creatorId));
+                    Platform.runLater(this::loadRooms);
+                } catch (SQLException e) {
+                    System.err.println("Chat: createRoom failed — " + e.getMessage());
+                    Platform.runLater(() -> showInputError("Failed to create room."));
+                }
+            });
         }
     }
 
@@ -660,21 +710,25 @@ public class ChatController implements Stoppable {
         } catch (SQLException e) { System.err.println("Chat: refreshMessages failed — " + e.getMessage()); }
     }
 
-    /** Force-render right now (used on room switch). */
+    /** Force-render right now (used on room switch). Async: DB query off-FX-thread. */
     private void forceRefreshMessages() {
-        try {
-            List<Message> messages = serviceMessage.getByRoom(currentRoom.getId());
-            lastMessageCount = messages.size();
-            lastMessageId = messages.isEmpty() ? 0 : messages.get(messages.size() - 1).getId();
-            // Update last message time cache
-            if (!messages.isEmpty()) {
-                Message last = messages.get(messages.size() - 1);
-                if (last.getTimestamp() != null) {
-                    lastMessageTimeCache.put(currentRoom.getId(), last.getTimestamp());
-                }
-            }
-            renderMessages(messages);
-        } catch (SQLException e) { System.err.println("Chat: forceRefreshMessages failed — " + e.getMessage()); }
+        final int roomId = currentRoom.getId();
+        AppThreadPool.io(() -> {
+            try {
+                List<Message> messages = serviceMessage.getByRoom(roomId);
+                int count = messages.size();
+                int latestId = messages.isEmpty() ? 0 : messages.get(messages.size() - 1).getId();
+                java.sql.Timestamp lastTime = messages.isEmpty() ? null : messages.get(messages.size() - 1).getTimestamp();
+                Platform.runLater(() -> {
+                    // Guard: room may have changed while query ran
+                    if (currentRoom == null || currentRoom.getId() != roomId) return;
+                    lastMessageCount = count;
+                    lastMessageId = latestId;
+                    if (lastTime != null) lastMessageTimeCache.put(roomId, lastTime);
+                    renderMessages(messages);
+                });
+            } catch (SQLException e) { System.err.println("Chat: forceRefreshMessages failed — " + e.getMessage()); }
+        });
     }
 
     /**
@@ -709,18 +763,21 @@ public class ChatController implements Stoppable {
             }
 
             if (changed) {
-                Platform.runLater(() -> {
-                    ChatRoom selected = roomsList.getSelectionModel().getSelectedItem();
-                    loadRooms();
-                    if (selected != null) {
-                        for (ChatRoom r : roomsList.getItems()) {
-                            if (r.getId() == selected.getId()) {
-                                roomsList.getSelectionModel().select(r);
-                                break;
+                try {
+                    List<ChatRoom> visible = fetchFilteredRooms();
+                    Platform.runLater(() -> {
+                        ChatRoom selected = roomsList.getSelectionModel().getSelectedItem();
+                        roomsList.getItems().setAll(visible);
+                        if (selected != null) {
+                            for (ChatRoom r : roomsList.getItems()) {
+                                if (r.getId() == selected.getId()) {
+                                    roomsList.getSelectionModel().select(r);
+                                    break;
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                } catch (SQLException ignored) {}
             }
         } catch (Exception e) { /* ignore polling errors */ }
     }
@@ -1190,9 +1247,22 @@ public class ChatController implements Stoppable {
             return;
         }
 
+        // ── Show loading spinner on Send button ──
+        String origText = btnSend.getText();
+        javafx.scene.Node origGraphic = btnSend.getGraphic();
+        javafx.scene.control.ProgressIndicator sendSpinner = new javafx.scene.control.ProgressIndicator();
+        sendSpinner.setMaxSize(16, 16);
+        sendSpinner.setPrefSize(16, 16);
+        sendSpinner.setStyle("-fx-progress-color: #F0EDEE;");
+        btnSend.setGraphic(sendSpinner);
+        btnSend.setText("");
+        btnSend.setDisable(true);
+        btnSend.setOpacity(0.8);
+
         // AI room
         if (isAIRoom && editingMessage == null) {
             messageArea.clear();
+            restoreSendButton(origText, origGraphic);
             aiChatHistory.add(new AIChatEntry(true, content));
             renderAIChat();
 
@@ -1237,18 +1307,22 @@ public class ChatController implements Stoppable {
             // Bump this room to top of the list immediately
             lastMessageTimeCache.put(currentRoom.getId(), new java.sql.Timestamp(System.currentTimeMillis()));
             forceRefreshMessages();
-            ChatRoom selected = currentRoom;
-            loadRooms();
-            for (ChatRoom r : roomsList.getItems()) {
-                if (r.getId() == selected.getId()) {
-                    roomsList.getSelectionModel().select(r);
-                    break;
-                }
-            }
+            // Re-sort rooms so this one bubbles to top (async, non-blocking)
+            loadRoomsAsync(null);
         } catch (SQLException e) {
             System.err.println("Chat: sendMessage failed — " + e.getMessage());
             showInputError("Failed to send message.");
+        } finally {
+            restoreSendButton(origText, origGraphic);
         }
+    }
+
+    /** Restore the Send button after loading spinner. */
+    private void restoreSendButton(String text, javafx.scene.Node graphic) {
+        btnSend.setGraphic(graphic);
+        btnSend.setText(text);
+        btnSend.setDisable(false);
+        btnSend.setOpacity(1.0);
     }
 
     /**
@@ -1512,17 +1586,17 @@ public class ChatController implements Stoppable {
 
                 String content = FILE_PREFIX + fileId + "|" + fileName + "|" + fileSize + "|" + contentType + FILE_SUFFIX;
 
-                Platform.runLater(() -> {
-                    try {
-                        serviceMessage.ajouter(new Message(me.getId(), currentRoom.getId(), content));
+                try {
+                    serviceMessage.ajouter(new Message(me.getId(), currentRoom.getId(), content));
+                    Platform.runLater(() -> {
                         SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
                         notifyNewMessage("📄 " + fileName);
                         forceRefreshMessages();
-                    } catch (SQLException e) {
-                        showInputError("Failed to send file message.");
-                        System.err.println("Chat: sendFile failed — " + e.getMessage());
-                    }
-                });
+                    });
+                } catch (SQLException e) {
+                    Platform.runLater(() -> showInputError("Failed to send file message."));
+                    System.err.println("Chat: sendFile failed — " + e.getMessage());
+                }
             } else {
                 Platform.runLater(() -> showInputError("Failed to upload file."));
             }

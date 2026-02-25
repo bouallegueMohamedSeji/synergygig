@@ -84,6 +84,10 @@ public class MainFX extends Application {
 
     @Override
     public void stop() {
+        // Shut down HikariCP connection pool (only if it was initialised)
+        if (!utils.AppConfig.isApiMode()) {
+            utils.MyDatabase.getInstance().shutdown();
+        }
         // Also kill AI service on explicit JavaFX stop
         if (aiProcess != null && aiProcess.isAlive()) {
             aiProcess.destroyForcibly();

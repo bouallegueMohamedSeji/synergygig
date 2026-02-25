@@ -27,6 +27,7 @@ import services.ServiceUser;
 import utils.AppConfig;
 import utils.AppThreadPool;
 import utils.EmailService;
+import utils.CreepyButton;
 import utils.SparkleCanvas;
 import utils.SpotlightBorder;
 import utils.ThemeSwipeHelper;
@@ -48,6 +49,7 @@ public class SignupController {
     @FXML private ComboBox<String> roleComboBox;
     @FXML private StackPane rootStack;
     @FXML private StackPane cardGlow;
+    @FXML private Button signUpBtn;
 
     private boolean passwordShown = false;
     private boolean confirmPasswordShown = false;
@@ -68,6 +70,9 @@ public class SignupController {
 
         // Spotlight border on the form card
         SpotlightBorder.install(cardGlow);
+
+        // Creepy Button — sign-up button follows cursor with magnetic lag
+        CreepyButton.install(signUpBtn);
 
         // Sync password fields for eye toggles
         passwordVisible.textProperty().bindBidirectional(passwordField.textProperty());

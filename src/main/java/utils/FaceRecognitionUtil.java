@@ -70,6 +70,12 @@ public class FaceRecognitionUtil {
     }
 
     /**
+     * Expected encoding dimension for current face-descriptor version.
+     * Old v1 encodings (204 floats) are incompatible — users must re-enroll.
+     */
+    private static final int EXPECTED_ENCODING_DIM = 314;
+
+    /**
      * Open the webcam authentication flow.<br>
      * Writes a temp JSON of all enrolled user encodings, passes it to the
      * Python script, and returns the match result.
@@ -81,21 +87,29 @@ public class FaceRecognitionUtil {
         try {
             List<User> allUsers = serviceUser.recuperer();
 
-            // Filter to users with face-encoding data
+            // Filter to users with face-encoding data of the correct dimension
+            Gson gson = new Gson();
             List<User> enrolled = allUsers.stream()
                     .filter(User::hasFaceEnrolled)
+                    .filter(u -> {
+                        try {
+                            JsonArray arr = gson.fromJson(u.getFaceEncoding(), JsonArray.class);
+                            return arr != null && arr.size() == EXPECTED_ENCODING_DIM;
+                        } catch (Exception e) {
+                            return false;
+                        }
+                    })
                     .collect(Collectors.toList());
 
             if (enrolled.isEmpty()) {
                 JsonObject err = new JsonObject();
                 err.addProperty("success", false);
-                err.addProperty("error", "No users have enrolled their face yet.");
+                err.addProperty("error", "No users have enrolled their face yet (or enrollments need to be updated).");
                 return err;
             }
 
             // Build JSON file for the Python script
             JsonArray usersArray = new JsonArray();
-            Gson gson = new Gson();
             for (User u : enrolled) {
                 JsonObject uo = new JsonObject();
                 uo.addProperty("id", u.getId());
