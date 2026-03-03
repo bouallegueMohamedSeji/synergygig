@@ -5,6 +5,8 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -106,10 +108,35 @@ public class DocumentExtractor {
     /**
      * Auto-detect file type and extract content.
      */
+    /**
+     * Extract text from a DOCX file.
+     */
+    public static String extractDocx(File file) throws IOException {
+        try (FileInputStream fis = new FileInputStream(file);
+             XWPFDocument doc = new XWPFDocument(fis)) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("📄 Word Document: ").append(file.getName()).append("\n");
+            sb.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
+            for (XWPFParagraph para : doc.getParagraphs()) {
+                String text = para.getText();
+                if (text != null && !text.trim().isEmpty()) {
+                    sb.append(text.trim()).append("\n");
+                }
+            }
+            String result = sb.toString().trim();
+            if (result.length() > 5000) {
+                return result.substring(0, 5000) + "\n\n... [truncated — showing first 5000 of " + result.length() + " characters]";
+            }
+            return result;
+        }
+    }
+
     public static String extract(File file) throws IOException {
         String name = file.getName().toLowerCase();
         if (name.endsWith(".pdf")) {
             return extractPDF(file);
+        } else if (name.endsWith(".docx")) {
+            return extractDocx(file);
         } else if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
             return extractExcel(file);
         } else {

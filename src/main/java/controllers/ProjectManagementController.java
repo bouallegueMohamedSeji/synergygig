@@ -58,8 +58,8 @@ public class ProjectManagementController {
     @FXML private Label quoteLabel, holidayWarning, weatherLabel;
     @FXML private HBox quoteBanner;
     @FXML private ProgressBar detailProgressBar;
-    @FXML private VBox colTodo, colInProgress, colDone;
-    @FXML private Label countTodo, countInProgress, countDone;
+    @FXML private VBox colTodo, colInProgress, colDone, colInReview;
+    @FXML private Label countTodo, countInProgress, countDone, countInReview;
 
     // ═══ Team View ═══
     @FXML private Button btnTeamView;
@@ -242,16 +242,16 @@ public class ProjectManagementController {
         Label dateLabel = new Label(dateStr.isEmpty() ? "No dates set" : "📅 " + dateStr);
         dateLabel.getStyleClass().add("pm-card-meta");
 
-        // Task progress bar
+        // Task progress bar  [0]=TODO, [1]=IN_PROGRESS, [2]=IN_REVIEW, [3]=DONE
         int[] counts = getTaskCounts(project.getId());
-        int total = counts[0] + counts[1] + counts[2];
-        double progress = total > 0 ? (double) counts[2] / total : 0;
+        int total = counts[0] + counts[1] + counts[2] + counts[3];
+        double progress = total > 0 ? (double) counts[3] / total : 0;
 
         ProgressBar progressBar = new ProgressBar(progress);
         progressBar.getStyleClass().add("pm-progress-bar");
         progressBar.setMaxWidth(Double.MAX_VALUE);
 
-        Label taskLabel = new Label(counts[2] + "/" + total + " tasks done");
+        Label taskLabel = new Label(counts[3] + "/" + total + " tasks done");
         taskLabel.getStyleClass().add("pm-card-meta");
 
         card.getChildren().addAll(titleRow, desc, mgrLabel, dateLabel, progressBar, taskLabel);
@@ -269,17 +269,18 @@ public class ProjectManagementController {
     private int[] getTaskCounts(int projectId) {
         try {
             List<Task> tasks = serviceTask.getByProject(projectId);
-            int todo = 0, inProg = 0, done = 0;
+            int todo = 0, inProg = 0, inReview = 0, done = 0;
             for (Task t : tasks) {
                 switch (t.getStatus()) {
                     case "TODO": todo++; break;
                     case "IN_PROGRESS": inProg++; break;
+                    case "IN_REVIEW": inReview++; break;
                     case "DONE": done++; break;
                 }
             }
-            return new int[]{todo, inProg, done};
+            return new int[]{todo, inProg, inReview, done};
         } catch (SQLException e) {
-            return new int[]{0, 0, 0};
+            return new int[]{0, 0, 0, 0};
         }
     }
 
@@ -388,8 +389,9 @@ public class ProjectManagementController {
         colTodo.getChildren().clear();
         colInProgress.getChildren().clear();
         colDone.getChildren().clear();
+        if (colInReview != null) colInReview.getChildren().clear();
 
-        int todo = 0, inProg = 0, done = 0;
+        int todo = 0, inProg = 0, done = 0, inReview = 0;
 
         for (Task task : tasks) {
             VBox card = buildTaskCard(task);
@@ -403,6 +405,14 @@ public class ProjectManagementController {
                     colInProgress.getChildren().add(pinnedCard);
                     inProg++;
                     break;
+                case "IN_REVIEW":
+                    if (colInReview != null) {
+                        colInReview.getChildren().add(pinnedCard);
+                    } else {
+                        colDone.getChildren().add(pinnedCard); // fallback
+                    }
+                    inReview++;
+                    break;
                 case "DONE":
                     colDone.getChildren().add(pinnedCard);
                     done++;
@@ -413,8 +423,9 @@ public class ProjectManagementController {
         countTodo.setText(String.valueOf(todo));
         countInProgress.setText(String.valueOf(inProg));
         countDone.setText(String.valueOf(done));
+        if (countInReview != null) countInReview.setText(String.valueOf(inReview));
 
-        int total = todo + inProg + done;
+        int total = todo + inProg + done + inReview;
         double progress = total > 0 ? (double) done / total : 0;
         detailProgress.setText(Math.round(progress * 100) + "%");
         detailProgressBar.setProgress(progress);
@@ -424,6 +435,35 @@ public class ProjectManagementController {
         setupDropTarget(colTodo, "TODO");
         setupDropTarget(colInProgress, "IN_PROGRESS");
         setupDropTarget(colDone, "DONE");
+        if (colInReview != null) setupDropTarget(colInReview, "IN_REVIEW");
+
+        // ── Auto-completion suggestion: all tasks DONE? ──
+        if (total > 0 && done == total && currentProject != null
+                && !"COMPLETED".equals(currentProject.getStatus())) {
+            boolean isManagerOrAdmin = currentProject.getManagerId() == currentUser.getId() || isAdmin;
+            if (isManagerOrAdmin) {
+                Platform.runLater(() -> {
+                    Alert prompt = new Alert(Alert.AlertType.CONFIRMATION);
+                    prompt.setTitle("Project Complete!");
+                    prompt.setHeaderText("🎉 All tasks are done!");
+                    prompt.setContentText("All " + total + " tasks in \"" + currentProject.getName() +
+                            "\" are completed. Mark the project as COMPLETED?");
+                    DialogHelper.theme(prompt);
+                    prompt.showAndWait().ifPresent(btn -> {
+                        if (btn == ButtonType.OK) {
+                            try {
+                                currentProject.setStatus("COMPLETED");
+                                serviceProject.modifier(currentProject);
+                                showInfo("Project marked as COMPLETED!");
+                                SoundManager.getInstance().play(SoundManager.REVIEW_SUBMITTED);
+                            } catch (SQLException e) {
+                                showError("Failed: " + e.getMessage());
+                            }
+                        }
+                    });
+                });
+            }
+        }
     }
 
     /** Allow a task card to be dropped onto this column. */
@@ -542,6 +582,11 @@ public class ProjectManagementController {
                 toIP.setOnAction(e -> changeTaskStatus(task, "IN_PROGRESS"));
                 ctx.getItems().add(toIP);
             }
+            if (!"IN_REVIEW".equals(task.getStatus())) {
+                MenuItem toReview = new MenuItem("Move to In Review");
+                toReview.setOnAction(e -> changeTaskStatus(task, "IN_REVIEW"));
+                ctx.getItems().add(toReview);
+            }
             if (!"DONE".equals(task.getStatus())) {
                 MenuItem toDone = new MenuItem("Move to Done");
                 toDone.setOnAction(e -> changeTaskStatus(task, "DONE"));
@@ -549,8 +594,8 @@ public class ProjectManagementController {
             }
             ctx.getItems().add(new SeparatorMenuItem());
 
-            // Review task (PM only)
-            if ("DONE".equals(task.getStatus())) {
+            // Review task (PM only) — available for IN_REVIEW tasks
+            if ("IN_REVIEW".equals(task.getStatus())) {
                 MenuItem reviewItem = new MenuItem("\u2B50 Review & Feedback");
                 reviewItem.setOnAction(e -> showReviewDialog(task));
                 ctx.getItems().add(reviewItem);
@@ -567,17 +612,24 @@ public class ProjectManagementController {
 
             card.setOnContextMenuRequested(e -> ctx.show(card, e.getScreenX(), e.getScreenY()));
         } else if (task.getAssigneeId() == currentUser.getId()) {
-            // Employee assigned to this task — can submit for review
+            // Employee assigned to this task — can submit for review or decline
             ContextMenu ctx = new ContextMenu();
-            if (!"DONE".equals(task.getStatus())) {
+            if (!"DONE".equals(task.getStatus()) && !"IN_REVIEW".equals(task.getStatus())) {
                 MenuItem submitItem = new MenuItem("\u2705 Submit for Review");
                 submitItem.setOnAction(e -> submitTaskForReview(task));
                 ctx.getItems().add(submitItem);
             }
-            if (!"IN_PROGRESS".equals(task.getStatus())) {
+            if (!"IN_PROGRESS".equals(task.getStatus()) && !"DONE".equals(task.getStatus()) && !"IN_REVIEW".equals(task.getStatus())) {
                 MenuItem startItem = new MenuItem("\u25B6 Start Working");
                 startItem.setOnAction(e -> changeTaskStatus(task, "IN_PROGRESS"));
                 ctx.getItems().add(startItem);
+            }
+            // Decline task — lets the employee refuse a task with a reason
+            if ("TODO".equals(task.getStatus()) || "IN_PROGRESS".equals(task.getStatus())) {
+                ctx.getItems().add(new SeparatorMenuItem());
+                MenuItem declineItem = new MenuItem("🚫 Decline Task");
+                declineItem.setOnAction(e -> declineTask(task));
+                ctx.getItems().add(declineItem);
             }
             card.setOnContextMenuRequested(e -> ctx.show(card, e.getScreenX(), e.getScreenY()));
         }
@@ -622,6 +674,11 @@ public class ProjectManagementController {
     private void onSearchChanged() {
         renderProjectGrid();
     }
+
+    // ── AI Tool shortcuts ──────────────────────────────────
+    @FXML private void openCodeReview()    { DashboardController.getInstance().navigateTo("/fxml/CodeReview.fxml"); }
+    @FXML private void openMeetingNotes()  { DashboardController.getInstance().navigateTo("/fxml/MeetingSummarizer.fxml"); }
+    @FXML private void openAutoScheduler() { DashboardController.getInstance().navigateTo("/fxml/AutoScheduler.fxml"); }
 
     // ════════════════════════════════════════════════════════
     //  NAVIGATION
@@ -1346,7 +1403,7 @@ public class ProjectManagementController {
         Label statusLabel = new Label("Status");
         statusLabel.getStyleClass().add("pm-form-label");
         ComboBox<String> statusBox = new ComboBox<>();
-        statusBox.getItems().addAll("TODO", "IN_PROGRESS", "DONE");
+        statusBox.getItems().addAll("TODO", "IN_PROGRESS", "IN_REVIEW", "DONE");
         statusBox.setValue(isEdit ? existing.getStatus() : "TODO");
         statusBox.getStyleClass().add("pm-form-control");
         statusCol.getChildren().addAll(statusLabel, statusBox);
@@ -1400,6 +1457,33 @@ public class ProjectManagementController {
         if (assigneeBox.getValue() == null) assigneeBox.setValue("Unassigned");
         assigneeBox.getStyleClass().add("pm-form-control");
 
+        // Workload warning label — shows when selected assignee has >= 5 active tasks
+        Label workloadWarning = new Label();
+        workloadWarning.setStyle("-fx-text-fill: #FF6B35; -fx-font-size: 11; -fx-padding: 2 0 0 0;");
+        workloadWarning.setWrapText(true);
+        workloadWarning.setVisible(false);
+        workloadWarning.setManaged(false);
+        final List<ServiceProjectMember.ProjectMember> finalTeamMembers = teamMembers;
+        assigneeBox.valueProperty().addListener((obs, oldVal, newVal) -> {
+            Integer uid = assigneeIdMap.get(newVal);
+            if (uid == null || uid == 0) { workloadWarning.setVisible(false); workloadWarning.setManaged(false); return; }
+            try {
+                List<Task> allTasks = serviceTask.getByProject(currentProject.getId());
+                long active = allTasks.stream()
+                        .filter(t -> t.getAssigneeId() == uid)
+                        .filter(t -> "TODO".equals(t.getStatus()) || "IN_PROGRESS".equals(t.getStatus()) || "IN_REVIEW".equals(t.getStatus()))
+                        .count();
+                if (active >= 5) {
+                    workloadWarning.setText("\u26A0\uFE0F This person already has " + active + " active tasks. Consider distributing work.");
+                    workloadWarning.setVisible(true);
+                    workloadWarning.setManaged(true);
+                } else {
+                    workloadWarning.setVisible(false);
+                    workloadWarning.setManaged(false);
+                }
+            } catch (SQLException ignored) { workloadWarning.setVisible(false); workloadWarning.setManaged(false); }
+        });
+
         // Due date
         Label dueLabel = new Label("Due Date");
         dueLabel.getStyleClass().add("pm-form-label");
@@ -1416,7 +1500,7 @@ public class ProjectManagementController {
                 new Label("Description") {{ getStyleClass().add("pm-form-label"); }},
                 descField,
                 statusPriorityRow,
-                assigneeLabel, assigneeBox,
+                assigneeLabel, assigneeBox, workloadWarning,
                 dueLabel, duePicker
         );
 
@@ -1512,8 +1596,8 @@ public class ProjectManagementController {
         SoundManager.getInstance().play(SoundManager.TASK_SUBMITTED);
         AppThreadPool.io(() -> {
             try {
-                serviceTask.updateStatus(task.getId(), "DONE");
-                task.setStatus("DONE");
+                serviceTask.updateStatus(task.getId(), "IN_REVIEW");
+                task.setStatus("IN_REVIEW");
 
                 // Notify project manager
                 User assignee = userCache.get(task.getAssigneeId());
@@ -1524,11 +1608,51 @@ public class ProjectManagementController {
 
                 Platform.runLater(() -> {
                     loadTaskBoard();
-                    showInfo("Task submitted for review!");
+                    showInfo("Task submitted for review! Awaiting manager approval.");
                 });
             } catch (SQLException e) {
                 Platform.runLater(() -> showError("Failed: " + e.getMessage()));
             }
+        });
+    }
+
+    private void declineTask(Task task) {
+        TextInputDialog dlg = new TextInputDialog();
+        dlg.setTitle("Decline Task");
+        dlg.setHeaderText("Decline \"" + task.getTitle() + "\"");
+        dlg.setContentText("Reason (required):");
+        DialogHelper.theme(dlg);
+        dlg.getEditor().setPromptText("e.g. overloaded, outside my expertise...");
+        Button okBtn = (Button) dlg.getDialogPane().lookupButton(ButtonType.OK);
+        okBtn.setDisable(true);
+        dlg.getEditor().textProperty().addListener((o, ov, nv) -> okBtn.setDisable(nv.trim().isEmpty()));
+
+        dlg.showAndWait().ifPresent(reason -> {
+            if (reason.trim().isEmpty()) return;
+            AppThreadPool.io(() -> {
+                try {
+                    // Move task back to TODO and unassign
+                    task.setStatus("TODO");
+                    task.setAssigneeId(0);
+                    serviceTask.modifier(task);
+
+                    // Notify project manager
+                    String empName = currentUser.getFirstName() + " " + currentUser.getLastName();
+                    serviceNotification.create(
+                            currentProject.getManagerId(),
+                            "TASK",
+                            "\uD83D\uDEAB Task Declined",
+                            empName + " declined \"" + task.getTitle() + "\" — Reason: " + reason.trim(),
+                            task.getId(), "TASK");
+
+                    Platform.runLater(() -> {
+                        loadTaskBoard();
+                        showInfo("Task declined. Manager has been notified.");
+                    });
+                } catch (SQLException e) {
+                    Platform.runLater(() -> showError("Failed to decline task: " + e.getMessage()));
+                }
+            });
         });
     }
 

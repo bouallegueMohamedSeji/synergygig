@@ -9,6 +9,7 @@ public class Comment {
     private int authorId;
     private String content;
     private Timestamp createdAt;
+    private Integer parentId; // null = top-level, non-null = reply to another comment
 
     public Comment() {}
 
@@ -16,6 +17,13 @@ public class Comment {
         this.postId = postId;
         this.authorId = authorId;
         this.content = content;
+    }
+
+    public Comment(int postId, int authorId, String content, Integer parentId) {
+        this.postId = postId;
+        this.authorId = authorId;
+        this.content = content;
+        this.parentId = parentId;
     }
 
     public Comment(int id, int postId, int authorId, String content, Timestamp createdAt) {
@@ -42,6 +50,9 @@ public class Comment {
 
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+
+    public Integer getParentId() { return parentId; }
+    public void setParentId(Integer parentId) { this.parentId = parentId; }
 
     @Override
     public String toString() {

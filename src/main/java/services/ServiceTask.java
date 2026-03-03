@@ -123,7 +123,36 @@ public class ServiceTask implements IService<Task> {
     /** Quick status update for drag-and-drop Kanban. */
     public void updateStatus(int taskId, String newStatus) throws SQLException {
         if (useApi) {
+            // GET the full task first, then PUT with updated status (backend expects all fields)
+            JsonElement el = ApiClient.get("/tasks/" + taskId);
+            if (el == null) {
+                System.err.println("⚠ updateStatus: GET /tasks/" + taskId + " returned null, trying PATCH-style PUT");
+                // Fallback: send just the status field
+                Map<String, Object> body = new HashMap<>();
+                body.put("status", newStatus);
+                ApiClient.put("/tasks/" + taskId, body);
+                return;
+            }
+            JsonObject t = el.isJsonObject() ? el.getAsJsonObject() : null;
+            if (t == null) {
+                System.err.println("⚠ updateStatus: response not a JSON object for task " + taskId);
+                return;
+            }
             Map<String, Object> body = new HashMap<>();
+            // Copy all existing fields
+            for (var entry : t.entrySet()) {
+                String key = entry.getKey();
+                if (key.equals("id") || key.equals("created_at") || key.equals("updated_at")) continue;
+                JsonElement v = entry.getValue();
+                if (v == null || v.isJsonNull()) {
+                    body.put(key, null);
+                } else if (v.isJsonPrimitive()) {
+                    JsonPrimitive p = v.getAsJsonPrimitive();
+                    if (p.isNumber()) body.put(key, p.getAsNumber());
+                    else if (p.isBoolean()) body.put(key, p.getAsBoolean());
+                    else body.put(key, p.getAsString());
+                }
+            }
             body.put("status", newStatus);
             ApiClient.put("/tasks/" + taskId, body);
             return;

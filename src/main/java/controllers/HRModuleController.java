@@ -52,6 +52,7 @@ public class HRModuleController {
     private final ServiceLeave serviceLeave = new ServiceLeave();
     private final ServicePayroll servicePayroll = new ServicePayroll();
     private final ServiceUser serviceUser = new ServiceUser();
+    private final ServiceNotification serviceNotification = new ServiceNotification();
 
     private User currentUser;
     private boolean isHrOrAdmin;
@@ -93,6 +94,13 @@ public class HRModuleController {
             tabs.add(new String[]{"💰", "Payroll"});
         }
         tabs.add(new String[]{"🤖", "AI Insights"});
+        if (isHrOrAdmin) {
+            tabs.add(new String[]{"📋", "Onboarding"});
+            tabs.add(new String[]{"💬", "Policy Bot"});
+            tabs.add(new String[]{"📄", "Doc Scanner"});
+            tabs.add(new String[]{"📑", "Backlog"});
+            tabs.add(new String[]{"🏆", "Employee of Month"});
+        }
 
         for (String[] tab : tabs) {
             Button btn = new Button(tab[0] + "  " + tab[1]);
@@ -131,6 +139,16 @@ public class HRModuleController {
             case "Leaves":       showLeaves(); break;
             case "Payroll":      showPayroll(); break;
             case "AI Insights": showAIInsights(); break;
+            case "Onboarding":
+                DashboardController.getInstance().navigateTo("/fxml/OnboardingChecklist.fxml"); break;
+            case "Policy Bot":
+                DashboardController.getInstance().navigateTo("/fxml/HRPolicyChat.fxml"); break;
+            case "Doc Scanner":
+                DashboardController.getInstance().navigateTo("/fxml/DocumentOCR.fxml"); break;
+            case "Backlog":
+                DashboardController.getInstance().navigateTo("/fxml/HRBacklog.fxml"); break;
+            case "Employee of Month":
+                DashboardController.getInstance().navigateTo("/fxml/EmployeeOfMonth.fxml"); break;
         }
     }
 
@@ -142,13 +160,22 @@ public class HRModuleController {
         loading.setStyle("-fx-font-size: 14; -fx-text-fill: #888; -fx-padding: 40;");
         contentArea.getChildren().setAll(loading);
 
-        // Load all data in background
+        // Load data in background — scope to own records for non-HR
         AppThreadPool.io(() -> {
             try {
                 List<Department> depts = serviceDepartment.recuperer();
-                List<Attendance> attendance = serviceAttendance.recuperer();
-                List<Leave> leaves = serviceLeave.recuperer();
-                List<Payroll> payrolls = servicePayroll.recuperer();
+                List<Attendance> attendance;
+                List<Leave> leaves;
+                List<Payroll> payrolls;
+                if (isHrOrAdmin) {
+                    attendance = serviceAttendance.recuperer();
+                    leaves = serviceLeave.recuperer();
+                    payrolls = servicePayroll.recuperer();
+                } else {
+                    attendance = serviceAttendance.getByUser(currentUser.getId());
+                    leaves = serviceLeave.getByUser(currentUser.getId());
+                    payrolls = java.util.Collections.emptyList();
+                }
 
                 Platform.runLater(() -> buildOverviewUI(depts, attendance, leaves, payrolls));
             } catch (SQLException e) {
@@ -182,13 +209,26 @@ public class HRModuleController {
         long pendingLeaves = leaves.stream().filter(l -> "PENDING".equals(l.getStatus())).count();
         long pendingPayrolls = payrolls.stream().filter(p -> "PENDING".equals(p.getStatus())).count();
 
-        statsRow.getChildren().addAll(
-                createStatCard("👥", "Total Employees", String.valueOf(totalEmployees), "hr-stat-blue"),
-                createStatCard("🏢", "Departments", String.valueOf(depts.size()), "hr-stat-green"),
-                createStatCard("✅", "Present Today", String.valueOf(presentToday), "hr-stat-purple"),
-                createStatCard("📋", "Pending Leaves", String.valueOf(pendingLeaves), "hr-stat-orange"),
-                createStatCard("💰", "Pending Payroll", String.valueOf(pendingPayrolls), "hr-stat-red")
-        );
+        if (isHrOrAdmin) {
+            statsRow.getChildren().addAll(
+                    createStatCard("👥", "Total Employees", String.valueOf(totalEmployees), "hr-stat-blue"),
+                    createStatCard("🏢", "Departments", String.valueOf(depts.size()), "hr-stat-green"),
+                    createStatCard("✅", "Present Today", String.valueOf(presentToday), "hr-stat-purple"),
+                    createStatCard("📋", "Pending Leaves", String.valueOf(pendingLeaves), "hr-stat-orange"),
+                    createStatCard("💰", "Pending Payroll", String.valueOf(pendingPayrolls), "hr-stat-red")
+            );
+        } else {
+            // Employees see only their own summary
+            long myLeaves = leaves.size();
+            long myPendingLeaves = leaves.stream().filter(l -> "PENDING".equals(l.getStatus())).count();
+            long myPresentDays = attendance.stream()
+                    .filter(a -> "PRESENT".equals(a.getStatus()) || "LATE".equals(a.getStatus())).count();
+            statsRow.getChildren().addAll(
+                    createStatCard("📋", "My Leave Requests", String.valueOf(myLeaves), "hr-stat-blue"),
+                    createStatCard("⏳", "Pending", String.valueOf(myPendingLeaves), "hr-stat-orange"),
+                    createStatCard("✅", "Days Present", String.valueOf(myPresentDays), "hr-stat-green")
+            );
+        }
 
         // ── API Sections ──
         HBox apiRow = new HBox(16);
@@ -205,9 +245,9 @@ public class HRModuleController {
         // Recent activity sections
         VBox recentSection = new VBox(16);
 
-        // Build recent leaves from pre-loaded data
+        // Build recent leaves from pre-loaded data (already scoped by role)
         VBox recentLeaves = buildRecentLeavesFromData(leaves);
-        // Build recent attendance from pre-loaded data
+        // Build recent attendance from pre-loaded data (already scoped by role)
         VBox recentAttendance = buildRecentAttendanceFromData(attendance);
 
         recentSection.getChildren().addAll(recentLeaves, recentAttendance);
@@ -817,6 +857,18 @@ public class HRModuleController {
                     try {
                         serviceUser.updateDepartmentId(u.getId(), null);
                         u.setDepartmentId(null);
+                        // Notify employee about removal
+                        serviceNotification.create(u.getId(), "DEPARTMENT",
+                                "\uD83C\uDFE2 Department Change",
+                                "You have been removed from \"" + dept.getName() + "\" department.",
+                                dept.getId(), "DEPARTMENT");
+                        // Notify dept manager
+                        if (dept.getManagerId() != null && dept.getManagerId() != currentUser.getId()) {
+                            serviceNotification.create(dept.getManagerId(), "DEPARTMENT",
+                                    "\uD83D\uDC65 Team Update",
+                                    u.getFirstName() + " " + u.getLastName() + " has been removed from your department.",
+                                    dept.getId(), "DEPARTMENT");
+                        }
                         refreshTeamPanel(dept, assignedList, unassignedList, parentContainer);
                     } catch (SQLException ex) {
                         showError("Failed to remove: " + ex.getMessage());
@@ -854,6 +906,18 @@ public class HRModuleController {
                     try {
                         serviceUser.updateDepartmentId(u.getId(), dept.getId());
                         u.setDepartmentId(dept.getId());
+                        // Notify employee about assignment
+                        serviceNotification.create(u.getId(), "DEPARTMENT",
+                                "\uD83C\uDFE2 Department Assignment",
+                                "You have been assigned to \"" + dept.getName() + "\" department.",
+                                dept.getId(), "DEPARTMENT");
+                        // Notify dept manager
+                        if (dept.getManagerId() != null && dept.getManagerId() != currentUser.getId()) {
+                            serviceNotification.create(dept.getManagerId(), "DEPARTMENT",
+                                    "\uD83D\uDC65 New Team Member",
+                                    u.getFirstName() + " " + u.getLastName() + " has been assigned to your department.",
+                                    dept.getId(), "DEPARTMENT");
+                        }
                         refreshTeamPanel(dept, assignedList, unassignedList, parentContainer);
                     } catch (SQLException ex) {
                         showError("Failed to assign: " + ex.getMessage());
@@ -1357,6 +1421,11 @@ public class HRModuleController {
                         l.setStatus("APPROVED");
                         try {
                             serviceLeave.modifier(l);
+                            // Notify employee
+                            serviceNotification.create(l.getUserId(), "LEAVE",
+                                    "\u2705 Leave Approved",
+                                    "Your " + l.getType() + " leave (" + l.getStartDate() + " to " + l.getEndDate() + ") has been approved.",
+                                    l.getId(), "LEAVE");
                             showLeaves();
                         } catch (SQLException ex) {
                             showError("Failed to approve: " + ex.getMessage());
@@ -1366,20 +1435,53 @@ public class HRModuleController {
                     Button rejectBtn = new Button("\u2717");
                     rejectBtn.getStyleClass().addAll("hr-icon-btn", "hr-danger-btn");
                     rejectBtn.setOnAction(e -> {
-                        SoundManager.getInstance().play(SoundManager.LEAVE_REJECTED);
-                        l.setStatus("REJECTED");
-                        try {
-                            serviceLeave.modifier(l);
-                            showLeaves();
-                        } catch (SQLException ex) {
-                            showError("Failed to reject: " + ex.getMessage());
-                        }
+                        // Require rejection reason
+                        TextInputDialog reasonDlg = new TextInputDialog();
+                        reasonDlg.setTitle("Reject Leave");
+                        reasonDlg.setHeaderText("Reject " + getUserName(l.getUserId()) + "'s " + l.getType() + " leave?");
+                        reasonDlg.setContentText("Reason (required):");
+                        DialogHelper.theme(reasonDlg);
+                        reasonDlg.getEditor().setPromptText("e.g. insufficient staffing, no balance...");
+                        Button okB = (Button) reasonDlg.getDialogPane().lookupButton(ButtonType.OK);
+                        okB.setDisable(true);
+                        reasonDlg.getEditor().textProperty().addListener((o2, ov, nv) -> okB.setDisable(nv.trim().isEmpty()));
+                        reasonDlg.showAndWait().ifPresent(rejReason -> {
+                            if (rejReason.trim().isEmpty()) return;
+                            SoundManager.getInstance().play(SoundManager.LEAVE_REJECTED);
+                            l.setStatus("REJECTED");
+                            l.setRejectionReason(rejReason.trim());
+                            try {
+                                serviceLeave.modifier(l);
+                                // Notify employee with reason
+                                serviceNotification.create(l.getUserId(), "LEAVE",
+                                        "\u274C Leave Rejected",
+                                        "Your " + l.getType() + " leave (" + l.getStartDate() + " to " + l.getEndDate() + ") was rejected.\nReason: " + rejReason.trim(),
+                                        l.getId(), "LEAVE");
+                                showLeaves();
+                            } catch (SQLException ex) {
+                                showError("Failed to reject: " + ex.getMessage());
+                            }
+                        });
                     });
                     actions.getChildren().addAll(approveBtn, rejectBtn);
                 }
 
+                // Show rejection reason for rejected leaves
+                if ("REJECTED".equals(l.getStatus()) && l.getRejectionReason() != null && !l.getRejectionReason().isEmpty()) {
+                    Tooltip rejTip = new Tooltip("Rejection reason: " + l.getRejectionReason());
+                    rejTip.setWrapText(true);
+                    rejTip.setMaxWidth(300);
+                    status.setTooltip(rejTip);
+                    status.setText("REJECTED \u24D8");
+                }
+
                 Button deleteBtn = new Button("\uD83D\uDDD1");
                 deleteBtn.getStyleClass().addAll("hr-icon-btn", "hr-danger-btn");
+                // Only allow deleting PENDING leaves (employees can't delete approved/rejected)
+                if (!isHrOrAdmin && !"PENDING".equals(l.getStatus())) {
+                    deleteBtn.setDisable(true);
+                    deleteBtn.setOpacity(0.3);
+                }
                 deleteBtn.setOnAction(e -> {
                     SoundManager.getInstance().play(SoundManager.TASK_DELETED);
                     confirmDelete("leave request", "", () -> {
@@ -1452,13 +1554,61 @@ public class HRModuleController {
         reasonField.setPromptText("Reason for leave");
         reasonField.getStyleClass().add("hr-form-control");
 
+        // Leave balance info label — shows remaining days by type
+        Label balanceLabel = new Label();
+        balanceLabel.setStyle("-fx-text-fill: #8A8A9A; -fx-font-size: 11; -fx-padding: 4 0 0 0;");
+        balanceLabel.setWrapText(true);
+
+        // Warning label for validation messages
+        Label warningLabel = new Label();
+        warningLabel.setStyle("-fx-text-fill: #FF6B35; -fx-font-size: 11;");
+        warningLabel.setWrapText(true);
+        warningLabel.setVisible(false);
+        warningLabel.setManaged(false);
+
+        // Compute / update leave balance display
+        Runnable updateBalance = () -> {
+            String sel = userCombo.getValue();
+            String leaveType = typeCombo.getValue();
+            if (sel == null || leaveType == null) return;
+            int uid = Integer.parseInt(sel.split(" - ")[0]);
+            try {
+                List<Leave> userLeaves = serviceLeave.getByUser(uid);
+                int currentYear = LocalDate.now().getYear();
+                // Count approved + pending days for each type this year
+                long vacDays = 0, sickDays = 0, unpDays = 0;
+                for (Leave lv : userLeaves) {
+                    if (lv.getStartDate() == null || "REJECTED".equals(lv.getStatus())) continue;
+                    if (lv.getStartDate().toLocalDate().getYear() != currentYear) continue;
+                    long d = lv.getDays();
+                    switch (lv.getType() != null ? lv.getType() : "") {
+                        case "VACATION": vacDays += d; break;
+                        case "SICK": sickDays += d; break;
+                        case "UNPAID": unpDays += d; break;
+                    }
+                }
+                long remVac = Leave.MAX_VACATION_DAYS - vacDays;
+                long remSick = Leave.MAX_SICK_DAYS - sickDays;
+                long remUnp = Leave.MAX_UNPAID_DAYS - unpDays;
+                balanceLabel.setText(String.format("Balance (%d): Vacation %d/%d \u2502 Sick %d/%d \u2502 Unpaid %d/%d",
+                        currentYear, remVac, Leave.MAX_VACATION_DAYS, remSick, Leave.MAX_SICK_DAYS, remUnp, Leave.MAX_UNPAID_DAYS));
+            } catch (SQLException ignored) {
+                balanceLabel.setText("Could not load balance.");
+            }
+        };
+        updateBalance.run();
+        userCombo.setOnAction(e -> updateBalance.run());
+        typeCombo.setOnAction(e -> updateBalance.run());
+
         content.getChildren().addAll(
                 header,
                 new Label("Employee") {{ getStyleClass().add("hr-form-label"); }}, userCombo,
                 new Label("Type") {{ getStyleClass().add("hr-form-label"); }}, typeCombo,
+                balanceLabel,
                 new Label("Start Date") {{ getStyleClass().add("hr-form-label"); }}, startPicker,
                 new Label("End Date") {{ getStyleClass().add("hr-form-label"); }}, endPicker,
-                new Label("Reason") {{ getStyleClass().add("hr-form-label"); }}, reasonField
+                new Label("Reason") {{ getStyleClass().add("hr-form-label"); }}, reasonField,
+                warningLabel
         );
 
         dp.setContent(content);
@@ -1479,6 +1629,45 @@ public class HRModuleController {
         });
 
         dialog.showAndWait().ifPresent(l -> {
+            // Validation: end date >= start date
+            if (l.getEndDate().before(l.getStartDate())) {
+                showError("End date must be on or after start date.");
+                return;
+            }
+
+            // Validation: no overlapping leaves
+            try {
+                List<Leave> userLeaves = serviceLeave.getByUser(l.getUserId());
+                for (Leave ul : userLeaves) {
+                    if ("REJECTED".equals(ul.getStatus())) continue;
+                    if (existing != null && ul.getId() == existing.getId()) continue;
+                    if (ul.getStartDate() != null && ul.getEndDate() != null &&
+                            !l.getEndDate().before(ul.getStartDate()) && !l.getStartDate().after(ul.getEndDate())) {
+                        showError("Overlapping leave detected!\nExisting: " + ul.getType() + " " + ul.getStartDate() + " to " + ul.getEndDate() + " (" + ul.getStatus() + ")");
+                        return;
+                    }
+                }
+            } catch (SQLException ignored) {}
+
+            // Validation: check leave balance
+            try {
+                List<Leave> userLeaves = serviceLeave.getByUser(l.getUserId());
+                int currentYear = l.getStartDate().toLocalDate().getYear();
+                long usedDays = userLeaves.stream()
+                        .filter(ul -> !"REJECTED".equals(ul.getStatus()))
+                        .filter(ul -> ul.getStartDate() != null && ul.getStartDate().toLocalDate().getYear() == currentYear)
+                        .filter(ul -> ul.getType() != null && ul.getType().equals(l.getType()))
+                        .filter(ul -> existing == null || ul.getId() != existing.getId())
+                        .mapToLong(Leave::getDays).sum();
+                int maxDays = "SICK".equals(l.getType()) ? Leave.MAX_SICK_DAYS :
+                              "UNPAID".equals(l.getType()) ? Leave.MAX_UNPAID_DAYS : Leave.MAX_VACATION_DAYS;
+                long remaining = maxDays - usedDays;
+                if (l.getDays() > remaining) {
+                    showError("Insufficient " + l.getType() + " balance!\nRequested: " + l.getDays() + " days, Remaining: " + remaining + " days.");
+                    return;
+                }
+            } catch (SQLException ignored) {}
+
             try {
                 if (existing == null) {
                     serviceLeave.ajouter(l);
@@ -1810,6 +1999,43 @@ public class HRModuleController {
         });
 
         dialog.showAndWait().ifPresent(p -> {
+            // Payroll validation
+            if (p.getUserId() <= 0) {
+                showError("Please select an employee.");
+                return;
+            }
+            if (p.getBaseSalary() < 0) {
+                showError("Base salary cannot be negative.");
+                return;
+            }
+            if (p.getBonus() < 0) {
+                showError("Bonus cannot be negative.");
+                return;
+            }
+            if (p.getDeductions() < 0) {
+                showError("Deductions cannot be negative.");
+                return;
+            }
+            if (p.getTotalHoursWorked() < 0) {
+                showError("Hours worked cannot be negative.");
+                return;
+            }
+            if (p.getHourlyRate() < 0) {
+                showError("Hourly rate cannot be negative.");
+                return;
+            }
+            if (p.getBaseSalary() == 0 && p.getTotalHoursWorked() == 0) {
+                showError("Base salary or hours worked must be greater than zero.");
+                return;
+            }
+            // Minimum wage check (~$8.5/hr Tunisia SMIG approximation)
+            double effectiveHourly = p.getTotalHoursWorked() > 0 ? p.getNetSalary() / p.getTotalHoursWorked() : 0;
+            if (p.getTotalHoursWorked() > 0 && effectiveHourly < 2.0) {
+                showError("Net pay (" + String.format("%.2f", p.getNetSalary()) + ") / hours (" + String.format("%.1f", p.getTotalHoursWorked()) + ") = "
+                        + String.format("%.2f", effectiveHourly) + "/hr\nThis is below the minimum threshold (2.00/hr). Please review.");
+                return;
+            }
+
             try {
                 if (existing == null) {
                     servicePayroll.ajouter(p);
@@ -1877,81 +2103,96 @@ public class HRModuleController {
                 try { defaultRate = Double.parseDouble(defaultRateField.getText().trim()); }
                 catch (NumberFormatException ex) { defaultRate = 15.0; }
 
-                // Fetch existing payrolls if skip is checked
-                Set<Integer> existingUserIds = new HashSet<>();
-                if (skipExisting.isSelected()) {
-                    try {
-                        List<Payroll> existing = servicePayroll.recuperer();
-                        for (Payroll ep : existing) {
-                            if (ep.getMonth() != null &&
-                                    ep.getMonth().toLocalDate().getMonth() == selectedMonth.getMonth() &&
-                                    ep.getMonth().toLocalDate().getYear() == selectedMonth.getYear()) {
-                                existingUserIds.add(ep.getUserId());
-                            }
-                        }
-                    } catch (SQLException e) { /* continue */ }
-                }
-
-                int generated = 0, skipped = 0;
                 final double baseDefaultRate = defaultRate;
+                final boolean doSkip = skipExisting.isSelected();
 
-                for (User u : allUsers) {
-                    if ("ADMIN".equals(u.getRole())) continue;
-                    if (existingUserIds.contains(u.getId())) { skipped++; continue; }
-                    try {
-                        // Count attendance hours for this user in the selected month
-                        List<Attendance> userAtt = serviceAttendance.getByUser(u.getId());
-                        double totalHours = userAtt.stream()
-                                .filter(a -> a.getDate() != null &&
-                                        a.getDate().toLocalDate().getMonth() == selectedMonth.getMonth() &&
-                                        a.getDate().toLocalDate().getYear() == selectedMonth.getYear())
-                                .mapToDouble(Attendance::getHoursWorked)
-                                .sum();
+                // Show progress indicator
+                ProgressIndicator progress = new ProgressIndicator();
+                progress.setPrefSize(40, 40);
+                Label progressLabel = new Label("Generating payroll...");
+                progressLabel.setStyle("-fx-text-fill: #8A8A9A; -fx-font-size: 13;");
+                VBox progressBox = new VBox(10, progress, progressLabel);
+                progressBox.setAlignment(Pos.CENTER);
+                progressBox.setPadding(new Insets(40));
+                contentArea.getChildren().add(progressBox);
 
-                        double hourlyRate = u.getHourlyRate() > 0 ? u.getHourlyRate() : baseDefaultRate;
-                        double baseSalary;
-                        if (u.getMonthlySalary() > 0) {
-                            // Monthly salaried employee
-                            baseSalary = u.getMonthlySalary();
-                        } else {
-                            // Hourly employee: pay = hours * rate
-                            baseSalary = totalHours * hourlyRate;
-                        }
-
-                        // Count absent days for deductions
-                        long absentDays = userAtt.stream()
-                                .filter(a -> a.getDate() != null &&
-                                        a.getDate().toLocalDate().getMonth() == selectedMonth.getMonth() &&
-                                        a.getDate().toLocalDate().getYear() == selectedMonth.getYear() &&
-                                        "ABSENT".equals(a.getStatus()))
-                                .count();
-                        // Deduction: ~daily rate * absent days (assume 22 working days)
-                        double dailyRate = baseSalary > 0 ? baseSalary / 22.0 : 0;
-                        double deductions = absentDays * dailyRate;
-                        double netSalary = baseSalary - deductions;
-
-                        Payroll p = new Payroll();
-                        p.setUserId(u.getId());
-                        p.setMonth(Date.valueOf(selectedMonth));
-                        p.setYear(selectedMonth.getYear());
-                        p.setBaseSalary(baseSalary);
-                        p.setBonus(0);
-                        p.setDeductions(deductions);
-                        p.setNetSalary(netSalary);
-                        p.setAmount(netSalary);
-                        p.setTotalHoursWorked(totalHours);
-                        p.setHourlyRate(hourlyRate);
-                        p.setStatus("PENDING");
-
-                        servicePayroll.ajouter(p);
-                        generated++;
-                    } catch (SQLException e) {
-                        System.err.println("Failed to generate payroll for user " + u.getId() + ": " + e.getMessage());
+                AppThreadPool.io(() -> {
+                    // Fetch existing payrolls if skip is checked
+                    Set<Integer> existingUserIds = new HashSet<>();
+                    if (doSkip) {
+                        try {
+                            List<Payroll> existing = servicePayroll.recuperer();
+                            for (Payroll ep : existing) {
+                                if (ep.getMonth() != null &&
+                                        ep.getMonth().toLocalDate().getMonth() == selectedMonth.getMonth() &&
+                                        ep.getMonth().toLocalDate().getYear() == selectedMonth.getYear()) {
+                                    existingUserIds.add(ep.getUserId());
+                                }
+                            }
+                        } catch (SQLException e) { /* continue */ }
                     }
-                }
-                showInfo("Payroll generated for " + generated + " employees." +
-                        (skipped > 0 ? "\n" + skipped + " skipped (already existed)." : ""));
-                showPayroll();
+
+                    int generated = 0, skipped = 0;
+
+                    for (User u : allUsers) {
+                        if ("ADMIN".equals(u.getRole())) continue;
+                        if (existingUserIds.contains(u.getId())) { skipped++; continue; }
+                        try {
+                            // Count attendance hours for this user in the selected month
+                            List<Attendance> userAtt = serviceAttendance.getByUser(u.getId());
+                            double totalHours = userAtt.stream()
+                                    .filter(a -> a.getDate() != null &&
+                                            a.getDate().toLocalDate().getMonth() == selectedMonth.getMonth() &&
+                                            a.getDate().toLocalDate().getYear() == selectedMonth.getYear())
+                                    .mapToDouble(Attendance::getHoursWorked)
+                                    .sum();
+
+                            double hourlyRate = u.getHourlyRate() > 0 ? u.getHourlyRate() : baseDefaultRate;
+                            double baseSalary;
+                            if (u.getMonthlySalary() > 0) {
+                                baseSalary = u.getMonthlySalary();
+                            } else {
+                                baseSalary = totalHours * hourlyRate;
+                            }
+
+                            long absentDays = userAtt.stream()
+                                    .filter(a -> a.getDate() != null &&
+                                            a.getDate().toLocalDate().getMonth() == selectedMonth.getMonth() &&
+                                            a.getDate().toLocalDate().getYear() == selectedMonth.getYear() &&
+                                            "ABSENT".equals(a.getStatus()))
+                                    .count();
+                            double dailyRate = baseSalary > 0 ? baseSalary / 22.0 : 0;
+                            double deductions = absentDays * dailyRate;
+                            double netSalary = baseSalary - deductions;
+
+                            Payroll p = new Payroll();
+                            p.setUserId(u.getId());
+                            p.setMonth(Date.valueOf(selectedMonth));
+                            p.setYear(selectedMonth.getYear());
+                            p.setBaseSalary(baseSalary);
+                            p.setBonus(0);
+                            p.setDeductions(deductions);
+                            p.setNetSalary(netSalary);
+                            p.setAmount(netSalary);
+                            p.setTotalHoursWorked(totalHours);
+                            p.setHourlyRate(hourlyRate);
+                            p.setStatus("PENDING");
+
+                            servicePayroll.ajouter(p);
+                            generated++;
+                        } catch (SQLException e) {
+                            System.err.println("Failed to generate payroll for user " + u.getId() + ": " + e.getMessage());
+                        }
+                    }
+
+                    final int gen = generated, skip = skipped;
+                    Platform.runLater(() -> {
+                        contentArea.getChildren().remove(progressBox);
+                        showInfo("Payroll generated for " + gen + " employees." +
+                                (skip > 0 ? "\n" + skip + " skipped (already existed)." : ""));
+                        showPayroll();
+                    });
+                });
             }
         });
     }

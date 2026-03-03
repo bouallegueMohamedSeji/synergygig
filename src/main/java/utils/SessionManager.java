@@ -72,4 +72,19 @@ public class SessionManager {
     public void setDarkTheme(boolean dark) {
         this.darkTheme = dark;
     }
+
+    // ── Pending Navigation ──
+    private Integer pendingCommunityProfileId = null;
+
+    /** Set a user ID to navigate to when Community opens. Consumed once. */
+    public void setPendingCommunityProfile(int userId) {
+        this.pendingCommunityProfileId = userId;
+    }
+
+    /** Get and clear the pending profile navigation. Returns null if none. */
+    public Integer consumePendingCommunityProfile() {
+        Integer id = pendingCommunityProfileId;
+        pendingCommunityProfileId = null;
+        return id;
+    }
 }

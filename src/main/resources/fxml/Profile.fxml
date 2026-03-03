@@ -29,8 +29,8 @@
                 <Label text="Your identity at a glance" styleClass="dashboard-card-description"/>
             </VBox>
             <VBox styleClass="dashboard-card-content" spacing="16" alignment="CENTER">
-                <!-- Avatar with image support (shadcn-style) -->
-                <StackPane alignment="CENTER" minWidth="80" minHeight="80" maxWidth="80" maxHeight="80">
+                <!-- Avatar with completion ring -->
+                <StackPane fx:id="avatarRingPane" alignment="CENTER" minWidth="96" minHeight="96" maxWidth="96" maxHeight="96">
                     <!-- Fallback: initial letter circle -->
                     <VBox styleClass="avatar-circle" alignment="CENTER"
                           minWidth="80" minHeight="80" maxWidth="80" maxHeight="80">
@@ -45,6 +45,8 @@
                         </clip>
                     </ImageView>
                 </StackPane>
+
+                <Label fx:id="completionLabel" text="" styleClass="stat-trend" style="-fx-font-size: 11;"/>
 
                 <!-- Upload avatar button -->
                 <Button text="Upload Photo" onAction="#handleUploadAvatar" styleClass="btn-secondary"

@@ -34,6 +34,10 @@
                     onAction="#filterInProgress"/>
             <Button fx:id="filterCompleted" text="Completed" styleClass="pm-filter-chip"
                     onAction="#filterCompleted"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="🔍 Code Review" styleClass="pm-filter-chip" onAction="#openCodeReview"/>
+            <Button text="📝 Meeting Notes" styleClass="pm-filter-chip" onAction="#openMeetingNotes"/>
+            <Button text="📅 Auto Scheduler" styleClass="pm-filter-chip" onAction="#openAutoScheduler"/>
         </HBox>
 
         <!-- Project cards grid (scrollable) -->
@@ -163,6 +167,22 @@
                 <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
                             style="-fx-background-color: transparent; -fx-border-color: transparent;">
                     <VBox fx:id="colDone" spacing="8" styleClass="pm-kanban-cards">
+                        <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                    </VBox>
+                </ScrollPane>
+            </VBox>
+
+            <!-- IN REVIEW column -->
+            <VBox styleClass="pm-kanban-column" HBox.hgrow="ALWAYS" spacing="0">
+                <HBox styleClass="pm-kanban-header,pm-kanban-review" alignment="CENTER_LEFT" spacing="8">
+                    <Label text="◉" styleClass="pm-kanban-dot"/>
+                    <Label text="In Review" styleClass="pm-kanban-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="countInReview" text="0" styleClass="pm-kanban-count"/>
+                </HBox>
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                            style="-fx-background-color: transparent; -fx-border-color: transparent;">
+                    <VBox fx:id="colInReview" spacing="8" styleClass="pm-kanban-cards">
                         <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
                     </VBox>
                 </ScrollPane>

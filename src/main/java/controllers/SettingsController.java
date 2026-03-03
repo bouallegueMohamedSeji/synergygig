@@ -35,11 +35,20 @@ public class SettingsController {
     @FXML private VBox voiceVideoPanel;
     @FXML private VBox notificationsPanel;
     @FXML private VBox apiKeysPanel;
+    @FXML private VBox themeSchedulePanel;
 
     // ── API Keys ──
     @FXML private VBox apiFieldsContainer;
     @FXML private Button btnSaveApiKeys;
     @FXML private Label lblApiKeyStatus;
+
+    // ── Theme Schedule ──
+    @FXML private Button btnThemeSchedule;
+    @FXML private TextField txtLightTime;
+    @FXML private TextField txtDarkTime;
+    @FXML private CheckBox chkScheduleEnabled;
+    @FXML private Button btnSaveSchedule;
+    @FXML private Label lblScheduleStatus;
 
     // ── Voice & Video ──
     @FXML private ComboBox<String> micCombo;
@@ -171,44 +180,81 @@ public class SettingsController {
 
     @FXML
     private void showVoiceVideo() {
+        hideAllPanels();
         voiceVideoPanel.setVisible(true);
         voiceVideoPanel.setManaged(true);
-        notificationsPanel.setVisible(false);
-        notificationsPanel.setManaged(false);
-        apiKeysPanel.setVisible(false);
-        apiKeysPanel.setManaged(false);
         setActiveNav(btnVoiceVideo);
     }
 
     @FXML
     private void showNotifications() {
-        voiceVideoPanel.setVisible(false);
-        voiceVideoPanel.setManaged(false);
+        hideAllPanels();
         notificationsPanel.setVisible(true);
         notificationsPanel.setManaged(true);
-        apiKeysPanel.setVisible(false);
-        apiKeysPanel.setManaged(false);
         setActiveNav(btnNotifications);
     }
 
     @FXML
     private void showApiKeys() {
-        voiceVideoPanel.setVisible(false);
-        voiceVideoPanel.setManaged(false);
-        notificationsPanel.setVisible(false);
-        notificationsPanel.setManaged(false);
+        hideAllPanels();
         apiKeysPanel.setVisible(true);
         apiKeysPanel.setManaged(true);
         setActiveNav(btnApiKeys);
+    }
+
+    @FXML
+    private void showThemeSchedule() {
+        hideAllPanels();
+        themeSchedulePanel.setVisible(true);
+        themeSchedulePanel.setManaged(true);
+        setActiveNav(btnThemeSchedule);
+        loadSchedulePrefs();
+    }
+
+    private void hideAllPanels() {
+        voiceVideoPanel.setVisible(false);  voiceVideoPanel.setManaged(false);
+        notificationsPanel.setVisible(false); notificationsPanel.setManaged(false);
+        apiKeysPanel.setVisible(false);      apiKeysPanel.setManaged(false);
+        themeSchedulePanel.setVisible(false); themeSchedulePanel.setManaged(false);
     }
 
     private void setActiveNav(Button active) {
         btnVoiceVideo.getStyleClass().remove("settings-nav-active");
         btnNotifications.getStyleClass().remove("settings-nav-active");
         btnApiKeys.getStyleClass().remove("settings-nav-active");
+        btnThemeSchedule.getStyleClass().remove("settings-nav-active");
         if (active != null && !active.getStyleClass().contains("settings-nav-active")) {
             active.getStyleClass().add("settings-nav-active");
         }
+    }
+
+    // ═══════════════════════════════════════════
+    //  THEME SCHEDULE
+    // ═══════════════════════════════════════════
+
+    private void loadSchedulePrefs() {
+        txtLightTime.setText(AppConfig.get("theme.schedule.light", "07:00"));
+        txtDarkTime.setText(AppConfig.get("theme.schedule.dark", "19:00"));
+        chkScheduleEnabled.setSelected("true".equalsIgnoreCase(
+                AppConfig.get("theme.schedule.enabled", "false")));
+    }
+
+    @FXML
+    private void handleSaveSchedule() {
+        String lightTime = txtLightTime.getText().trim();
+        String darkTime  = txtDarkTime.getText().trim();
+        if (!lightTime.matches("\\d{1,2}:\\d{2}") || !darkTime.matches("\\d{1,2}:\\d{2}")) {
+            lblScheduleStatus.setText("Invalid time format. Use HH:mm");
+            lblScheduleStatus.setStyle("-fx-text-fill: #ff6b6b;");
+            return;
+        }
+        AppConfig.set("theme.schedule.light", lightTime);
+        AppConfig.set("theme.schedule.dark", darkTime);
+        AppConfig.set("theme.schedule.enabled",
+                String.valueOf(chkScheduleEnabled.isSelected()));
+        try { AppConfig.save(); } catch (Exception ignored) {}
+        lblScheduleStatus.setText("Schedule saved ✓");
+        lblScheduleStatus.setStyle("-fx-text-fill: #51cf66;");
     }
 
     // ═══════════════════════════════════════════

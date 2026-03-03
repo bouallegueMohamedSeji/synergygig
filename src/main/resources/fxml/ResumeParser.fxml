@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<ScrollPane fx:controller="controllers.ResumeParserController"
+            xmlns:fx="http://javafx.com/fxml" fitToWidth="true"
+            styleClass="content-scroll" hbarPolicy="NEVER">
+    <VBox spacing="24" styleClass="page-container" alignment="TOP_CENTER">
+        <padding><Insets top="32" right="40" bottom="40" left="40"/></padding>
+
+        <Button text="← Back" styleClass="tool-back-btn" onAction="#handleBack"/>
+
+        <!-- ── Header ── -->
+        <VBox spacing="6">
+            <Label text="📄 Resume / CV Parser" styleClass="page-title" style="-fx-font-size: 26; -fx-font-weight: bold;"/>
+            <Label text="Upload a PDF or DOCX resume and let AI extract structured data" styleClass="page-subtitle"
+                   style="-fx-font-size: 13; -fx-opacity: 0.7;"/>
+        </VBox>
+
+        <!-- ── Upload area ── -->
+        <VBox fx:id="dropZone" spacing="14" alignment="CENTER"
+              styleClass="card" style="-fx-min-height: 180; -fx-cursor: hand;"
+              onMouseClicked="#handleUpload">
+            <padding><Insets top="32" right="32" bottom="32" left="32"/></padding>
+            <Label fx:id="dropIcon" text="📁" style="-fx-font-size: 42;"/>
+            <Label fx:id="dropLabel" text="Click to select a PDF or DOCX file"
+                   style="-fx-font-size: 15; -fx-font-weight: bold;"/>
+            <Label text="Supported: .pdf, .docx" style="-fx-font-size: 11; -fx-opacity: 0.5;"/>
+            <Button fx:id="uploadBtn" text="Choose File" onAction="#handleUpload"
+                    styleClass="btn-primary" style="-fx-font-size: 13;"/>
+        </VBox>
+
+        <!-- ── Status ── -->
+        <HBox fx:id="statusBar" spacing="10" alignment="CENTER" visible="false" managed="false">
+            <ProgressIndicator fx:id="spinner" prefWidth="20" prefHeight="20"/>
+            <Label fx:id="statusLabel" text="Parsing..." style="-fx-font-size: 13;"/>
+        </HBox>
+
+        <!-- ── Result cards ── -->
+        <VBox fx:id="resultContainer" spacing="18" visible="false" managed="false">
+
+            <!-- Identity -->
+            <VBox styleClass="card" spacing="8">
+                <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
+                <Label text="👤 Identity" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                <Separator/>
+                <HBox spacing="20">
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Name" style="-fx-font-size: 11; -fx-opacity: 0.6;"/>
+                        <Label fx:id="resName" style="-fx-font-size: 14; -fx-font-weight: bold;" wrapText="true"/>
+                    </VBox>
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Email" style="-fx-font-size: 11; -fx-opacity: 0.6;"/>
+                        <Label fx:id="resEmail" style="-fx-font-size: 14;" wrapText="true"/>
+                    </VBox>
+                </HBox>
+                <HBox spacing="20">
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Phone" style="-fx-font-size: 11; -fx-opacity: 0.6;"/>
+                        <Label fx:id="resPhone" style="-fx-font-size: 14;" wrapText="true"/>
+                    </VBox>
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Location" style="-fx-font-size: 11; -fx-opacity: 0.6;"/>
+                        <Label fx:id="resLocation" style="-fx-font-size: 14;" wrapText="true"/>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+            <!-- Summary -->
+            <VBox styleClass="card" spacing="8">
+                <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
+                <Label text="📝 Summary" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                <Separator/>
+                <Label fx:id="resSummary" wrapText="true" style="-fx-font-size: 13;"/>
+            </VBox>
+
+            <!-- Skills -->
+            <VBox styleClass="card" spacing="8">
+                <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
+                <Label text="🛠 Skills" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                <Separator/>
+                <FlowPane fx:id="skillsFlow" hgap="8" vgap="8"/>
+            </VBox>
+
+            <!-- Experience -->
+            <VBox styleClass="card" spacing="8">
+                <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
+                <Label text="💼 Experience" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                <Separator/>
+                <VBox fx:id="experienceBox" spacing="12"/>
+            </VBox>
+
+            <!-- Education -->
+            <VBox styleClass="card" spacing="8">
+                <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
+                <Label text="🎓 Education" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                <Separator/>
+                <VBox fx:id="educationBox" spacing="10"/>
+            </VBox>
+
+            <!-- Certifications & Languages -->
+            <HBox spacing="18">
+                <VBox styleClass="card" spacing="8" HBox.hgrow="ALWAYS">
+                    <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
+                    <Label text="📜 Certifications" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                    <Separator/>
+                    <VBox fx:id="certsBox" spacing="6"/>
+                </VBox>
+                <VBox styleClass="card" spacing="8" HBox.hgrow="ALWAYS">
+                    <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
+                    <Label text="🌐 Languages" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                    <Separator/>
+                    <VBox fx:id="languagesBox" spacing="6"/>
+                </VBox>
+            </HBox>
+
+            <!-- Actions -->
+            <HBox spacing="12" alignment="CENTER">
+                <Button text="🔄 Parse Another" onAction="#handleReset" styleClass="btn-primary"/>
+                <Button text="📋 Copy as Text" onAction="#handleCopy" styleClass="btn-secondary"/>
+            </HBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

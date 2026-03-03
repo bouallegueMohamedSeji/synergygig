@@ -7,6 +7,8 @@ public class Contract {
 
     // ── Status constants ──
     public static final String STATUS_DRAFT              = "DRAFT";
+    public static final String STATUS_PENDING_REVIEW     = "PENDING_REVIEW";     // sent to applicant for review
+    public static final String STATUS_COUNTER_PROPOSED   = "COUNTER_PROPOSED";   // applicant counter-offered
     public static final String STATUS_PENDING_SIGNATURE  = "PENDING_SIGNATURE";
     public static final String STATUS_ACTIVE             = "ACTIVE";
     public static final String STATUS_COMPLETED          = "COMPLETED";
@@ -20,7 +22,7 @@ public class Contract {
     private String terms;
     private double amount;
     private String currency;
-    private String status;           // DRAFT, PENDING_SIGNATURE, ACTIVE, COMPLETED, TERMINATED, DISPUTED
+    private String status;
     private Integer riskScore;
     private String riskFactors;
     private String blockchainHash;
@@ -29,6 +31,12 @@ public class Contract {
     private Date startDate;
     private Date endDate;
     private Timestamp createdAt;
+
+    // ── Negotiation fields ──
+    private Double counterAmount;       // applicant's counter-proposed amount
+    private String counterTerms;        // applicant's proposed term changes
+    private String negotiationNotes;    // free-text history/comments
+    private int negotiationRound;       // how many rounds of negotiation
 
     public Contract() {}
 
@@ -118,6 +126,20 @@ public class Contract {
 
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+
+    // ── Negotiation getters/setters ──
+
+    public Double getCounterAmount() { return counterAmount; }
+    public void setCounterAmount(Double counterAmount) { this.counterAmount = counterAmount; }
+
+    public String getCounterTerms() { return counterTerms; }
+    public void setCounterTerms(String counterTerms) { this.counterTerms = counterTerms; }
+
+    public String getNegotiationNotes() { return negotiationNotes; }
+    public void setNegotiationNotes(String negotiationNotes) { this.negotiationNotes = negotiationNotes; }
+
+    public int getNegotiationRound() { return negotiationRound; }
+    public void setNegotiationRound(int negotiationRound) { this.negotiationRound = negotiationRound; }
 
     @Override
     public String toString() {

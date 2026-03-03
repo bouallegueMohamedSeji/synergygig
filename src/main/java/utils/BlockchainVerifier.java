@@ -39,8 +39,10 @@ public class BlockchainVerifier {
             byte[] hashBytes = digest.digest(data.getBytes(StandardCharsets.UTF_8));
             String hashHex = bytesToHex(hashBytes);
 
-            // Store the generation record for later re-verification
-            storeHashRecord(contractId, hashHex, lastHash, timestamp);
+            // Store the generation record for later re-verification (skip in API mode)
+            if (!AppConfig.isApiMode()) {
+                storeHashRecord(contractId, hashHex, lastHash, timestamp);
+            }
 
             lastHash = hashHex; // chain to next contract
             return hashHex;
@@ -86,6 +88,21 @@ public class BlockchainVerifier {
     public static VerificationResult verifyContract(int contractId, String hash, String storedHash) {
         if (!isValidHash(hash)) {
             return new VerificationResult(false, false, "Invalid SHA-256 hash format.");
+        }
+
+        // In API mode, skip DB verification — use storedHash fallback directly
+        if (AppConfig.isApiMode()) {
+            if (storedHash != null && !storedHash.isEmpty()) {
+                if (hash.equalsIgnoreCase(storedHash)) {
+                    return new VerificationResult(true, true,
+                            "✅ VERIFIED — Hash matches contract record (API mode).");
+                } else {
+                    return new VerificationResult(true, false,
+                            "❌ MISMATCH — Hash does not match contract #" + contractId + ".");
+                }
+            }
+            return new VerificationResult(isValidHash(hash), false,
+                    "⚠️ DB verification unavailable in API mode. Hash format is " + (isValidHash(hash) ? "valid" : "invalid") + ".");
         }
 
         try (Connection conn = MyDatabase.getInstance().getConnection()) {
@@ -163,6 +180,9 @@ public class BlockchainVerifier {
      * @return ChainIntegrityResult with details
      */
     public static ChainIntegrityResult verifyChainIntegrity() {
+        if (AppConfig.isApiMode()) {
+            return new ChainIntegrityResult(false, 0, 0, "Chain verification not available in API mode (no direct DB access).");
+        }
         try (Connection conn = MyDatabase.getInstance().getConnection()) {
             String sql = "SELECT id, contract_id, hash, previous_hash, generated_at FROM blockchain_ledger ORDER BY id ASC";
             List<String[]> records = new ArrayList<>();
@@ -216,6 +236,7 @@ public class BlockchainVerifier {
      * Store a hash generation record in the blockchain ledger table.
      */
     private static void storeHashRecord(int contractId, String hash, String previousHash, long timestamp) {
+        if (AppConfig.isApiMode()) return; // no JDBC in API mode
         try (Connection conn = MyDatabase.getInstance().getConnection()) {
             // Create table if not exists (idempotent)
             conn.createStatement().executeUpdate(
