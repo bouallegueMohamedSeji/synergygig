@@ -23,6 +23,7 @@ public class MyDatabase {
 
     private static volatile MyDatabase instance;
     private HikariDataSource dataSource;
+    private boolean warnedNoPool = false;
 
     private MyDatabase() {
         // Skip pool init in API mode — JDBC is not used
@@ -85,7 +86,10 @@ public class MyDatabase {
      */
     public Connection getConnection() {
         if (dataSource == null) {
-            System.err.println("\u274c No connection pool (API mode?) — JDBC not available");
+            if (!warnedNoPool) {
+                warnedNoPool = true;
+                System.err.println("\u274c No connection pool (API mode?) — JDBC not available");
+            }
             return null;
         }
         try {

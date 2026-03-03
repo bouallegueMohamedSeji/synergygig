@@ -10,6 +10,8 @@ public class Interview {
     private Timestamp dateTime;
     private String status; // PENDING, ACCEPTED, REJECTED
     private String meetLink;
+    private int applicationId;  // linked JobApplication (0 = standalone)
+    private int offerId;        // linked Offer (0 = standalone)
 
     public Interview() {
     }
@@ -29,6 +31,17 @@ public class Interview {
         this.dateTime = dateTime;
         this.status = status;
         this.meetLink = meetLink;
+    }
+
+    public Interview(int id, int organizerId, int candidateId, Timestamp dateTime, String status, String meetLink, int applicationId, int offerId) {
+        this.id = id;
+        this.organizerId = organizerId;
+        this.candidateId = candidateId;
+        this.dateTime = dateTime;
+        this.status = status;
+        this.meetLink = meetLink;
+        this.applicationId = applicationId;
+        this.offerId = offerId;
     }
 
     // Getters & Setters
@@ -78,5 +91,21 @@ public class Interview {
 
     public void setMeetLink(String meetLink) {
         this.meetLink = meetLink;
+    }
+
+    public int getApplicationId() {
+        return applicationId;
+    }
+
+    public void setApplicationId(int applicationId) {
+        this.applicationId = applicationId;
+    }
+
+    public int getOfferId() {
+        return offerId;
+    }
+
+    public void setOfferId(int offerId) {
+        this.offerId = offerId;
     }
 }

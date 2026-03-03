@@ -4,6 +4,11 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import javafx.animation.Animation;
+import javafx.animation.Interpolator;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -11,9 +16,23 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.*;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.effect.GaussianBlur;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.paint.CycleMethod;
+import javafx.scene.paint.LinearGradient;
+import javafx.scene.paint.Stop;
+import javafx.scene.shape.Arc;
+import javafx.scene.shape.ArcType;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
+import javafx.scene.shape.StrokeLineCap;
+import javafx.scene.shape.StrokeType;
+import javafx.scene.transform.Rotate;
 import utils.AppConfig;
 import utils.AppThreadPool;
+import utils.SessionManager;
 import utils.SoundManager;
 
 import java.net.URI;
@@ -51,6 +70,9 @@ public class JobScannerController implements Stoppable {
     @FXML private ScrollPane resultsScroll;
     @FXML private VBox resultsContainer;
     @FXML private StackPane contentArea;
+    @FXML private StackPane radarContainer;
+
+    private Timeline radarSpin;
 
     private static final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -294,6 +316,130 @@ public class JobScannerController implements Stoppable {
         loadingState.setManaged("loading".equals(state));
         resultsScroll.setVisible("results".equals(state));
         resultsScroll.setManaged("results".equals(state));
+
+        // Rebuild & start radar on loading; stop otherwise
+        if ("loading".equals(state)) {
+            buildRadarLoader();
+            if (radarSpin != null) radarSpin.play();
+        } else if (radarSpin != null) {
+            radarSpin.stop();
+        }
+    }
+
+    /**
+     * Builds a radar-style animated loader with theme-aware colors.
+     * Uses a fixed-size Pane so StackPane centering stays rock-solid
+     * even while the blurred sweep rotates.
+     */
+    private void buildRadarLoader() {
+        if (radarContainer == null) return;
+
+        boolean dark = SessionManager.getInstance().isDarkTheme();
+        double size = 150;
+        double cx = size / 2, cy = size / 2;
+
+        // ── Theme colors ──
+        Color glowColor, borderColor, dashedColor, sweepColor, bgColor, crossColor;
+        if (dark) {
+            bgColor     = Color.web("#0D0E12");
+            borderColor = Color.web("#2C666E");
+            dashedColor = Color.web("#1E4A50");
+            crossColor  = Color.web("#1A3D42");
+            sweepColor  = Color.web("#2C666E");
+            glowColor   = Color.web("#90DDF0");
+        } else {
+            bgColor     = Color.web("#1A1215");
+            borderColor = Color.web("#613039");
+            dashedColor = Color.web("#4A252E");
+            crossColor  = Color.web("#3D1E26");
+            sweepColor  = Color.web("#8B3A4A");
+            glowColor   = Color.web("#DE95A2");
+        }
+
+        // ── Background fill ──
+        Circle background = new Circle(cx, cy, cx);
+        background.setFill(bgColor);
+
+        // ── Outer ring (accent-colored border with subtle glow) ──
+        Circle outerRing = new Circle(cx, cy, cx - 1);
+        outerRing.setFill(Color.TRANSPARENT);
+        outerRing.setStroke(borderColor);
+        outerRing.setStrokeWidth(1.8);
+        outerRing.setEffect(new DropShadow(12, 0, 0, borderColor.deriveColor(0, 1, 1, 0.4)));
+
+        // ── Middle dashed ring ──
+        Circle middleRing = new Circle(cx, cy, cx * 0.66);
+        middleRing.setFill(Color.TRANSPARENT);
+        middleRing.setStroke(dashedColor);
+        middleRing.setStrokeWidth(0.8);
+        middleRing.getStrokeDashArray().addAll(6.0, 4.0);
+
+        // ── Inner dashed ring ──
+        Circle innerRing = new Circle(cx, cy, cx * 0.33);
+        innerRing.setFill(Color.TRANSPARENT);
+        innerRing.setStroke(dashedColor);
+        innerRing.setStrokeWidth(0.8);
+        innerRing.getStrokeDashArray().addAll(4.0, 3.0);
+
+        // ── Cross-hair lines ──
+        Line hLine = new Line(1, cy, size - 1, cy);
+        hLine.setStroke(crossColor);
+        hLine.setStrokeWidth(0.6);
+
+        Line vLine = new Line(cx, 1, cx, size - 1);
+        vLine.setStroke(crossColor);
+        vLine.setStrokeWidth(0.6);
+
+        // ── Center dot with glow ──
+        Circle centerDot = new Circle(cx, cy, 4);
+        centerDot.setFill(glowColor);
+        centerDot.setEffect(new DropShadow(10, 0, 0, glowColor));
+
+        // ── Sweep arm (the rotating element) ──
+        Arc sweepArc = new Arc(cx, cy, cx - 3, cx - 3, 0, 55);
+        sweepArc.setType(ArcType.ROUND);
+        sweepArc.setFill(sweepColor.deriveColor(0, 1, 1, 0.35));
+        sweepArc.setStroke(Color.TRANSPARENT);
+        sweepArc.setEffect(new GaussianBlur(20));
+
+        Arc innerCone = new Arc(cx, cy, (cx - 3) * 0.5, (cx - 3) * 0.5, 0, 40);
+        innerCone.setType(ArcType.ROUND);
+        innerCone.setFill(sweepColor.deriveColor(0, 1, 1, 0.28));
+        innerCone.setStroke(Color.TRANSPARENT);
+        innerCone.setEffect(new GaussianBlur(8));
+
+        Line sweepEdge = new Line(cx, cy, cx + (cx - 3), cy);
+        sweepEdge.setStroke(glowColor);
+        sweepEdge.setStrokeWidth(1.5);
+        sweepEdge.setStrokeLineCap(StrokeLineCap.ROUND);
+
+        javafx.scene.Group sweepGroup = new javafx.scene.Group(sweepArc, innerCone, sweepEdge);
+        Rotate sweepRotate = new Rotate(0, cx, cy);
+        sweepGroup.getTransforms().add(sweepRotate);
+
+        // ── Use a fixed-size Pane (not Group) so bounds never shift ──
+        Pane radarPane = new Pane(
+                background, hLine, vLine, outerRing, middleRing, innerRing,
+                sweepGroup, centerDot
+        );
+        radarPane.setMinSize(size, size);
+        radarPane.setPrefSize(size, size);
+        radarPane.setMaxSize(size, size);
+        // Circular clip on the Pane itself
+        Circle clip = new Circle(cx, cy, cx);
+        radarPane.setClip(clip);
+        radarPane.setMouseTransparent(true);
+
+        radarContainer.getChildren().setAll(radarPane);
+
+        // ── Timeline drives the Rotate transform (explicit pivot, rock-solid) ──
+        radarSpin = new Timeline(
+                new KeyFrame(javafx.util.Duration.ZERO,
+                        new KeyValue(sweepRotate.angleProperty(), 0, Interpolator.LINEAR)),
+                new KeyFrame(javafx.util.Duration.seconds(3),
+                        new KeyValue(sweepRotate.angleProperty(), 360, Interpolator.LINEAR))
+        );
+        radarSpin.setCycleCount(Animation.INDEFINITE);
     }
 
     private void openUrl(String url) {
@@ -332,5 +478,6 @@ public class JobScannerController implements Stoppable {
     @Override
     public void stop() {
         searching = false;
+        if (radarSpin != null) radarSpin.stop();
     }
 }

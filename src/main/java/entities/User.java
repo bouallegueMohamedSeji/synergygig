@@ -22,6 +22,10 @@ public class User {
     private double hourlyRate = 0.0;
     private double monthlySalary = 0.0;
 
+    // Social / profile fields
+    private String bio;
+    private String coverBase64;
+
     // Default constructor
     public User() {
     }
@@ -195,6 +199,12 @@ public class User {
     public void setMonthlySalary(double monthlySalary) {
         this.monthlySalary = monthlySalary;
     }
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
+
+    public String getCoverBase64() { return coverBase64; }
+    public void setCoverBase64(String coverBase64) { this.coverBase64 = coverBase64; }
 
     public String getFullName() {
         return firstName + " " + lastName;

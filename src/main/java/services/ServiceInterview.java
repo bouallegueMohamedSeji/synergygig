@@ -34,13 +34,23 @@ public class ServiceInterview implements IService<Interview> {
         if (obj.has("meet_link") && !obj.get("meet_link").isJsonNull()) {
             meetLink = obj.get("meet_link").getAsString();
         }
+        int applicationId = 0;
+        if (obj.has("application_id") && !obj.get("application_id").isJsonNull()) {
+            applicationId = obj.get("application_id").getAsInt();
+        }
+        int offerId = 0;
+        if (obj.has("offer_id") && !obj.get("offer_id").isJsonNull()) {
+            offerId = obj.get("offer_id").getAsInt();
+        }
         return new Interview(
                 obj.get("id").getAsInt(),
                 obj.get("organizer_id").getAsInt(),
                 obj.get("candidate_id").getAsInt(),
                 dateTime,
                 obj.get("status").getAsString(),
-                meetLink
+                meetLink,
+                applicationId,
+                offerId
         );
     }
 
@@ -64,17 +74,27 @@ public class ServiceInterview implements IService<Interview> {
             body.put("candidate_id", interview.getCandidateId());
             body.put("date_time", interview.getDateTime() != null ? interview.getDateTime().toString() : null);
             body.put("meet_link", interview.getMeetLink());
-            ApiClient.post("/interviews", body);
+            body.put("application_id", interview.getApplicationId());
+            body.put("offer_id", interview.getOfferId());
+            JsonElement resp = ApiClient.post("/interviews", body);
+            if (resp != null && resp.isJsonObject()) {
+                interview.setId(resp.getAsJsonObject().get("id").getAsInt());
+            }
             return;
         }
-        String req = "INSERT INTO interviews (organizer_id, candidate_id, date_time, status, meet_link) VALUES (?, ?, ?, 'PENDING', ?)";
+        String req = "INSERT INTO interviews (organizer_id, candidate_id, date_time, status, meet_link, application_id, offer_id) VALUES (?, ?, ?, 'PENDING', ?, ?, ?)";
         try (Connection conn = MyDatabase.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(req)) {
+             PreparedStatement ps = conn.prepareStatement(req, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, interview.getOrganizerId());
             ps.setInt(2, interview.getCandidateId());
             ps.setTimestamp(3, interview.getDateTime());
             ps.setString(4, interview.getMeetLink());
+            ps.setInt(5, interview.getApplicationId());
+            ps.setInt(6, interview.getOfferId());
             ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) interview.setId(keys.getInt(1));
+            }
         }
         InMemoryCache.evictByPrefix("interviews:");
     }
@@ -88,10 +108,12 @@ public class ServiceInterview implements IService<Interview> {
             body.put("date_time", interview.getDateTime() != null ? interview.getDateTime().toString() : null);
             body.put("status", interview.getStatus());
             body.put("meet_link", interview.getMeetLink());
+            body.put("application_id", interview.getApplicationId());
+            body.put("offer_id", interview.getOfferId());
             ApiClient.put("/interviews/" + interview.getId(), body);
             return;
         }
-        String req = "UPDATE interviews SET organizer_id=?, candidate_id=?, date_time=?, status=?, meet_link=? WHERE id=?";
+        String req = "UPDATE interviews SET organizer_id=?, candidate_id=?, date_time=?, status=?, meet_link=?, application_id=?, offer_id=? WHERE id=?";
         try (Connection conn = MyDatabase.getInstance().getConnection();
              PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setInt(1, interview.getOrganizerId());
@@ -99,7 +121,9 @@ public class ServiceInterview implements IService<Interview> {
             ps.setTimestamp(3, interview.getDateTime());
             ps.setString(4, interview.getStatus());
             ps.setString(5, interview.getMeetLink());
-            ps.setInt(6, interview.getId());
+            ps.setInt(6, interview.getApplicationId());
+            ps.setInt(7, interview.getOfferId());
+            ps.setInt(8, interview.getId());
             ps.executeUpdate();
         }
         InMemoryCache.evictByPrefix("interviews:");
@@ -137,13 +161,7 @@ public class ServiceInterview implements IService<Interview> {
              PreparedStatement ps = conn.prepareStatement(req);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                interviews.add(new Interview(
-                        rs.getInt("id"),
-                        rs.getInt("organizer_id"),
-                        rs.getInt("candidate_id"),
-                        rs.getTimestamp("date_time"),
-                        rs.getString("status"),
-                        rs.getString("meet_link")));
+                interviews.add(rowToInterview(rs));
             }
         }
         return interviews;
@@ -160,13 +178,7 @@ public class ServiceInterview implements IService<Interview> {
             ps.setInt(1, organizerId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    interviews.add(new Interview(
-                            rs.getInt("id"),
-                            rs.getInt("organizer_id"),
-                            rs.getInt("candidate_id"),
-                            rs.getTimestamp("date_time"),
-                            rs.getString("status"),
-                            rs.getString("meet_link")));
+                    interviews.add(rowToInterview(rs));
                 }
             }
         }
@@ -184,16 +196,45 @@ public class ServiceInterview implements IService<Interview> {
             ps.setInt(1, candidateId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    interviews.add(new Interview(
-                            rs.getInt("id"),
-                            rs.getInt("organizer_id"),
-                            rs.getInt("candidate_id"),
-                            rs.getTimestamp("date_time"),
-                            rs.getString("status"),
-                            rs.getString("meet_link")));
+                    interviews.add(rowToInterview(rs));
                 }
             }
         }
         return interviews;
+    }
+
+    /** Get all interviews linked to a specific job application. */
+    public List<Interview> getByApplication(int applicationId) throws SQLException {
+        if (useApi) {
+            return jsonArrayToInterviews(ApiClient.get("/interviews/application/" + applicationId));
+        }
+        List<Interview> interviews = new ArrayList<>();
+        String req = "SELECT * FROM interviews WHERE application_id=? ORDER BY date_time DESC";
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(req)) {
+            ps.setInt(1, applicationId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    interviews.add(rowToInterview(rs));
+                }
+            }
+        }
+        return interviews;
+    }
+
+    private Interview rowToInterview(ResultSet rs) throws SQLException {
+        int appId = 0;
+        try { appId = rs.getInt("application_id"); if (rs.wasNull()) appId = 0; } catch (Exception ignored) {}
+        int ofrId = 0;
+        try { ofrId = rs.getInt("offer_id"); if (rs.wasNull()) ofrId = 0; } catch (Exception ignored) {}
+        return new Interview(
+                rs.getInt("id"),
+                rs.getInt("organizer_id"),
+                rs.getInt("candidate_id"),
+                rs.getTimestamp("date_time"),
+                rs.getString("status"),
+                rs.getString("meet_link"),
+                appId,
+                ofrId);
     }
 }

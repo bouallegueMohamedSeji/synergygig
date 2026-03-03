@@ -12,10 +12,13 @@ public class Offer {
     public static final String TYPE_INTERNSHIP  = "INTERNSHIP";
     public static final String TYPE_CONTRACT    = "CONTRACT";
 
-    public static final String STATUS_DRAFT     = "DRAFT";
-    public static final String STATUS_OPEN      = "OPEN";
-    public static final String STATUS_CLOSED    = "CLOSED";
-    public static final String STATUS_CANCELLED = "CANCELLED";
+    public static final String STATUS_DRAFT      = "DRAFT";
+    public static final String STATUS_PUBLISHED  = "PUBLISHED";
+    public static final String STATUS_COMPLETED  = "COMPLETED";
+    public static final String STATUS_CANCELLED  = "CANCELLED";
+    // legacy aliases
+    public static final String STATUS_OPEN       = "OPEN";
+    public static final String STATUS_CLOSED     = "CLOSED";
 
     private int id;
     private String title;

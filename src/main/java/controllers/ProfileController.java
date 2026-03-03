@@ -17,8 +17,11 @@ import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Arc;
+import javafx.scene.shape.ArcType;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.StrokeLineCap;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -46,6 +49,8 @@ public class ProfileController {
     @FXML private Label profileFullName;
     @FXML private Label profileEmail;
     @FXML private Label profileRoleBadge;
+    @FXML private StackPane avatarRingPane;
+    @FXML private Label completionLabel;
 
     // Account details — view mode
     @FXML private VBox viewModePane;
@@ -103,7 +108,65 @@ public class ProfileController {
         emailField.textProperty().addListener((o, ov, nv) -> clearFieldError(emailField, emailError));
     }
 
+    private void buildCompletionRing(User user) {
+        if (avatarRingPane == null) return;
+        // Calculate completion percentage
+        int total = 7;
+        int filled = 0;
+        if (user.getFirstName() != null && !user.getFirstName().isEmpty()) filled++;
+        if (user.getLastName() != null && !user.getLastName().isEmpty()) filled++;
+        if (user.getEmail() != null && !user.getEmail().isEmpty()) filled++;
+        if (user.getAvatarPath() != null && !user.getAvatarPath().isEmpty()) filled++;
+        if (user.getBio() != null && !user.getBio().isEmpty()) filled++;
+        if (user.getCoverBase64() != null && !user.getCoverBase64().isEmpty()) filled++;
+        if (user.getFaceEncoding() != null && !user.getFaceEncoding().isEmpty()) filled++;
+        double pct = (double) filled / total;
+
+        boolean dark = SessionManager.getInstance().isDarkTheme();
+        Color trackColor = dark ? Color.web("#2A2A3E") : Color.web("#D6CDD0");
+        Color ringColor;
+        if (pct >= 1.0) ringColor = Color.web("#22C55E");
+        else if (pct >= 0.7) ringColor = dark ? Color.web("#90DDF0") : Color.web("#DE95A2");
+        else if (pct >= 0.4) ringColor = Color.web("#F59E0B");
+        else ringColor = Color.web("#EF4444");
+
+        // Background track circle
+        Circle track = new Circle(44);
+        track.setFill(Color.TRANSPARENT);
+        track.setStroke(trackColor);
+        track.setStrokeWidth(3);
+
+        // Progress arc
+        Arc progressArc = new Arc(0, 0, 44, 44, 90, -360 * pct);
+        progressArc.setType(ArcType.OPEN);
+        progressArc.setFill(Color.TRANSPARENT);
+        progressArc.setStroke(ringColor);
+        progressArc.setStrokeWidth(3);
+        progressArc.setStrokeLineCap(StrokeLineCap.ROUND);
+
+        // Remove old ring layers if rebuilding
+        avatarRingPane.getChildren().removeIf(n -> "completion-ring".equals(n.getId()));
+        track.setId("completion-ring");
+        progressArc.setId("completion-ring");
+        avatarRingPane.getChildren().addAll(0, java.util.List.of(track, progressArc));
+
+        // Completion label
+        int pctInt = (int) Math.round(pct * 100);
+        if (completionLabel != null) {
+            completionLabel.setText(pctInt + "% profile complete");
+            completionLabel.setStyle("-fx-font-size: 11; -fx-text-fill: " + toHex(ringColor) + ";");
+        }
+    }
+
+    private String toHex(Color c) {
+        return String.format("#%02X%02X%02X",
+            (int)(c.getRed()*255), (int)(c.getGreen()*255), (int)(c.getBlue()*255));
+    }
+
     private void populateProfile(User user) {
+        // Profile completion ring
+        buildCompletionRing(user);
+
         // Profile identity card
         String initial = user.getFirstName().substring(0, 1).toUpperCase();
         profileAvatarInitial.setText(initial);

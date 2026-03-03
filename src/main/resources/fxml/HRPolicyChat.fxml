@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane fx:controller="controllers.HRPolicyChatController"
+            xmlns:fx="http://javafx.com/fxml" styleClass="page-container">
+    <padding><Insets top="0" right="0" bottom="0" left="0"/></padding>
+
+    <!-- ── Top header ── -->
+    <top>
+        <VBox spacing="6" style="-fx-padding: 24 28 16 28;">
+            <Button text="← Back" styleClass="tool-back-btn" onAction="#handleBack"/>
+            <Label text="📋 HR Policy Assistant" styleClass="page-title" style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+            <Label text="Ask any question about company policies — leave, benefits, conduct, remote work, etc."
+                   styleClass="page-subtitle" style="-fx-font-size: 12; -fx-opacity: 0.65;"/>
+        </VBox>
+    </top>
+
+    <!-- ── Chat messages area ── -->
+    <center>
+        <ScrollPane fx:id="chatScroll" fitToWidth="true" hbarPolicy="NEVER" styleClass="content-scroll"
+                    style="-fx-padding: 0 28;">
+            <VBox fx:id="chatBox" spacing="14" style="-fx-padding: 12 0 20 0;"/>
+        </ScrollPane>
+    </center>
+
+    <!-- ── Input bar ── -->
+    <bottom>
+        <HBox spacing="10" alignment="CENTER" style="-fx-padding: 14 28 20 28;">
+            <TextField fx:id="inputField" promptText="Ask about HR policies..."
+                       HBox.hgrow="ALWAYS" styleClass="text-input"
+                       onAction="#handleSend" style="-fx-font-size: 13;"/>
+            <Button fx:id="sendBtn" text="Send" onAction="#handleSend"
+                    styleClass="btn-primary" style="-fx-font-size: 13;"/>
+        </HBox>
+    </bottom>
+</BorderPane>

@@ -12,7 +12,13 @@ public class Leave {
     private Date endDate;
     private String reason;
     private String status;    // PENDING, APPROVED, REJECTED
+    private String rejectionReason;
     private Timestamp createdAt;
+
+    // Leave balance constants (days per year)
+    public static final int MAX_VACATION_DAYS = 30;
+    public static final int MAX_SICK_DAYS = 15;
+    public static final int MAX_UNPAID_DAYS = 60;
 
     public Leave() {}
 
@@ -59,6 +65,9 @@ public class Leave {
 
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+
+    public String getRejectionReason() { return rejectionReason; }
+    public void setRejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason; }
 
     /** Calculate the number of days for this leave. */
     public long getDays() {

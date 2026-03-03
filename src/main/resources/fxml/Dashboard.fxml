@@ -106,6 +106,15 @@
                                     </HBox>
                                 </graphic>
                             </Button>
+                            <Button fx:id="btnHRBacklog" onAction="#showHRBacklog"
+                                    styleClass="sidebar-menu-btn" maxWidth="Infinity" alignment="CENTER_LEFT">
+                                <graphic>
+                                    <HBox spacing="10" alignment="CENTER_LEFT">
+                                        <Label text="📋" styleClass="sidebar-menu-icon" minWidth="20" alignment="CENTER"/>
+                                        <Label text="HR Backlog" styleClass="sidebar-menu-text"/>
+                                    </HBox>
+                                </graphic>
+                            </Button>
                         </VBox>
                     </VBox>
 
@@ -372,6 +381,24 @@
                     </VBox>
 
                 </HBox>
+
+                <!-- Motivational Quote Card -->
+                <VBox fx:id="quoteCard" styleClass="dashboard-card" spacing="0">
+                    <VBox styleClass="dashboard-card-header" spacing="2">
+                        <HBox spacing="8" alignment="CENTER_LEFT">
+                            <Label text="💡" style="-fx-font-size: 18;"/>
+                            <Label text="Daily Inspiration" styleClass="dashboard-card-title"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="quoteRefreshBtn" text="↻" onAction="#refreshQuote"
+                                    styleClass="icon-btn" style="-fx-cursor: hand;"/>
+                        </HBox>
+                    </VBox>
+                    <VBox styleClass="dashboard-card-content" spacing="8">
+                        <Label fx:id="quoteText" text="Loading inspiration..."
+                               styleClass="quote-text" wrapText="true"/>
+                        <Label fx:id="quoteAuthor" text="" styleClass="quote-author"/>
+                    </VBox>
+                </VBox>
 
                 <!-- Platform Overview Card (admin/HR only) -->
                 <VBox fx:id="platformOverviewCard" styleClass="dashboard-card" spacing="0">

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.chart.PieChart?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Circle?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="controllers.EmployeeOfMonthController"
+      spacing="0" styleClass="eom-root">
+    <padding><Insets top="24" right="28" bottom="24" left="28"/></padding>
+
+    <Button text="← Back" styleClass="tool-back-btn" onAction="#handleBack"/>
+
+    <!-- Header -->
+    <HBox alignment="CENTER_LEFT" spacing="14">
+        <VBox spacing="2" HBox.hgrow="ALWAYS">
+            <Label text="🏆 Employee of the Month" styleClass="page-title"/>
+            <Label fx:id="lblMonth" text="" styleClass="page-subtitle"/>
+        </VBox>
+        <Button fx:id="btnCalculate" text="🔄 Recalculate" onAction="#handleCalculate"
+                styleClass="btn-primary"/>
+        <Button fx:id="btnPost" text="📢 Post to Community" onAction="#handlePostToCommunity"
+                styleClass="btn-primary" disable="true"/>
+    </HBox>
+
+    <Separator style="-fx-padding: 12 0 12 0;"/>
+
+    <!-- Loading indicator -->
+    <StackPane fx:id="loadingPane" visible="true" VBox.vgrow="ALWAYS">
+        <Label text="Click 'Recalculate' to determine this month's top performer!"
+               style="-fx-font-size: 15; -fx-text-fill: #999;"/>
+    </StackPane>
+
+    <!-- Result card (hidden until calculated) -->
+    <VBox fx:id="resultPane" visible="false" managed="false" spacing="20" alignment="TOP_CENTER"
+          VBox.vgrow="ALWAYS">
+
+        <!-- Winner spotlight -->
+        <VBox alignment="CENTER" spacing="10" styleClass="eom-winner-card">
+            <padding><Insets top="28" right="32" bottom="28" left="32"/></padding>
+            <Label text="🏆" style="-fx-font-size: 48;"/>
+            <Label fx:id="lblWinnerName" text="" styleClass="eom-winner-name"/>
+            <Label fx:id="lblWinnerDept" text="" styleClass="eom-winner-dept"/>
+            <HBox alignment="CENTER" spacing="24">
+                <VBox alignment="CENTER" spacing="2">
+                    <Label fx:id="lblTasksDone" text="0" styleClass="eom-stat-num"/>
+                    <Label text="Tasks Completed" styleClass="eom-stat-label"/>
+                </VBox>
+                <VBox alignment="CENTER" spacing="2">
+                    <Label fx:id="lblHighPriority" text="0" styleClass="eom-stat-num"/>
+                    <Label text="High Priority" styleClass="eom-stat-label"/>
+                </VBox>
+                <VBox alignment="CENTER" spacing="2">
+                    <Label fx:id="lblScore" text="0" styleClass="eom-stat-num"/>
+                    <Label text="Score" styleClass="eom-stat-label"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        <!-- Announcement preview -->
+        <VBox spacing="6">
+            <Label text="Announcement Preview" styleClass="settings-section-label"/>
+            <TextArea fx:id="txtAnnouncement" wrapText="true" prefRowCount="4"
+                      styleClass="tool-textarea" editable="true"/>
+        </VBox>
+
+        <!-- Leaderboard -->
+        <VBox spacing="8" VBox.vgrow="ALWAYS">
+            <Label text="Top Performers This Month" styleClass="settings-section-label"/>
+            <TableView fx:id="leaderboard" VBox.vgrow="ALWAYS" styleClass="eom-table">
+                <columns>
+                    <TableColumn fx:id="colRank" text="#" prefWidth="40" sortable="false"/>
+                    <TableColumn fx:id="colName" text="Employee" prefWidth="200" sortable="false"/>
+                    <TableColumn fx:id="colDone" text="Completed" prefWidth="100" sortable="false"/>
+                    <TableColumn fx:id="colHigh" text="High Priority" prefWidth="100" sortable="false"/>
+                    <TableColumn fx:id="colTotal" text="Score" prefWidth="80" sortable="false"/>
+                </columns>
+            </TableView>
+        </VBox>
+    </VBox>
+</VBox>

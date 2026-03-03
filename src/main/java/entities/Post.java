@@ -4,6 +4,10 @@ import java.sql.Timestamp;
 
 public class Post {
 
+    public static final String VISIBILITY_PUBLIC = "PUBLIC";
+    public static final String VISIBILITY_FRIENDS = "FRIENDS";
+    public static final String VISIBILITY_ONLY_ME = "ONLY_ME";
+
     private int id;
     private int authorId;
     private String content;
@@ -11,6 +15,9 @@ public class Post {
     private int likesCount;
     private int commentsCount;
     private Timestamp createdAt;
+    private String visibility = VISIBILITY_PUBLIC; // PUBLIC | FRIENDS | ONLY_ME
+    private Integer groupId;  // null = normal post, non-null = group post
+    private int sharesCount;
 
     public Post() {}
 
@@ -58,6 +65,15 @@ public class Post {
 
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+
+    public String getVisibility() { return visibility; }
+    public void setVisibility(String visibility) { this.visibility = visibility; }
+
+    public Integer getGroupId() { return groupId; }
+    public void setGroupId(Integer groupId) { this.groupId = groupId; }
+
+    public int getSharesCount() { return sharesCount; }
+    public void setSharesCount(int sharesCount) { this.sharesCount = sharesCount; }
 
     @Override
     public String toString() {

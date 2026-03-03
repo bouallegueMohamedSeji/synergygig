@@ -223,6 +223,37 @@ public class ZAIService {
         }
     }
 
+    // ==================== Resume / CV Parsing ====================
+
+    /**
+     * Parse raw resume text into structured JSON.
+     * Returns JSON: {name, email, phone, location, summary, skills[], experience[], education[], certifications[], languages[]}
+     */
+    public String parseResume(String resumeText) {
+        String system = """
+            You are an expert resume parser. Extract structured information from the given resume text.
+            Return ONLY valid JSON with this exact structure (use empty string "" or empty array [] for missing fields):
+            {
+              "name": "Full Name",
+              "email": "email@example.com",
+              "phone": "+1234567890",
+              "location": "City, Country",
+              "summary": "Brief professional summary in 2-3 sentences",
+              "skills": ["Skill1", "Skill2"],
+              "experience": [
+                {"title": "Job Title", "company": "Company Name", "period": "2020-2023", "description": "Key responsibilities"}
+              ],
+              "education": [
+                {"degree": "Degree Name", "institution": "School Name", "year": "2020"}
+              ],
+              "certifications": ["Cert 1"],
+              "languages": ["English", "French"]
+            }
+            Be thorough and extract everything you can. Infer information from context when reasonable.
+            """;
+        return chat(system, "Parse this resume:\n\n" + resumeText);
+    }
+
     // ==================== Applicant Scoring (Recruitment AI) ====================
 
     /**

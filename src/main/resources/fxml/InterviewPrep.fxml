@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.Circle?>
+
+<BorderPane fx:controller="controllers.InterviewPrepController"
+            xmlns:fx="http://javafx.com/fxml" styleClass="page-container">
+
+    <top>
+        <VBox spacing="0" styleClass="ip-header">
+            <padding><Insets top="16" right="28" bottom="0" left="28"/></padding>
+
+            <!-- Back + title row -->
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <Button text="← Back" styleClass="tool-back-btn" onAction="#handleBack"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="questionBadge" text="" styleClass="ip-question-badge"
+                       visible="false" managed="false"/>
+            </HBox>
+
+            <!-- Hero section -->
+            <HBox alignment="CENTER_LEFT" spacing="14" styleClass="ip-hero">
+                <padding><Insets top="10" bottom="14"/></padding>
+                <StackPane styleClass="ip-icon-ring">
+                    <Circle radius="24" styleClass="ip-icon-circle"/>
+                    <Label text="🎯" style="-fx-font-size: 22;"/>
+                </StackPane>
+                <VBox spacing="3">
+                    <Label text="Interview Prep Coach" styleClass="ip-title"/>
+                    <Label text="AI-powered mock interviews tailored to your role &amp; level"
+                           styleClass="ip-subtitle"/>
+                </VBox>
+            </HBox>
+
+            <!-- Progress bar (hidden until session starts) -->
+            <ProgressBar fx:id="progressBar" progress="0" prefHeight="3" maxWidth="1.7976931348623157E308"
+                         styleClass="ip-progress-bar" visible="false" managed="false"/>
+        </VBox>
+    </top>
+
+    <center>
+        <ScrollPane fx:id="chatScroll" fitToWidth="true" hbarPolicy="NEVER" styleClass="ip-chat-scroll">
+            <VBox fx:id="chatBox" spacing="10" styleClass="ip-chat-box">
+                <padding><Insets top="16" right="28" bottom="20" left="28"/></padding>
+            </VBox>
+        </ScrollPane>
+    </center>
+
+    <bottom>
+        <VBox spacing="0" styleClass="ip-input-area">
+            <padding><Insets top="12" right="28" bottom="16" left="28"/></padding>
+
+            <!-- Setup card (shown initially) -->
+            <VBox fx:id="setupRow" spacing="14" styleClass="ip-setup-card">
+                <padding><Insets top="18" right="20" bottom="18" left="20"/></padding>
+                <Label text="Configure Your Session" styleClass="ip-setup-title"/>
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label text="Job Role" styleClass="ip-field-label"/>
+                        <TextField fx:id="roleField" promptText="e.g. Java Developer, Data Scientist..."
+                                   styleClass="input-field"/>
+                    </VBox>
+                    <VBox spacing="4" prefWidth="160">
+                        <Label text="Level" styleClass="ip-field-label"/>
+                        <ComboBox fx:id="levelCombo" promptText="Level" maxWidth="1.7976931348623157E308"
+                                  styleClass="input-field"/>
+                    </VBox>
+                </HBox>
+                <Button text="▶  Start Mock Interview" onAction="#handleStart" styleClass="btn-primary"
+                        maxWidth="1.7976931348623157E308" prefHeight="38"/>
+            </VBox>
+
+            <!-- Chat input bar (shown during practice) -->
+            <HBox fx:id="inputRow" spacing="10" alignment="BOTTOM_CENTER" styleClass="ip-input-bar"
+                  visible="false" managed="false">
+                <TextField fx:id="answerField" promptText="Type your answer..."
+                           HBox.hgrow="ALWAYS" styleClass="input-field" onAction="#handleAnswer"
+                           style="-fx-min-height: 40;"/>
+                <Button text="Send" onAction="#handleAnswer" styleClass="btn-primary"
+                        style="-fx-min-width: 70; -fx-min-height: 40;"/>
+                <Button text="Skip" onAction="#handleSkip" styleClass="btn-secondary"
+                        style="-fx-min-height: 40;"/>
+                <Button text="End Session" onAction="#handleEnd" styleClass="btn-secondary"
+                        style="-fx-min-height: 40; -fx-text-fill: #f87171;"/>
+            </HBox>
+        </VBox>
+    </bottom>
+</BorderPane>
