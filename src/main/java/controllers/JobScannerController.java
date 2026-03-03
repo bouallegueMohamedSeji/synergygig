@@ -4,6 +4,11 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import javafx.animation.Animation;
+import javafx.animation.Interpolator;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -11,19 +16,36 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.control.*;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.effect.GaussianBlur;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.paint.CycleMethod;
+import javafx.scene.paint.LinearGradient;
+import javafx.scene.paint.Stop;
+import javafx.scene.shape.Arc;
+import javafx.scene.shape.ArcType;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
+import javafx.scene.shape.StrokeLineCap;
+import javafx.scene.shape.StrokeType;
+import javafx.scene.transform.Rotate;
 import utils.AppConfig;
 import utils.AppThreadPool;
+import utils.SessionManager;
 import utils.SoundManager;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Controller for the Job Scanner module.
@@ -44,6 +66,10 @@ public class JobScannerController implements Stoppable {
     @FXML private TextField locationField;
     @FXML private Button btnReset;
 
+    // Skills bar (created programmatically)
+    private HBox skillsBar;
+    private FlowPane skillsPane;
+
     // States
     @FXML private VBox emptyState;
     @FXML private VBox loadingState;
@@ -51,6 +77,9 @@ public class JobScannerController implements Stoppable {
     @FXML private ScrollPane resultsScroll;
     @FXML private VBox resultsContainer;
     @FXML private StackPane contentArea;
+    @FXML private StackPane radarContainer;
+
+    private Timeline radarSpin;
 
     private static final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
@@ -73,8 +102,147 @@ public class JobScannerController implements Stoppable {
                 "Any time", "Past 24 hours", "Past week", "Past month"));
         datePostedCombo.setValue("Any time");
 
+        // Build skills bar programmatically and insert after filter bar
+        skillsPane = new FlowPane(6, 6);
+        skillsPane.getStyleClass().add("js-skills-pane");
+        HBox.setHgrow(skillsPane, Priority.ALWAYS);
+
+        Label skillsLabel = new Label("\uD83C\uDF93 My Skills:");
+        skillsLabel.getStyleClass().add("js-skills-label");
+
+        skillsBar = new HBox(8, skillsLabel, skillsPane);
+        skillsBar.setAlignment(Pos.CENTER_LEFT);
+        skillsBar.getStyleClass().add("js-skills-bar");
+        skillsBar.setVisible(false);
+        skillsBar.setManaged(false);
+
+        // Insert into the top VBox (after filter bar)
+        VBox topBar = (VBox) rootPane.getTop();
+        topBar.getChildren().add(skillsBar);
+
         // Focus the search field
         Platform.runLater(() -> searchField.requestFocus());
+
+        // Load user skills from certificates & completed courses
+        loadUserSkills();
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  SKILLS FROM CERTIFICATES & COURSES
+    // ════════════════════════════════════════════════════════
+
+    /**
+     * Loads the current user's completed course titles + categories as
+     * clickable skill pills in the skills bar. Each pill pre-fills the
+     * search field and fires a search when clicked.
+     */
+    private void loadUserSkills() {
+        AppThreadPool.io(() -> {
+            try {
+                int userId = SessionManager.getInstance().getCurrentUser().getId();
+
+                // 1. Get all enrollments for this user
+                var enrollmentSvc = new services.ServiceTrainingEnrollment();
+                var enrollments = enrollmentSvc.getByUser(userId);
+
+                // 2. Get all courses (cached)
+                var courseSvc = new services.ServiceTrainingCourse();
+                var allCourses = courseSvc.recuperer();
+                Map<Integer, entities.TrainingCourse> courseMap = new HashMap<>();
+                for (var c : allCourses) courseMap.put(c.getId(), c);
+
+                // 3. Get certificates for this user
+                var certSvc = new services.ServiceTrainingCertificate();
+                var certs = certSvc.getByUser(userId);
+                Set<Integer> certifiedCourseIds = new HashSet<>();
+                for (var cert : certs) certifiedCourseIds.add(cert.getCourseId());
+
+                // 4. Build skill keywords from completed/certified courses
+                //    Prioritize certified courses, then completed enrollments
+                List<SkillPill> pills = new ArrayList<>();
+                Set<String> seen = new LinkedHashSet<>();
+
+                // Certified courses first (with 🎓 prefix)
+                for (int courseId : certifiedCourseIds) {
+                    entities.TrainingCourse course = courseMap.get(courseId);
+                    if (course != null && seen.add(course.getTitle().toLowerCase())) {
+                        pills.add(new SkillPill(course.getTitle(), true, course.getCategory()));
+                    }
+                }
+
+                // Completed (but not yet certified) enrollments
+                for (var enr : enrollments) {
+                    if ("COMPLETED".equalsIgnoreCase(enr.getStatus()) || enr.getProgress() >= 100) {
+                        entities.TrainingCourse course = courseMap.get(enr.getCourseId());
+                        if (course != null && seen.add(course.getTitle().toLowerCase())) {
+                            pills.add(new SkillPill(course.getTitle(), false, course.getCategory()));
+                        }
+                    }
+                }
+
+                // Also add unique categories as generic skill pills
+                for (var enr : enrollments) {
+                    if ("COMPLETED".equalsIgnoreCase(enr.getStatus()) || "IN_PROGRESS".equalsIgnoreCase(enr.getStatus())) {
+                        entities.TrainingCourse course = courseMap.get(enr.getCourseId());
+                        if (course != null && course.getCategory() != null) {
+                            String cat = course.getCategory().replace("_", " ");
+                            if (seen.add(cat.toLowerCase())) {
+                                pills.add(new SkillPill(cat, false, course.getCategory()));
+                            }
+                        }
+                    }
+                }
+
+                Platform.runLater(() -> {
+                    if (pills.isEmpty()) {
+                        skillsBar.setVisible(false);
+                        skillsBar.setManaged(false);
+                    } else {
+                        skillsPane.getChildren().clear();
+                        for (SkillPill pill : pills) {
+                            Button btn = new Button((pill.certified ? "\uD83C\uDF93 " : "") + pill.label);
+                            btn.getStyleClass().add("js-skill-pill");
+                            if (pill.certified) btn.getStyleClass().add("js-skill-certified");
+                            btn.setCursor(Cursor.HAND);
+                            btn.setOnAction(e -> {
+                                SoundManager.getInstance().play(SoundManager.BUTTON_CLICK);
+                                searchField.setText(pill.label);
+                                handleSearch();
+                            });
+
+                            // Tooltip with category
+                            if (pill.category != null && !pill.category.isEmpty()) {
+                                Tooltip tip = new Tooltip((pill.certified ? "Certified" : "Completed")
+                                        + " — " + pill.category.replace("_", " "));
+                                tip.setShowDelay(javafx.util.Duration.millis(300));
+                                btn.setTooltip(tip);
+                            }
+                            skillsPane.getChildren().add(btn);
+                        }
+                        skillsBar.setVisible(true);
+                        skillsBar.setManaged(true);
+                    }
+                });
+
+            } catch (Exception e) {
+                // Skills bar is optional — silently hide on error
+                Platform.runLater(() -> {
+                    skillsBar.setVisible(false);
+                    skillsBar.setManaged(false);
+                });
+            }
+        });
+    }
+
+    private static class SkillPill {
+        final String label;
+        final boolean certified;
+        final String category;
+        SkillPill(String label, boolean certified, String category) {
+            this.label = label;
+            this.certified = certified;
+            this.category = category;
+        }
     }
 
     @FXML
@@ -284,6 +452,7 @@ public class JobScannerController implements Stoppable {
         datePostedCombo.setValue("Any time");
         locationField.clear();
         sourceCombo.setValue("All");
+        searchField.clear();
         SoundManager.getInstance().play(SoundManager.BUTTON_CLICK);
     }
 
@@ -294,6 +463,130 @@ public class JobScannerController implements Stoppable {
         loadingState.setManaged("loading".equals(state));
         resultsScroll.setVisible("results".equals(state));
         resultsScroll.setManaged("results".equals(state));
+
+        // Rebuild & start radar on loading; stop otherwise
+        if ("loading".equals(state)) {
+            buildRadarLoader();
+            if (radarSpin != null) radarSpin.play();
+        } else if (radarSpin != null) {
+            radarSpin.stop();
+        }
+    }
+
+    /**
+     * Builds a radar-style animated loader with theme-aware colors.
+     * Uses a fixed-size Pane so StackPane centering stays rock-solid
+     * even while the blurred sweep rotates.
+     */
+    private void buildRadarLoader() {
+        if (radarContainer == null) return;
+
+        boolean dark = SessionManager.getInstance().isDarkTheme();
+        double size = 150;
+        double cx = size / 2, cy = size / 2;
+
+        // ── Theme colors ──
+        Color glowColor, borderColor, dashedColor, sweepColor, bgColor, crossColor;
+        if (dark) {
+            bgColor     = Color.web("#0D0E12");
+            borderColor = Color.web("#2C666E");
+            dashedColor = Color.web("#1E4A50");
+            crossColor  = Color.web("#1A3D42");
+            sweepColor  = Color.web("#2C666E");
+            glowColor   = Color.web("#90DDF0");
+        } else {
+            bgColor     = Color.web("#1A1215");
+            borderColor = Color.web("#613039");
+            dashedColor = Color.web("#4A252E");
+            crossColor  = Color.web("#3D1E26");
+            sweepColor  = Color.web("#8B3A4A");
+            glowColor   = Color.web("#DE95A2");
+        }
+
+        // ── Background fill ──
+        Circle background = new Circle(cx, cy, cx);
+        background.setFill(bgColor);
+
+        // ── Outer ring (accent-colored border with subtle glow) ──
+        Circle outerRing = new Circle(cx, cy, cx - 1);
+        outerRing.setFill(Color.TRANSPARENT);
+        outerRing.setStroke(borderColor);
+        outerRing.setStrokeWidth(1.8);
+        outerRing.setEffect(new DropShadow(12, 0, 0, borderColor.deriveColor(0, 1, 1, 0.4)));
+
+        // ── Middle dashed ring ──
+        Circle middleRing = new Circle(cx, cy, cx * 0.66);
+        middleRing.setFill(Color.TRANSPARENT);
+        middleRing.setStroke(dashedColor);
+        middleRing.setStrokeWidth(0.8);
+        middleRing.getStrokeDashArray().addAll(6.0, 4.0);
+
+        // ── Inner dashed ring ──
+        Circle innerRing = new Circle(cx, cy, cx * 0.33);
+        innerRing.setFill(Color.TRANSPARENT);
+        innerRing.setStroke(dashedColor);
+        innerRing.setStrokeWidth(0.8);
+        innerRing.getStrokeDashArray().addAll(4.0, 3.0);
+
+        // ── Cross-hair lines ──
+        Line hLine = new Line(1, cy, size - 1, cy);
+        hLine.setStroke(crossColor);
+        hLine.setStrokeWidth(0.6);
+
+        Line vLine = new Line(cx, 1, cx, size - 1);
+        vLine.setStroke(crossColor);
+        vLine.setStrokeWidth(0.6);
+
+        // ── Center dot with glow ──
+        Circle centerDot = new Circle(cx, cy, 4);
+        centerDot.setFill(glowColor);
+        centerDot.setEffect(new DropShadow(10, 0, 0, glowColor));
+
+        // ── Sweep arm (the rotating element) ──
+        Arc sweepArc = new Arc(cx, cy, cx - 3, cx - 3, 0, 55);
+        sweepArc.setType(ArcType.ROUND);
+        sweepArc.setFill(sweepColor.deriveColor(0, 1, 1, 0.35));
+        sweepArc.setStroke(Color.TRANSPARENT);
+        sweepArc.setEffect(new GaussianBlur(20));
+
+        Arc innerCone = new Arc(cx, cy, (cx - 3) * 0.5, (cx - 3) * 0.5, 0, 40);
+        innerCone.setType(ArcType.ROUND);
+        innerCone.setFill(sweepColor.deriveColor(0, 1, 1, 0.28));
+        innerCone.setStroke(Color.TRANSPARENT);
+        innerCone.setEffect(new GaussianBlur(8));
+
+        Line sweepEdge = new Line(cx, cy, cx + (cx - 3), cy);
+        sweepEdge.setStroke(glowColor);
+        sweepEdge.setStrokeWidth(1.5);
+        sweepEdge.setStrokeLineCap(StrokeLineCap.ROUND);
+
+        javafx.scene.Group sweepGroup = new javafx.scene.Group(sweepArc, innerCone, sweepEdge);
+        Rotate sweepRotate = new Rotate(0, cx, cy);
+        sweepGroup.getTransforms().add(sweepRotate);
+
+        // ── Use a fixed-size Pane (not Group) so bounds never shift ──
+        Pane radarPane = new Pane(
+                background, hLine, vLine, outerRing, middleRing, innerRing,
+                sweepGroup, centerDot
+        );
+        radarPane.setMinSize(size, size);
+        radarPane.setPrefSize(size, size);
+        radarPane.setMaxSize(size, size);
+        // Circular clip on the Pane itself
+        Circle clip = new Circle(cx, cy, cx);
+        radarPane.setClip(clip);
+        radarPane.setMouseTransparent(true);
+
+        radarContainer.getChildren().setAll(radarPane);
+
+        // ── Timeline drives the Rotate transform (explicit pivot, rock-solid) ──
+        radarSpin = new Timeline(
+                new KeyFrame(javafx.util.Duration.ZERO,
+                        new KeyValue(sweepRotate.angleProperty(), 0, Interpolator.LINEAR)),
+                new KeyFrame(javafx.util.Duration.seconds(3),
+                        new KeyValue(sweepRotate.angleProperty(), 360, Interpolator.LINEAR))
+        );
+        radarSpin.setCycleCount(Animation.INDEFINITE);
     }
 
     private void openUrl(String url) {
@@ -332,5 +625,6 @@ public class JobScannerController implements Stoppable {
     @Override
     public void stop() {
         searching = false;
+        if (radarSpin != null) radarSpin.stop();
     }
 }

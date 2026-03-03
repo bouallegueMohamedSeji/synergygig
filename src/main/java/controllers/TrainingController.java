@@ -18,6 +18,7 @@ import services.*;
 import utils.AppConfig;
 import utils.AppThreadPool;
 import utils.CardEffects;
+import utils.DialogHelper;
 import utils.SessionManager;
 import utils.SoundManager;
 import utils.TrainingCertificatePdf;
@@ -52,6 +53,16 @@ import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.image.WritableImage;
+import javafx.scene.SnapshotParameters;
+import javafx.embed.swing.SwingFXUtils;
+import javax.imageio.ImageIO;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 
 public class TrainingController {
 
@@ -772,6 +783,43 @@ public class TrainingController {
 
     private void enrollInCourse(TrainingCourse course) {
         try {
+            // ── Max participants check ──
+            List<TrainingEnrollment> courseEnrolls = serviceEnrollment.getByCourse(course.getId());
+            long activeCount = courseEnrolls.stream()
+                    .filter(e -> !"DROPPED".equals(e.getStatus()))
+                    .count();
+            if (course.getMaxParticipants() > 0 && activeCount >= course.getMaxParticipants()) {
+                showAlert(Alert.AlertType.WARNING, "Course Full",
+                        "\"" + course.getTitle() + "\" has reached its maximum capacity (" + course.getMaxParticipants() + " participants).\nPlease try again later or contact HR.");
+                return;
+            }
+
+            // ── Difficulty progression warning ──
+            String diff = course.getDifficulty();
+            if ("INTERMEDIATE".equals(diff) || "ADVANCED".equals(diff)) {
+                String prereqDiff = "INTERMEDIATE".equals(diff) ? "BEGINNER" : "INTERMEDIATE";
+                List<TrainingEnrollment> myEnrolls = serviceEnrollment.getByUser(currentUser.getId());
+                List<TrainingCourse> allCourses = serviceCourse.recuperer();
+                Map<Integer, String> courseDiffMap = new HashMap<>();
+                for (TrainingCourse c : allCourses) courseDiffMap.put(c.getId(), c.getDifficulty());
+                // Check if user completed any course at the prerequisite difficulty in same category
+                boolean hasPrereq = myEnrolls.stream()
+                        .filter(e -> "COMPLETED".equals(e.getStatus()))
+                        .anyMatch(e -> {
+                            String d = courseDiffMap.get(e.getCourseId());
+                            return prereqDiff.equals(d);
+                        });
+                if (!hasPrereq) {
+                    Alert warn = new Alert(Alert.AlertType.CONFIRMATION);
+                    warn.setTitle("Difficulty Warning");
+                    warn.setHeaderText("This is a" + ("ADVANCED".equals(diff) ? "n ADVANCED" : "n INTERMEDIATE") + " course");
+                    warn.setContentText("You haven't completed any " + prereqDiff + " course yet.\nIt's recommended to complete a " + prereqDiff + " course first.\n\nEnroll anyway?");
+                    DialogHelper.theme(warn);
+                    Optional<ButtonType> result = warn.showAndWait();
+                    if (result.isEmpty() || result.get() != ButtonType.OK) return;
+                }
+            }
+
             TrainingEnrollment enrollment = new TrainingEnrollment(course.getId(), currentUser.getId());
             serviceEnrollment.ajouter(enrollment);
 
@@ -1677,13 +1725,16 @@ public class TrainingController {
         view.getStyleClass().add("tr-view");
         view.setPadding(new Insets(24));
 
-        Label title = new Label("My Certificates");
+        Label title = new Label(isHrOrAdmin ? "All Certificates" : "My Certificates");
         title.getStyleClass().add("tr-view-title");
 
         VBox certList = new VBox(12);
 
         try {
-            List<TrainingCertificate> certs = serviceCertificate.getByUser(currentUser.getId());
+            // HR/Admin see ALL certificates so they can sign them; others see only their own
+            List<TrainingCertificate> certs = isHrOrAdmin
+                    ? serviceCertificate.recuperer()
+                    : serviceCertificate.getByUser(currentUser.getId());
 
             if (certs.isEmpty()) {
                 Label empty = new Label("No certificates yet.\nComplete a course to earn your first certificate!");
@@ -1723,7 +1774,17 @@ public class TrainingController {
                     Label dateLabel = new Label("Issued: " + dateStr);
                     dateLabel.getStyleClass().add("tr-cert-date");
 
-                    info.getChildren().addAll(courseLabel, recipientLabel, certNum, dateLabel);
+                    // ── Signature badge ──
+                    if (cert.isSigned()) {
+                        String signerName = getUserName(cert.getSignedByUserId());
+                        Label signedBadge = new Label("✅ Signed by " + signerName);
+                        signedBadge.getStyleClass().add("tr-signed-badge");
+                        info.getChildren().addAll(courseLabel, recipientLabel, certNum, dateLabel, signedBadge);
+                    } else {
+                        Label unsignedBadge = new Label("⏳ Pending signature");
+                        unsignedBadge.getStyleClass().add("tr-unsigned-badge");
+                        info.getChildren().addAll(courseLabel, recipientLabel, certNum, dateLabel, unsignedBadge);
+                    }
 
                     VBox buttons = new VBox(6);
                     buttons.setAlignment(Pos.CENTER);
@@ -1737,6 +1798,19 @@ public class TrainingController {
                     pdfBtn.setOnAction(e -> exportCertificatePdf(cert, courseName, hours));
 
                     buttons.getChildren().addAll(viewBtn, pdfBtn);
+
+                    // ── Sign button (HR / Admin only) ──
+                    if (isHrOrAdmin && !cert.isSigned()) {
+                        Button signBtn = new Button("✍ Sign");
+                        signBtn.getStyleClass().addAll("tr-action-btn", "tr-sign-btn");
+                        final TrainingCertificate fCert = cert;
+                        final String fCourseName = courseName;
+                        final double fHours = hours;
+                        final String fUserName = userName;
+                        final String fDateStr = dateStr;
+                        signBtn.setOnAction(e -> showSignatureDialog(fCert, fCourseName, fHours, fUserName, fDateStr));
+                        buttons.getChildren().add(signBtn);
+                    }
 
                     card.getChildren().addAll(certIcon, info, buttons);
                     certList.getChildren().add(card);
@@ -1759,8 +1833,9 @@ public class TrainingController {
         dialog.initOwner(rootPane.getScene().getWindow());
         dialog.setTitle("Certificate of Completion");
 
-        // Landscape-ish aspect ratio
-        double cw = 780, ch = 520;
+        // Landscape-ish aspect ratio — taller when signed to fit signature image
+        boolean hasSig = cert.isSigned() && cert.getSignatureData() != null;
+        double cw = 780, ch = hasSig ? 570 : 520;
 
         StackPane canvas = new StackPane();
         canvas.setPrefSize(cw, ch);
@@ -1882,17 +1957,44 @@ public class TrainingController {
         dateCaption.setStyle("-fx-font-size: 9px; -fx-text-fill: #9696A5;");
         dateCol.getChildren().addAll(dateVal, dateLine, dateCaption);
 
-        VBox sigCol = new VBox(4);
+        VBox sigCol = new VBox(2);
         sigCol.setAlignment(Pos.CENTER);
-        Label sigVal = new Label("SynergyGig HR");
-        sigVal.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #19193C;");
+
+        // If the certificate is signed, render the drawn signature image
+        if (cert.isSigned() && cert.getSignatureData() != null) {
+            try {
+                byte[] sigBytes = Base64.getDecoder().decode(cert.getSignatureData());
+                Image sigImg = new Image(new ByteArrayInputStream(sigBytes));
+                ImageView sigView = new ImageView(sigImg);
+                sigView.setFitWidth(160);
+                sigView.setFitHeight(55);
+                sigView.setPreserveRatio(true);
+                sigView.setSmooth(true);
+                // Clip to keep sharp edges
+                javafx.scene.shape.Rectangle clip = new javafx.scene.shape.Rectangle(160, 55);
+                clip.setArcWidth(4);
+                clip.setArcHeight(4);
+                sigView.setClip(clip);
+                sigCol.getChildren().add(sigView);
+            } catch (Exception ex) {
+                Label sigVal = new Label("SynergyGig HR");
+                sigVal.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #19193C;");
+                sigCol.getChildren().add(sigVal);
+            }
+        } else {
+            Label sigVal = new Label("SynergyGig HR");
+            sigVal.setStyle("-fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #19193C;");
+            sigCol.getChildren().add(sigVal);
+        }
+
         Region sigLine = new Region();
-        sigLine.setPrefSize(120, 0.5);
-        sigLine.setMaxSize(120, 0.5);
+        sigLine.setPrefSize(140, 0.5);
+        sigLine.setMaxSize(140, 0.5);
         sigLine.setStyle("-fx-background-color: #646478;");
-        Label sigCaption = new Label("Training Director");
+        String signerLabel = cert.isSigned() ? getUserName(cert.getSignedByUserId()) : "Training Director";
+        Label sigCaption = new Label(signerLabel);
         sigCaption.setStyle("-fx-font-size: 9px; -fx-text-fill: #9696A5;");
-        sigCol.getChildren().addAll(sigVal, sigLine, sigCaption);
+        sigCol.getChildren().addAll(sigLine, sigCaption);
 
         bottom.getChildren().addAll(dateCol, sigCol);
 
@@ -1948,15 +2050,209 @@ public class TrainingController {
         File file = fc.showSaveDialog(rootPane.getScene().getWindow());
         if (file != null) {
             try {
+                String signerName = cert.isSigned() ? getUserName(cert.getSignedByUserId()) : null;
                 TrainingCertificatePdf.export(file.getAbsolutePath(),
                         getUserName(cert.getUserId()), courseName, hours,
                         cert.getCertificateNumber(),
-                        cert.getIssuedAt() != null ? cert.getIssuedAt() : new Timestamp(System.currentTimeMillis()));
+                        cert.getIssuedAt() != null ? cert.getIssuedAt() : new Timestamp(System.currentTimeMillis()),
+                        cert.getSignatureData(), signerName);
                 showAlert(Alert.AlertType.INFORMATION, "Exported!", "Certificate saved to: " + file.getName());
             } catch (Exception ex) {
                 showAlert(Alert.AlertType.ERROR, "Error", "Could not export PDF: " + ex.getMessage());
             }
         }
+    }
+
+    // ================================================================
+    // SIGNATURE DRAWING DIALOG (HR / Admin)
+    // ================================================================
+
+    /**
+     * Opens a modal dialog with a drawable canvas where the HR/Admin can draw
+     * their signature with the mouse. The signature is saved as a base64 PNG
+     * and stored on the certificate so that other members can see it on the
+     * certificate preview and PDF export.
+     */
+    private void showSignatureDialog(TrainingCertificate cert, String courseName,
+                                      double hours, String userName, String dateStr) {
+
+        javafx.stage.Stage dialog = new javafx.stage.Stage();
+        dialog.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        dialog.initOwner(rootPane.getScene().getWindow());
+        dialog.setTitle("Sign Certificate — " + courseName);
+
+        // ── Dark root wrapper ──
+        VBox root = new VBox(16);
+        root.setAlignment(Pos.CENTER);
+        root.setPadding(new Insets(24));
+        root.getStyleClass().add("tr-sig-dialog-root");
+        root.setStyle("-fx-background-color: #1a1a2e;");
+
+        // ── Header ──
+        Label header = new Label("✍  Draw Your Signature");
+        header.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #F0EDEE;");
+
+        Label subtitle = new Label("Sign as " + currentUser.getFullName() + "  •  " + courseName);
+        subtitle.setStyle("-fx-font-size: 12px; -fx-text-fill: #90DDF0;");
+        subtitle.setWrapText(true);
+
+        // ── Canvas container ──
+        double canvasW = 480, canvasH = 180;
+        StackPane canvasWrapper = new StackPane();
+        canvasWrapper.setMaxSize(canvasW + 4, canvasH + 4);
+        canvasWrapper.setStyle("-fx-background-color: #2C666E; -fx-background-radius: 10; -fx-padding: 2;");
+
+        Canvas sigCanvas = new Canvas(canvasW, canvasH);
+        GraphicsContext gc = sigCanvas.getGraphicsContext2D();
+
+        // White background for drawing
+        gc.setFill(javafx.scene.paint.Color.WHITE);
+        gc.fillRect(0, 0, canvasW, canvasH);
+
+        // Subtle guide line (where to sign)
+        gc.setStroke(javafx.scene.paint.Color.rgb(200, 200, 210));
+        gc.setLineWidth(0.8);
+        gc.strokeLine(40, canvasH * 0.72, canvasW - 40, canvasH * 0.72);
+
+        // "Sign here" hint
+        gc.setFill(javafx.scene.paint.Color.rgb(180, 180, 195));
+        gc.setFont(Font.font("Arial", 10));
+        gc.fillText("Sign here", canvasW / 2 - 22, canvasH * 0.72 + 14);
+
+        // Drawing state
+        final boolean[] drawing = {false};
+        final double[] lastX = {0}, lastY = {0};
+
+        gc.setStroke(javafx.scene.paint.Color.rgb(25, 25, 60));
+        gc.setLineCap(StrokeLineCap.ROUND);
+        gc.setLineWidth(2.5);
+
+        sigCanvas.setOnMousePressed(e -> {
+            drawing[0] = true;
+            lastX[0] = e.getX();
+            lastY[0] = e.getY();
+        });
+
+        sigCanvas.setOnMouseDragged(e -> {
+            if (!drawing[0]) return;
+            gc.strokeLine(lastX[0], lastY[0], e.getX(), e.getY());
+            lastX[0] = e.getX();
+            lastY[0] = e.getY();
+        });
+
+        sigCanvas.setOnMouseReleased(e -> drawing[0] = false);
+
+        canvasWrapper.getChildren().add(sigCanvas);
+
+        // ── Pen thickness controls ──
+        HBox penControls = new HBox(12);
+        penControls.setAlignment(Pos.CENTER);
+
+        Label penLabel = new Label("Pen:");
+        penLabel.setStyle("-fx-text-fill: #9696A5; -fx-font-size: 11px;");
+
+        String btnStyle = "-fx-background-color: #333; -fx-text-fill: #ccc; -fx-font-size: 11px; "
+                + "-fx-padding: 4 10; -fx-background-radius: 5; -fx-cursor: hand;";
+
+        Button thinBtn = new Button("Thin");
+        thinBtn.setStyle(btnStyle);
+        thinBtn.setOnAction(e -> gc.setLineWidth(1.5));
+
+        Button medBtn = new Button("Medium");
+        medBtn.setStyle(btnStyle);
+        medBtn.setOnAction(e -> gc.setLineWidth(2.5));
+
+        Button boldBtn = new Button("Bold");
+        boldBtn.setStyle(btnStyle);
+        boldBtn.setOnAction(e -> gc.setLineWidth(4.0));
+
+        // Pen colour
+        Label colorLabel = new Label("Color:");
+        colorLabel.setStyle("-fx-text-fill: #9696A5; -fx-font-size: 11px;");
+
+        Button blackPen = new Button("⬛");
+        blackPen.setStyle(btnStyle);
+        blackPen.setOnAction(e -> gc.setStroke(javafx.scene.paint.Color.rgb(25, 25, 60)));
+
+        Button bluePen = new Button("🔵");
+        bluePen.setStyle(btnStyle);
+        bluePen.setOnAction(e -> gc.setStroke(javafx.scene.paint.Color.rgb(20, 50, 140)));
+
+        penControls.getChildren().addAll(penLabel, thinBtn, medBtn, boldBtn,
+                new Region() {{ setPrefWidth(12); }},
+                colorLabel, blackPen, bluePen);
+
+        // ── Buttons ──
+        HBox btnBar = new HBox(12);
+        btnBar.setAlignment(Pos.CENTER);
+
+        Button clearBtn = new Button("🗑 Clear");
+        clearBtn.setStyle("-fx-background-color: #444; -fx-text-fill: #F0EDEE; -fx-font-size: 13px; "
+                + "-fx-padding: 8 20; -fx-background-radius: 6; -fx-cursor: hand;");
+        clearBtn.setOnAction(e -> {
+            gc.setFill(javafx.scene.paint.Color.WHITE);
+            gc.fillRect(0, 0, canvasW, canvasH);
+            gc.setStroke(javafx.scene.paint.Color.rgb(200, 200, 210));
+            gc.setLineWidth(0.8);
+            gc.strokeLine(40, canvasH * 0.72, canvasW - 40, canvasH * 0.72);
+            gc.setFill(javafx.scene.paint.Color.rgb(180, 180, 195));
+            gc.setFont(Font.font("Arial", 10));
+            gc.fillText("Sign here", canvasW / 2 - 22, canvasH * 0.72 + 14);
+            gc.setStroke(javafx.scene.paint.Color.rgb(25, 25, 60));
+            gc.setLineWidth(2.5);
+        });
+
+        Button confirmBtn = new Button("✅ Confirm & Sign");
+        confirmBtn.setStyle("-fx-background-color: #2C666E; -fx-text-fill: white; -fx-font-size: 13px; "
+                + "-fx-padding: 8 24; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: bold;");
+        confirmBtn.setOnAction(e -> {
+            // Snapshot the canvas to base64 PNG
+            try {
+                SnapshotParameters params = new SnapshotParameters();
+                params.setFill(javafx.scene.paint.Color.WHITE);
+                WritableImage snapshot = sigCanvas.snapshot(params, null);
+
+                java.awt.image.BufferedImage bImg = SwingFXUtils.fromFXImage(snapshot, null);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ImageIO.write(bImg, "png", baos);
+                String base64 = Base64.getEncoder().encodeToString(baos.toByteArray());
+
+                // Persist to DB
+                serviceCertificate.signCertificate(cert.getId(), currentUser.getId(), base64);
+
+                // Update in-memory object
+                cert.setSignedByUserId(currentUser.getId());
+                cert.setSignatureData(base64);
+                cert.setSignedAt(new Timestamp(System.currentTimeMillis()));
+
+                SoundManager.getInstance().play(SoundManager.TASK_COMPLETED);
+                dialog.close();
+
+                // Refresh certificates tab
+                showCertificatesTab();
+
+                showAlert(Alert.AlertType.INFORMATION, "Signed!",
+                        "Certificate for \"" + courseName + "\" has been signed by " + currentUser.getFullName() + ".");
+
+            } catch (Exception ex) {
+                showAlert(Alert.AlertType.ERROR, "Signature Error",
+                        "Could not save signature: " + ex.getMessage());
+            }
+        });
+
+        Button cancelBtn = new Button("Cancel");
+        cancelBtn.setStyle("-fx-background-color: #333; -fx-text-fill: #ccc; -fx-font-size: 13px; "
+                + "-fx-padding: 8 20; -fx-background-radius: 6; -fx-cursor: hand;");
+        cancelBtn.setOnAction(e -> dialog.close());
+
+        btnBar.getChildren().addAll(clearBtn, confirmBtn, cancelBtn);
+
+        root.getChildren().addAll(header, subtitle, canvasWrapper, penControls, btnBar);
+
+        javafx.scene.Scene scene = new javafx.scene.Scene(root, canvasW + 96, canvasH + 220);
+        dialog.setScene(scene);
+        dialog.setResizable(false);
+        dialog.show();
     }
 
     // ================================================================
@@ -2110,11 +2406,18 @@ public class TrainingController {
                     meta.getChildren().add(durLabel);
                 }
 
-                // Col 4: Enrollment count
+                // Col 4: Enrollment count vs capacity
                 if (colVis[4]) {
                     long enrollCount = 0;
-                    try { enrollCount = serviceEnrollment.getByCourse(c.getId()).size(); } catch (SQLException ignored) {}
-                    Label enrollLabel = new Label("👥 " + enrollCount + " enrolled");
+                    try {
+                        enrollCount = serviceEnrollment.getByCourse(c.getId()).stream()
+                                .filter(en -> !"DROPPED".equals(en.getStatus())).count();
+                    } catch (SQLException ignored) {}
+                    String capStr = c.getMaxParticipants() > 0 ? (" / " + c.getMaxParticipants()) : "";
+                    Label enrollLabel = new Label("👥 " + enrollCount + capStr + " enrolled");
+                    if (c.getMaxParticipants() > 0 && enrollCount >= c.getMaxParticipants()) {
+                        enrollLabel.setStyle("-fx-text-fill: #FF4444;");
+                    }
                     enrollLabel.getStyleClass().add("tr-card-info");
                     meta.getChildren().add(enrollLabel);
                 }

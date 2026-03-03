@@ -65,6 +65,13 @@ public class ServiceUser implements IService<User> {
         if (obj.has("monthly_salary") && !obj.get("monthly_salary").isJsonNull()) {
             user.setMonthlySalary(obj.get("monthly_salary").getAsDouble());
         }
+        // Social profile fields
+        if (obj.has("bio") && !obj.get("bio").isJsonNull()) {
+            user.setBio(obj.get("bio").getAsString());
+        }
+        if (obj.has("cover_base64") && !obj.get("cover_base64").isJsonNull()) {
+            user.setCoverBase64(obj.get("cover_base64").getAsString());
+        }
         return user;
     }
 
@@ -78,6 +85,10 @@ public class ServiceUser implements IService<User> {
         } catch (SQLException ignored) {
             // columns might not exist in some queries
         }
+        try {
+            user.setBio(rs.getString("bio"));
+            user.setCoverBase64(rs.getString("cover_base64"));
+        } catch (SQLException ignored) {}
     }
 
     private List<User> jsonArrayToUsers(JsonElement el) {
@@ -139,6 +150,8 @@ public class ServiceUser implements IService<User> {
             body.put("last_name", user.getLastName());
             body.put("role", user.getRole());
             body.put("avatar_path", user.getAvatarPath());
+            if (user.getBio() != null) body.put("bio", user.getBio());
+            if (user.getCoverBase64() != null) body.put("cover_base64", user.getCoverBase64());
             ApiClient.put("/users/" + user.getId(), body);
             System.out.println("✅ User updated via API: " + user.getEmail());
             return;
@@ -149,7 +162,7 @@ public class ServiceUser implements IService<User> {
             pw = BCrypt.hashpw(pw, BCrypt.gensalt());
             user.setPassword(pw);
         }
-        String req = "UPDATE users SET email=?, password=?, first_name=?, last_name=?, role=?, avatar_path=? WHERE id=?";
+        String req = "UPDATE users SET email=?, password=?, first_name=?, last_name=?, role=?, avatar_path=?, bio=?, cover_base64=? WHERE id=?";
         try (Connection conn = MyDatabase.getInstance().getConnection();
              PreparedStatement ps = conn.prepareStatement(req)) {
             ps.setString(1, user.getEmail());
@@ -158,7 +171,9 @@ public class ServiceUser implements IService<User> {
             ps.setString(4, user.getLastName());
             ps.setString(5, user.getRole());
             ps.setString(6, user.getAvatarPath());
-            ps.setInt(7, user.getId());
+            ps.setString(7, user.getBio());
+            ps.setString(8, user.getCoverBase64());
+            ps.setInt(9, user.getId());
             ps.executeUpdate();
         }
         InMemoryCache.evictByPrefix("users:");

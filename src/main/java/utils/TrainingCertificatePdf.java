@@ -5,10 +5,13 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 
 /**
  * Generates professional training certificate PDFs using Apache PDFBox.
@@ -26,9 +29,23 @@ public class TrainingCertificatePdf {
 
     /**
      * Export a training certificate to a PDF file (landscape A4).
+     * Overload for backward compatibility (no signature).
      */
     public static void export(String filePath, String recipientName, String courseName,
                               double hours, String certificateNumber, Timestamp issuedAt)
+            throws IOException {
+        export(filePath, recipientName, courseName, hours, certificateNumber, issuedAt, null, null);
+    }
+
+    /**
+     * Export a training certificate to a PDF file (landscape A4), with optional drawn signature.
+     *
+     * @param signatureBase64  base64-encoded PNG of the HR/Admin drawn signature (nullable)
+     * @param signerName       name of the person who signed (nullable)
+     */
+    public static void export(String filePath, String recipientName, String courseName,
+                              double hours, String certificateNumber, Timestamp issuedAt,
+                              String signatureBase64, String signerName)
             throws IOException {
 
         try (PDDocument doc = new PDDocument()) {
@@ -39,11 +56,21 @@ public class TrainingCertificatePdf {
             float w = page.getMediaBox().getWidth();
             float h = page.getMediaBox().getHeight();
 
+            // If there is a signature, create the image object from base64 BEFORE opening the content stream
+            PDImageXObject sigImage = null;
+            if (signatureBase64 != null && !signatureBase64.isEmpty()) {
+                try {
+                    byte[] sigBytes = Base64.getDecoder().decode(signatureBase64);
+                    sigImage = PDImageXObject.createFromByteArray(doc, sigBytes, "signature.png");
+                } catch (Exception ignored) { /* invalid base64 — skip */ }
+            }
+
             try (PDPageContentStream cs = new PDPageContentStream(doc, page)) {
                 drawBackground(cs, w, h);
                 drawBorders(cs, w, h);
                 drawCornerOrnaments(cs, w, h);
-                drawContent(cs, w, h, recipientName, courseName, hours, certificateNumber, issuedAt);
+                drawContent(cs, w, h, recipientName, courseName, hours, certificateNumber, issuedAt,
+                        sigImage, signerName);
             }
 
             doc.save(filePath);
@@ -111,7 +138,8 @@ public class TrainingCertificatePdf {
 
     private static void drawContent(PDPageContentStream cs, float w, float h,
                                      String recipientName, String courseName,
-                                     double hours, String certNumber, Timestamp issuedAt)
+                                     double hours, String certNumber, Timestamp issuedAt,
+                                     PDImageXObject signatureImage, String signerName)
             throws IOException {
 
         float cy = h - 75;
@@ -202,14 +230,29 @@ public class TrainingCertificatePdf {
         cs.stroke();
         drawCenteredTextAt(cs, PDType1Font.HELVETICA, 12, DARK_NAVY, dateStr, colLeft, cy + 10);
 
-        // Right side: Authorized signature
-        drawCenteredTextAt(cs, PDType1Font.HELVETICA, 10, LIGHT_MUTED, "Training Director", colRight, cy - 15);
+        // Right side: Authorized signature (drawn image or fallback text)
+        if (signatureImage != null) {
+            // Render the drawn signature image (scaled to fit above the line)
+            float sigImgW = 120;
+            float sigImgH = 40;
+            float sigImgX = colRight - sigImgW / 2;
+            float sigImgY = cy + 5;
+            cs.drawImage(signatureImage, sigImgX, sigImgY, sigImgW, sigImgH);
+
+            // Signer name label under the line
+            String sigLabel = signerName != null && !signerName.isEmpty() ? signerName : "Training Director";
+            drawCenteredTextAt(cs, PDType1Font.HELVETICA, 10, LIGHT_MUTED, sigLabel, colRight, cy - 15);
+        } else {
+            drawCenteredTextAt(cs, PDType1Font.HELVETICA, 10, LIGHT_MUTED, "Training Director", colRight, cy - 15);
+        }
         cs.setStrokingColor(MUTED[0], MUTED[1], MUTED[2]);
         cs.setLineWidth(0.5f);
         cs.moveTo(colRight - 60, cy);
         cs.lineTo(colRight + 60, cy);
         cs.stroke();
-        drawCenteredTextAt(cs, PDType1Font.HELVETICA_BOLD, 12, DARK_NAVY, "SynergyGig HR", colRight, cy + 10);
+        if (signatureImage == null) {
+            drawCenteredTextAt(cs, PDType1Font.HELVETICA_BOLD, 12, DARK_NAVY, "SynergyGig HR", colRight, cy + 10);
+        }
 
         // ── Certificate ID at bottom ──
         drawCenteredText(cs, PDType1Font.COURIER, 8, LIGHT_MUTED,

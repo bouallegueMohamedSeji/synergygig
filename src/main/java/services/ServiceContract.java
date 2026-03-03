@@ -41,7 +41,7 @@ public class ServiceContract implements IService<Contract> {
             riskScore = obj.get("risk_score").getAsInt();
         }
 
-        return new Contract(
+        Contract c = new Contract(
             obj.get("id").getAsInt(),
             obj.get("offer_id").getAsInt(),
             obj.get("applicant_id").getAsInt(),
@@ -59,6 +59,16 @@ public class ServiceContract implements IService<Contract> {
             endDate,
             createdAt
         );
+        // Negotiation fields
+        if (obj.has("counter_amount") && !obj.get("counter_amount").isJsonNull())
+            c.setCounterAmount(obj.get("counter_amount").getAsDouble());
+        if (obj.has("counter_terms") && !obj.get("counter_terms").isJsonNull())
+            c.setCounterTerms(obj.get("counter_terms").getAsString());
+        if (obj.has("negotiation_notes") && !obj.get("negotiation_notes").isJsonNull())
+            c.setNegotiationNotes(obj.get("negotiation_notes").getAsString());
+        if (obj.has("negotiation_round") && !obj.get("negotiation_round").isJsonNull())
+            c.setNegotiationRound(obj.get("negotiation_round").getAsInt());
+        return c;
     }
 
     private List<Contract> jsonArrayToContracts(JsonElement el) {
@@ -90,6 +100,10 @@ public class ServiceContract implements IService<Contract> {
             body.put("qr_code_url", c.getQrCodeUrl());
             body.put("start_date", c.getStartDate() != null ? c.getStartDate().toString() : null);
             body.put("end_date", c.getEndDate() != null ? c.getEndDate().toString() : null);
+            if (c.getCounterAmount() != null) body.put("counter_amount", c.getCounterAmount());
+            body.put("counter_terms", c.getCounterTerms());
+            body.put("negotiation_notes", c.getNegotiationNotes());
+            body.put("negotiation_round", c.getNegotiationRound());
             JsonElement resp = ApiClient.post("/contracts", body);
             if (resp == null) {
                 throw new SQLException("API error: failed to create contract (server returned error)");
@@ -140,6 +154,10 @@ public class ServiceContract implements IService<Contract> {
             body.put("qr_code_url", c.getQrCodeUrl());
             body.put("start_date", c.getStartDate() != null ? c.getStartDate().toString() : null);
             body.put("end_date", c.getEndDate() != null ? c.getEndDate().toString() : null);
+            if (c.getCounterAmount() != null) body.put("counter_amount", c.getCounterAmount());
+            body.put("counter_terms", c.getCounterTerms());
+            body.put("negotiation_notes", c.getNegotiationNotes());
+            body.put("negotiation_round", c.getNegotiationRound());
             ApiClient.put("/contracts/" + c.getId(), body);
             return;
         }
@@ -230,7 +248,7 @@ public class ServiceContract implements IService<Contract> {
     private Contract rowToContract(ResultSet rs) throws SQLException {
         Integer riskScore = rs.getInt("risk_score");
         if (rs.wasNull()) riskScore = null;
-        return new Contract(
+        Contract c = new Contract(
             rs.getInt("id"),
             rs.getInt("offer_id"),
             rs.getInt("applicant_id"),
@@ -248,5 +266,14 @@ public class ServiceContract implements IService<Contract> {
             rs.getDate("end_date"),
             rs.getTimestamp("created_at")
         );
+        // Negotiation fields — backward-compatible with old schema
+        try {
+            double ca = rs.getDouble("counter_amount");
+            if (!rs.wasNull()) c.setCounterAmount(ca);
+            c.setCounterTerms(rs.getString("counter_terms"));
+            c.setNegotiationNotes(rs.getString("negotiation_notes"));
+            c.setNegotiationRound(rs.getInt("negotiation_round"));
+        } catch (SQLException ignored) { /* columns may not exist in older schemas */ }
+        return c;
     }
 }

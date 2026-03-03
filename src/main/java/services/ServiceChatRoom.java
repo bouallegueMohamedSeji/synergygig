@@ -60,16 +60,22 @@ public class ServiceChatRoom implements IService<ChatRoom> {
             body.put("name", room.getName());
             body.put("type", room.getType() != null ? room.getType() : "group");
             body.put("created_by", room.getCreatedBy());
-            ApiClient.post("/chatrooms", body);
+            JsonElement resp = ApiClient.post("/chatrooms", body);
+            if (resp != null && resp.isJsonObject() && resp.getAsJsonObject().has("id")) {
+                room.setId(resp.getAsJsonObject().get("id").getAsInt());
+            }
             return;
         }
         String req = "INSERT INTO chat_rooms (name, type, created_by) VALUES (?, ?, ?)";
         try (Connection conn = MyDatabase.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(req)) {
+             PreparedStatement ps = conn.prepareStatement(req, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, room.getName());
             ps.setString(2, room.getType() != null ? room.getType() : "group");
             ps.setInt(3, room.getCreatedBy());
             ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) room.setId(keys.getInt(1));
+            }
         }
         InMemoryCache.evictByPrefix("chatrooms:");
     }

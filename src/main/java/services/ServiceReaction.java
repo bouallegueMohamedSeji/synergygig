@@ -4,6 +4,7 @@ import com.google.gson.*;
 import entities.Reaction;
 import utils.ApiClient;
 import utils.AppConfig;
+import utils.InMemoryCache;
 import utils.MyDatabase;
 
 import java.sql.*;
@@ -118,30 +119,33 @@ public class ServiceReaction implements IService<Reaction> {
         return reactions;
     }
 
-    /** Get reactions for a specific post */
+    /** Get reactions for a specific post. Cached 30s. */
     public List<Reaction> getByPostId(int postId) throws SQLException {
-        if (useApi) {
-            JsonElement el = ApiClient.get("/reactions/post/" + postId);
-            return jsonArrayToReactions(el);
-        }
-        List<Reaction> reactions = new ArrayList<>();
-        try (Connection conn = MyDatabase.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(
-                "SELECT * FROM reactions WHERE post_id = ? ORDER BY created_at ASC")) {
-            ps.setInt(1, postId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    reactions.add(new Reaction(
-                            rs.getInt("id"),
-                            rs.getInt("post_id"),
-                            rs.getInt("user_id"),
-                            rs.getString("type"),
-                            rs.getTimestamp("created_at")
-                    ));
+        String key = "reactions:post:" + postId;
+        return InMemoryCache.getOrLoadChecked(key, 30, () -> {
+            if (useApi) {
+                JsonElement el = ApiClient.get("/reactions/post/" + postId);
+                return jsonArrayToReactions(el);
+            }
+            List<Reaction> reactions = new ArrayList<>();
+            try (Connection conn = MyDatabase.getInstance().getConnection();
+                 PreparedStatement ps = conn.prepareStatement(
+                    "SELECT * FROM reactions WHERE post_id = ? ORDER BY created_at ASC")) {
+                ps.setInt(1, postId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        reactions.add(new Reaction(
+                                rs.getInt("id"),
+                                rs.getInt("post_id"),
+                                rs.getInt("user_id"),
+                                rs.getString("type"),
+                                rs.getTimestamp("created_at")
+                        ));
+                    }
                 }
             }
-        }
-        return reactions;
+            return reactions;
+        });
     }
 
     /** Toggle reaction: if user already reacted with same type, remove it; otherwise add it */

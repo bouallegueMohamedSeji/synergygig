@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 /**
  * Notification bell icon + dropdown panel with swipe-to-delete.
@@ -46,6 +47,7 @@ public class NotificationPanel {
     private int lastUnreadCount = 0;
     private ScheduledExecutorService poller;
     private Runnable onNotificationClick;
+    private BiConsumer<String, Integer> onNotificationAction;
 
     // ── Swipe constants ──
     private static final double DELETE_THRESHOLD = 0.30;  // 30% of width = auto-delete
@@ -101,6 +103,11 @@ public class NotificationPanel {
 
     public void setOnNotificationClick(Runnable callback) {
         this.onNotificationClick = callback;
+    }
+
+    /** Set a type-aware callback: receives (notificationType, referenceId) when a notification is clicked. */
+    public void setOnNotificationAction(BiConsumer<String, Integer> callback) {
+        this.onNotificationAction = callback;
     }
 
     private void refreshCount() {
@@ -315,6 +322,10 @@ public class NotificationPanel {
                     });
                 });
             }
+            if (onNotificationAction != null && n.type != null && n.referenceId != null) {
+                if (popup != null && popup.isShowing()) popup.hide();
+                onNotificationAction.accept(n.type, n.referenceId);
+            }
             if (onNotificationClick != null) onNotificationClick.run();
         });
 
@@ -479,6 +490,16 @@ public class NotificationPanel {
             case "APPLICATION":
                 icon = "\uD83D\uDCE9"; // 📩
                 color = "#EC4899";       // pink
+                break;
+
+            // ── Friends ──
+            case "FRIEND_REQUEST":
+                icon = "\uD83D\uDC65"; // 👥
+                color = "#F59E0B";       // amber
+                break;
+            case "NEW_FRIEND":
+                icon = "\uD83E\uDD1D"; // 🤝
+                color = "#2C666E";       // teal
                 break;
 
             default:

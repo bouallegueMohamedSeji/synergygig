@@ -28,13 +28,16 @@ public class ServiceComment implements IService<Comment> {
             java.time.LocalDateTime ldt = java.time.LocalDateTime.parse(raw, java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
             createdAt = Timestamp.from(ldt.atZone(java.time.ZoneOffset.UTC).toInstant());
         }
-        return new Comment(
+        Comment c = new Comment(
                 obj.get("id").getAsInt(),
                 obj.get("post_id").getAsInt(),
                 obj.get("author_id").getAsInt(),
                 obj.get("content").getAsString(),
                 createdAt
         );
+        if (obj.has("parent_id") && !obj.get("parent_id").isJsonNull())
+            c.setParentId(obj.get("parent_id").getAsInt());
+        return c;
     }
 
     private List<Comment> jsonArrayToComments(JsonElement el) {
@@ -56,15 +59,18 @@ public class ServiceComment implements IService<Comment> {
             body.put("post_id", comment.getPostId());
             body.put("author_id", comment.getAuthorId());
             body.put("content", comment.getContent());
+            if (comment.getParentId() != null) body.put("parent_id", comment.getParentId());
             ApiClient.post("/comments", body);
             return;
         }
-        String sql = "INSERT INTO comments (post_id, author_id, content) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO comments (post_id, author_id, content, parent_id) VALUES (?, ?, ?, ?)";
         try (Connection conn = MyDatabase.getInstance().getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, comment.getPostId());
             ps.setInt(2, comment.getAuthorId());
             ps.setString(3, comment.getContent());
+            if (comment.getParentId() != null) ps.setInt(4, comment.getParentId());
+            else ps.setNull(4, java.sql.Types.INTEGER);
             ps.executeUpdate();
         }
     }
@@ -110,13 +116,16 @@ public class ServiceComment implements IService<Comment> {
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery("SELECT * FROM comments ORDER BY created_at ASC")) {
             while (rs.next()) {
-                comments.add(new Comment(
+                Comment c = new Comment(
                         rs.getInt("id"),
                         rs.getInt("post_id"),
                         rs.getInt("author_id"),
                         rs.getString("content"),
                         rs.getTimestamp("created_at")
-                ));
+                );
+                int pid = rs.getInt("parent_id");
+                if (!rs.wasNull()) c.setParentId(pid);
+                comments.add(c);
             }
         }
         return comments;
@@ -135,13 +144,16 @@ public class ServiceComment implements IService<Comment> {
             ps.setInt(1, postId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    comments.add(new Comment(
+                    Comment c = new Comment(
                             rs.getInt("id"),
                             rs.getInt("post_id"),
                             rs.getInt("author_id"),
                             rs.getString("content"),
                             rs.getTimestamp("created_at")
-                    ));
+                    );
+                    int pid = rs.getInt("parent_id");
+                    if (!rs.wasNull()) c.setParentId(pid);
+                    comments.add(c);
                 }
             }
         }

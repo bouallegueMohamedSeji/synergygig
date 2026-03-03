@@ -51,9 +51,9 @@
                        styleClass="js-empty-subtitle"/>
             </VBox>
 
-            <!-- Loading spinner -->
-            <VBox fx:id="loadingState" alignment="CENTER" spacing="12" visible="false" managed="false">
-                <ProgressIndicator prefWidth="48" prefHeight="48" styleClass="js-spinner"/>
+            <!-- Radar loading animation -->
+            <VBox fx:id="loadingState" alignment="CENTER" spacing="16" visible="false" managed="false">
+                <StackPane fx:id="radarContainer" prefWidth="150" prefHeight="150" maxWidth="150" maxHeight="150"/>
                 <Label fx:id="loadingLabel" text="Searching LinkedIn..." styleClass="js-loading-text"/>
             </VBox>
 

@@ -21,6 +21,7 @@ import java.awt.Desktop;
 import java.io.File;
 import java.sql.Date;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -85,6 +86,7 @@ public class OfferContractController {
     private final ServiceContract serviceContract = new ServiceContract();
     private final ServiceUser serviceUser = new ServiceUser();
     private final ServiceNotification serviceNotification = new ServiceNotification();
+    private final ServiceInterview serviceInterview = new ServiceInterview();
     private ZAIService zaiService;
 
     // ── State ──
@@ -220,6 +222,12 @@ public class OfferContractController {
             case "AI Assistant":
                 aiAssistantView.setVisible(true); aiAssistantView.setManaged(true);
                 break;
+            case "Resume Parser":
+                DashboardController.getInstance().navigateTo("/fxml/ResumeParser.fxml");
+                break;
+            case "Interview Prep":
+                DashboardController.getInstance().navigateTo("/fxml/InterviewPrep.fxml");
+                break;
         }
     }
 
@@ -237,6 +245,7 @@ public class OfferContractController {
 
         List<Offer> filtered = allOffers.stream()
                 .filter(o -> "PUBLISHED".equals(o.getStatus()))
+                .filter(o -> o.getEndDate() == null || !o.getEndDate().toLocalDate().isBefore(LocalDate.now()))
                 .filter(o -> searchText.isEmpty()
                         || o.getTitle().toLowerCase().contains(searchText)
                         || (o.getDescription() != null && o.getDescription().toLowerCase().contains(searchText))
@@ -625,7 +634,7 @@ public class OfferContractController {
         btnDelete.getStyleClass().add("oc-btn-danger");
         btnDelete.setOnAction(e -> deleteOffer(o));
 
-        Button btnToggle = new Button(o.getStatus().equals("DRAFT") ? "Publish" : o.getStatus().equals("PUBLISHED") ? "Close" : o.getStatus());
+        Button btnToggle = new Button(Offer.STATUS_DRAFT.equals(o.getStatus()) ? "Publish" : Offer.STATUS_PUBLISHED.equals(o.getStatus()) ? "Close" : o.getStatus());
         btnToggle.getStyleClass().add("oc-btn-primary");
         btnToggle.setOnAction(e -> toggleOfferStatus(o));
 
@@ -731,12 +740,12 @@ public class OfferContractController {
 
     private void toggleOfferStatus(Offer o) {
         try {
-            if ("DRAFT".equals(o.getStatus())) {
-                o.setStatus("PUBLISHED");
+            if (Offer.STATUS_DRAFT.equals(o.getStatus())) {
+                o.setStatus(Offer.STATUS_PUBLISHED);
                 serviceOffer.modifier(o);
                 showInfo("Offer published!");
-            } else if ("PUBLISHED".equals(o.getStatus())) {
-                o.setStatus("COMPLETED");
+            } else if (Offer.STATUS_PUBLISHED.equals(o.getStatus())) {
+                o.setStatus(Offer.STATUS_COMPLETED);
                 serviceOffer.modifier(o);
                 showInfo("Offer closed.");
             }
@@ -838,29 +847,80 @@ public class OfferContractController {
         actions.setAlignment(Pos.CENTER);
 
         if (isOwnerOrAdmin) {
-            // Owner can review, accept, reject
             Button btnAiScore = new Button("🎯 AI Score");
             btnAiScore.getStyleClass().add("oc-btn-secondary");
             btnAiScore.setOnAction(e -> runAiScoring(a));
 
-            Button btnAccept = new Button("✓ Accept");
-            btnAccept.getStyleClass().add("oc-btn-primary");
-            btnAccept.setOnAction(e -> updateApplicationStatus(a, "ACCEPTED"));
-
-            Button btnReject = new Button("✗ Reject");
-            btnReject.getStyleClass().add("oc-btn-danger");
-            btnReject.setOnAction(e -> updateApplicationStatus(a, "REJECTED"));
-
+            // === NEW PIPELINE BUTTONS ===
             if ("PENDING".equals(a.getStatus()) || "REVIEWED".equals(a.getStatus())) {
-                actions.getChildren().addAll(btnAiScore, btnAccept, btnReject);
+                // Step 1: HR can Shortlist or Reject
+                Button btnShortlist = new Button("⭐ Shortlist");
+                btnShortlist.getStyleClass().add("oc-btn-primary");
+                btnShortlist.setOnAction(e -> updateApplicationStatus(a, "SHORTLISTED"));
+
+                Button btnReject = new Button("✗ Reject");
+                btnReject.getStyleClass().add("oc-btn-danger");
+                btnReject.setOnAction(e -> updateApplicationStatus(a, "REJECTED"));
+
+                actions.getChildren().addAll(btnAiScore, btnShortlist, btnReject);
+            } else if ("SHORTLISTED".equals(a.getStatus())) {
+                // Step 2: HR schedules an interview for this applicant
+                Button btnInterview = new Button("📅 Schedule Interview");
+                btnInterview.getStyleClass().add("oc-btn-primary");
+                btnInterview.setOnAction(e -> showScheduleInterviewDialog(a));
+
+                // Check if interview already exists for this application
+                try {
+                    List<Interview> appInterviews = serviceInterview.getByApplication(a.getId());
+                    if (!appInterviews.isEmpty()) {
+                        Interview latest = appInterviews.get(0);
+                        Label interviewStatus = new Label("Interview: " + latest.getStatus());
+                        interviewStatus.getStyleClass().addAll("oc-status-badge",
+                                "oc-status-" + latest.getStatus().toLowerCase());
+                        actions.getChildren().add(interviewStatus);
+                    } else {
+                        actions.getChildren().add(btnInterview);
+                    }
+                } catch (SQLException ex) {
+                    actions.getChildren().add(btnInterview);
+                }
+
+                Button btnReject = new Button("✗ Reject");
+                btnReject.getStyleClass().add("oc-btn-danger");
+                btnReject.setOnAction(e -> updateApplicationStatus(a, "REJECTED"));
+                actions.getChildren().addAll(btnAiScore, btnReject);
+            } else if ("ACCEPTED".equals(a.getStatus())) {
+                // Already accepted via interview — show interview status
+                Label done = new Label("✓ Accepted — Contract Created");
+                done.setStyle("-fx-text-fill: #10b981; -fx-font-weight: bold; -fx-font-size: 11;");
+                actions.getChildren().add(done);
             }
         } else {
-            // Applicant can withdraw
-            if ("PENDING".equals(a.getStatus())) {
+            // Applicant can withdraw if pending/shortlisted
+            if ("PENDING".equals(a.getStatus()) || "SHORTLISTED".equals(a.getStatus())) {
                 Button btnWithdraw = new Button("Withdraw");
                 btnWithdraw.getStyleClass().add("oc-btn-danger");
                 btnWithdraw.setOnAction(e -> updateApplicationStatus(a, "WITHDRAWN"));
                 actions.getChildren().add(btnWithdraw);
+            }
+            // Show interview info to applicant
+            if ("SHORTLISTED".equals(a.getStatus())) {
+                try {
+                    List<Interview> appInterviews = serviceInterview.getByApplication(a.getId());
+                    if (!appInterviews.isEmpty()) {
+                        Interview latest = appInterviews.get(0);
+                        String dtStr = latest.getDateTime() != null
+                                ? latest.getDateTime().toLocalDateTime().format(DateTimeFormatter.ofPattern("MMM dd, yyyy HH:mm"))
+                                : "TBD";
+                        Label interviewInfo = new Label("🗓 Interview: " + dtStr + " (" + latest.getStatus() + ")");
+                        interviewInfo.setStyle("-fx-text-fill: #8A8AFF; -fx-font-size: 11;");
+                        actions.getChildren().add(interviewInfo);
+                    } else {
+                        Label waitLabel = new Label("⏳ Awaiting interview scheduling");
+                        waitLabel.setStyle("-fx-text-fill: #facc15; -fx-font-size: 11;");
+                        actions.getChildren().add(waitLabel);
+                    }
+                } catch (SQLException ex) { /* ignore */ }
             }
         }
 
@@ -884,6 +944,29 @@ public class OfferContractController {
     }
 
     private void showApplyDialog(Offer offer) {
+        // ── Guard: check if offer has expired ──
+        if (offer.getEndDate() != null && offer.getEndDate().toLocalDate().isBefore(LocalDate.now())) {
+            showError("This offer expired on " + offer.getEndDate().toLocalDate()
+                    .format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) + ". You can no longer apply.");
+            return;
+        }
+
+        // ── Guard: check for duplicate application ──
+        try {
+            List<JobApplication> myApps = serviceApp.getByUser(currentUser.getId());
+            boolean alreadyApplied = myApps.stream()
+                    .anyMatch(a -> a.getOfferId() == offer.getId()
+                            && !"WITHDRAWN".equals(a.getStatus())
+                            && !"REJECTED".equals(a.getStatus()));
+            if (alreadyApplied) {
+                showError("You have already applied to this offer. You cannot apply again.");
+                return;
+            }
+        } catch (SQLException e) {
+            // Non-blocking — allow apply if check fails
+            System.err.println("Duplicate check failed: " + e.getMessage());
+        }
+
         Dialog<JobApplication> dialog = new Dialog<>();
         dialog.setTitle("Apply to: " + offer.getTitle());
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
@@ -891,9 +974,20 @@ public class OfferContractController {
 
         VBox content = new VBox(10);
         content.setPadding(new Insets(16));
+
+        // Show required skills prominently
+        if (offer.getRequiredSkills() != null && !offer.getRequiredSkills().isBlank()) {
+            Label skillsHeader = new Label("🔧 Required Skills:");
+            skillsHeader.setStyle("-fx-font-weight: bold; -fx-text-fill: #facc15; -fx-font-size: 13;");
+            Label skillsVal = new Label(offer.getRequiredSkills());
+            skillsVal.setWrapText(true);
+            skillsVal.setStyle("-fx-text-fill: #ccc; -fx-font-size: 12; -fx-padding: 4 0 8 0;");
+            content.getChildren().addAll(skillsHeader, skillsVal);
+        }
+
         Label lbl = new Label("Write your cover letter / motivation:");
         TextArea taCover = new TextArea();
-        taCover.setPromptText("Why are you a great fit for this offer?");
+        taCover.setPromptText("Address the required skills above and explain why you're a great fit.");
         taCover.setPrefRowCount(8);
         content.getChildren().addAll(lbl, taCover);
         dialog.getDialogPane().setContent(content);
@@ -912,8 +1006,49 @@ public class OfferContractController {
         dialog.showAndWait().ifPresent(a -> {
             try {
                 serviceApp.ajouter(a);
-                showInfo("Application submitted!");
+                showInfo("Application submitted! Your application is now PENDING review.");
                 SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
+
+                // Auto-trigger AI scoring in background
+                AppThreadPool.io(() -> {
+                    try {
+                        String result = zaiService.scoreApplicant(
+                                offer.getTitle(),
+                                offer.getRequiredSkills() != null ? offer.getRequiredSkills() : "",
+                                a.getCoverLetter() != null ? a.getCoverLetter() : "",
+                                getUserName(a.getApplicantId())
+                        );
+                        // Parse score from AI result
+                        try {
+                            com.google.gson.JsonObject json = com.google.gson.JsonParser.parseString(result).getAsJsonObject();
+                            if (json.has("score")) a.setAiScore(json.get("score").getAsInt());
+                            if (json.has("feedback")) a.setAiFeedback(json.get("feedback").getAsString());
+                        } catch (Exception parseEx) {
+                            a.setAiFeedback(result);
+                        }
+
+                        // ── Auto-reject if AI score < 60% ──
+                        if (a.getAiScore() != null && a.getAiScore() < 60) {
+                            a.setStatus(JobApplication.STATUS_REJECTED);
+                            serviceApp.modifier(a);
+                            // Notify applicant about auto-rejection
+                            try {
+                                String offerTitle = offer.getTitle() != null ? offer.getTitle() : "Offer #" + offer.getId();
+                                serviceNotification.notifyInterview(a.getApplicantId(), "REJECTED",
+                                        offerTitle + ": Your application was automatically declined (AI fit score: "
+                                                + a.getAiScore() + "%). A minimum score of 60% is required.", 0);
+                            } catch (Exception notifEx) {
+                                System.err.println("Auto-reject notification failed: " + notifEx.getMessage());
+                            }
+                            Platform.runLater(() -> refreshApplications());
+                        } else {
+                            serviceApp.modifier(a);
+                            Platform.runLater(() -> refreshApplications());
+                        }
+                    } catch (Exception ex) {
+                        System.err.println("Auto AI scoring failed: " + ex.getMessage());
+                    }
+                });
             } catch (SQLException e) {
                 showError("Application failed: " + e.getMessage());
             }
@@ -922,87 +1057,216 @@ public class OfferContractController {
 
     private void updateApplicationStatus(JobApplication a, String newStatus) {
         try {
+            String oldStatus = a.getStatus();
             a.setStatus(newStatus);
             serviceApp.modifier(a);
             SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
 
-            // If accepted, auto-create a draft contract + send email + notify
-            if ("ACCEPTED".equals(newStatus)) {
+            // Notify applicant about status change
+            String statusMsg = switch (newStatus) {
+                case "SHORTLISTED" -> "Congratulations! Your application has been shortlisted. An interview will be scheduled soon.";
+                case "REJECTED" -> "Your application has been rejected.";
+                case "WITHDRAWN" -> "Your application has been withdrawn.";
+                case "ACCEPTED" -> "Your application has been accepted! A contract is being prepared.";
+                default -> "Your application status changed to " + newStatus;
+            };
+            try {
                 Offer offer = offerMap.get(a.getOfferId());
-                if (offer != null) {
-                    Contract c = new Contract(
-                            offer.getId(), a.getApplicantId(), offer.getOwnerId(),
-                            null, offer.getAmount(), offer.getCurrency(),
-                            "DRAFT", offer.getStartDate(), offer.getEndDate()
-                    );
-                    // Generate blockchain hash
-                    String hash = BlockchainVerifier.generateHash(0, "Auto-generated from application acceptance", offer.getAmount());
-                    c.setBlockchainHash(hash);
-                    try {
-                        serviceContract.ajouter(c);
-                        System.out.println("[OfferContract] Contract #" + c.getId() + " created for application #" + a.getId());
-                    } catch (Exception contractEx) {
-                        contractEx.printStackTrace();
-                        // Rollback application status on contract creation failure
-                        a.setStatus("REVIEWED");
-                        try { serviceApp.modifier(a); } catch (Exception ignored) {}
-                        showError("Failed to create contract: " + contractEx.getMessage());
-                        refreshApplications();
-                        return;
-                    }
-
-                    // Show immediate feedback — don't wait for PDF/email
-                    showInfo("✅ Application accepted!\n\nContract #" + c.getId() + " created (DRAFT).\n" +
-                            "Blockchain hash: " + BlockchainVerifier.shortHash(hash) + "\n\n" +
-                            "PDF generation & email sending in progress...");
-
-                    String applicantName = getUserName(a.getApplicantId());
-                    String ownerName = getUserName(offer.getOwnerId());
-
-                    // Generate PDF + send email + notify in background
-                    AppThreadPool.io(() -> {
-                        try {
-                            // 1) Generate contract PDF
-                            System.out.println("[OfferContract] Generating PDF for contract #" + c.getId() + "...");
-                            File pdf = ContractPdfGenerator.generatePdf(c, offer.getTitle(), ownerName, applicantName);
-                            System.out.println("[OfferContract] PDF generated: " + pdf.getAbsolutePath());
-
-                            // 2) Send email with PDF to applicant
-                            User applicant = serviceUser.getById(a.getApplicantId());
-                            if (applicant != null && applicant.getEmail() != null) {
-                                System.out.println("[OfferContract] Sending email to " + applicant.getEmail() + "...");
-                                EmailService.sendContractEmail(
-                                        applicant.getEmail(), applicant.getFirstName(),
-                                        ownerName, offer.getTitle(),
-                                        offer.getCurrency(), offer.getAmount(),
-                                        hash, pdf
-                                );
-                                System.out.println("[OfferContract] Email sent successfully.");
-                            } else {
-                                System.out.println("[OfferContract] No email address for applicant, skipping email.");
-                            }
-
-                            // 3) Create in-app notification for applicant
-                            serviceNotification.notifyContractReady(
-                                    a.getApplicantId(), applicantName, offer.getTitle(), c.getId());
-                            System.out.println("[OfferContract] Notification created for applicant.");
-
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                            System.err.println("[OfferContract] Background task failed: " + ex.getMessage());
-                            Platform.runLater(() -> showError(
-                                    "Contract was created but post-processing failed:\n" + ex.getMessage()));
-                        }
-                    });
-                } else {
-                    showError("Offer not found for this application (ID: " + a.getOfferId() + ").");
-                }
+                String offerTitle = offer != null ? offer.getTitle() : "Offer #" + a.getOfferId();
+                serviceNotification.notifyInterview(a.getApplicantId(), newStatus,
+                        offerTitle + ": " + statusMsg, 0);
+            } catch (Exception notifEx) {
+                System.err.println("Notification failed: " + notifEx.getMessage());
             }
+
+            // If ACCEPTED (only triggered from InterviewController pipeline), create contract
+            if ("ACCEPTED".equals(newStatus)) {
+                createContractForApplication(a);
+            }
+
             refreshApplications();
         } catch (SQLException e) {
             e.printStackTrace();
             showError("Status update failed: " + e.getMessage());
         }
+    }
+
+    /**
+     * Creates a DRAFT contract for an accepted application.
+     * Called when an interview is passed and the application is auto-accepted.
+     */
+    void createContractForApplication(JobApplication a) {
+        Offer offer = offerMap.get(a.getOfferId());
+        if (offer == null) {
+            // Try to reload offers
+            loadOfferMap();
+            offer = offerMap.get(a.getOfferId());
+        }
+        if (offer == null) {
+            showError("Offer not found for this application (ID: " + a.getOfferId() + ").");
+            return;
+        }
+
+        final Offer finalOffer = offer;
+        try {
+            // Generate AI contract terms
+            String terms = null;
+            try {
+                terms = zaiService.generateContract(
+                        finalOffer.getTitle(),
+                        finalOffer.getDescription() != null ? finalOffer.getDescription() : finalOffer.getTitle(),
+                        finalOffer.getAmount(),
+                        getUserName(a.getApplicantId()),
+                        java.time.LocalDate.now().toString(),
+                        java.time.LocalDate.now().plusMonths(6).toString());
+            } catch (Exception aiEx) {
+                System.err.println("AI contract gen failed, using template: " + aiEx.getMessage());
+                terms = "Employment contract for " + finalOffer.getTitle()
+                        + "\nParties: " + getUserName(finalOffer.getOwnerId()) + " (Employer) and "
+                        + getUserName(a.getApplicantId()) + " (Employee)"
+                        + "\nCompensation: " + finalOffer.getCurrency() + " " + finalOffer.getAmount()
+                        + "\n\n[Terms to be finalized]";
+            }
+
+            Contract c = new Contract(
+                    finalOffer.getId(), a.getApplicantId(), finalOffer.getOwnerId(),
+                    terms, finalOffer.getAmount(), finalOffer.getCurrency(),
+                    "DRAFT", finalOffer.getStartDate(), finalOffer.getEndDate()
+            );
+            // Generate blockchain hash
+            String hash = BlockchainVerifier.generateHash(0, "Contract from hiring pipeline", finalOffer.getAmount());
+            c.setBlockchainHash(hash);
+            serviceContract.ajouter(c);
+            System.out.println("[OfferContract] Contract #" + c.getId() + " created for application #" + a.getId());
+
+            showInfo("✅ Application accepted!\n\nContract #" + c.getId() + " created (DRAFT).\n" +
+                    "Blockchain hash: " + BlockchainVerifier.shortHash(hash) + "\n\n" +
+                    "PDF generation & email sending in progress...");
+
+            String applicantName = getUserName(a.getApplicantId());
+            String ownerName = getUserName(finalOffer.getOwnerId());
+            final Contract finalContract = c;
+
+            // Generate PDF + send email + notify in background
+            AppThreadPool.io(() -> {
+                try {
+                    File pdf = ContractPdfGenerator.generatePdf(finalContract, finalOffer.getTitle(), ownerName, applicantName);
+                    User applicant = serviceUser.getById(a.getApplicantId());
+                    if (applicant != null && applicant.getEmail() != null) {
+                        EmailService.sendContractEmail(
+                                applicant.getEmail(), applicant.getFirstName(),
+                                ownerName, finalOffer.getTitle(),
+                                finalOffer.getCurrency(), finalOffer.getAmount(),
+                                hash, pdf
+                        );
+                    }
+                    serviceNotification.notifyContractReady(
+                            a.getApplicantId(), applicantName, finalOffer.getTitle(), finalContract.getId());
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    Platform.runLater(() -> showError(
+                            "Contract was created but post-processing failed:\n" + ex.getMessage()));
+                }
+            });
+        } catch (Exception contractEx) {
+            contractEx.printStackTrace();
+            a.setStatus("SHORTLISTED");
+            try { serviceApp.modifier(a); } catch (Exception ignored) {}
+            showError("Failed to create contract: " + contractEx.getMessage());
+            refreshApplications();
+        }
+    }
+
+    /**
+     * Shows a dialog to schedule an interview for a shortlisted applicant.
+     * The interview is linked to the application and offer.
+     */
+    private void showScheduleInterviewDialog(JobApplication app) {
+        Offer offer = offerMap.get(app.getOfferId());
+        String offerTitle = offer != null ? offer.getTitle() : "Offer #" + app.getOfferId();
+        String candidateName = getUserName(app.getApplicantId());
+
+        Dialog<Interview> dialog = new Dialog<>();
+        dialog.setTitle("Schedule Interview");
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().setMinWidth(450);
+
+        VBox content = new VBox(12);
+        content.setPadding(new Insets(16));
+
+        Label header = new Label("📅 Schedule Interview for " + candidateName);
+        header.setStyle("-fx-font-size: 16; -fx-font-weight: bold; -fx-text-fill: white;");
+
+        Label offerInfo = new Label("Position: " + offerTitle);
+        offerInfo.setStyle("-fx-text-fill: #8A8AFF; -fx-font-size: 13;");
+
+        DatePicker datePicker = new DatePicker();
+        datePicker.setPromptText("Interview date");
+        datePicker.setDayCellFactory(picker -> new javafx.scene.control.DateCell() {
+            @Override
+            public void updateItem(LocalDate date, boolean empty) {
+                super.updateItem(date, empty);
+                if (date.isBefore(LocalDate.now())) {
+                    setDisable(true);
+                    setStyle("-fx-background-color: #2a2a2a; -fx-text-fill: #555;");
+                }
+            }
+        });
+        datePicker.getStyleClass().add("pm-form-control");
+
+        TextField timeField = new TextField();
+        timeField.setPromptText("Time (HH:MM, e.g. 14:30)");
+        timeField.getStyleClass().add("pm-form-control");
+
+        TextField linkField = new TextField();
+        linkField.setPromptText("Meeting link (e.g. https://meet.google.com/...)");
+        linkField.getStyleClass().add("pm-form-control");
+
+        content.getChildren().addAll(header, offerInfo, datePicker, timeField, linkField);
+        dialog.getDialogPane().setContent(content);
+        styleDarkDialog(dialog.getDialogPane());
+
+        dialog.setResultConverter(btn -> {
+            if (btn == ButtonType.OK) {
+                if (datePicker.getValue() == null || timeField.getText().isBlank()) return null;
+                try {
+                    java.time.LocalTime time = java.time.LocalTime.parse(timeField.getText().trim());
+                    java.time.LocalDateTime ldt = datePicker.getValue().atTime(time);
+                    if (ldt.isBefore(java.time.LocalDateTime.now())) return null;
+
+                    Interview interview = new Interview(
+                            currentUser.getId(), app.getApplicantId(),
+                            Timestamp.valueOf(ldt), linkField.getText().trim()
+                    );
+                    interview.setApplicationId(app.getId());
+                    interview.setOfferId(app.getOfferId());
+                    return interview;
+                } catch (Exception e) {
+                    return null;
+                }
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(interview -> {
+            try {
+                serviceInterview.ajouter(interview);
+                SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
+
+                // Notify candidate
+                String dateStr = interview.getDateTime().toLocalDateTime()
+                        .format(DateTimeFormatter.ofPattern("MMM dd, yyyy 'at' HH:mm"));
+                serviceNotification.notifyInterview(app.getApplicantId(), "Scheduled",
+                        "Interview for " + offerTitle + " on " + dateStr + ".", interview.getId());
+
+                showInfo("✅ Interview scheduled!\n\nCandidate: " + candidateName +
+                        "\nDate: " + dateStr +
+                        "\n\nThe application will be auto-accepted/rejected based on the interview result.");
+                refreshApplications();
+            } catch (SQLException e) {
+                showError("Failed to schedule interview: " + e.getMessage());
+            }
+        });
     }
 
     private void runAiScoring(JobApplication a) {
@@ -1025,9 +1289,25 @@ public class OfferContractController {
                     int score = json.get("score").getAsInt();
                     a.setAiScore(score);
                     a.setAiFeedback(result);
-                    a.setStatus("REVIEWED");
-                    serviceApp.modifier(a);
-                    showInfo("AI Score: " + score + "/100");
+
+                    // Auto-reject if AI score < 60%
+                    if (score < 60) {
+                        a.setStatus("REJECTED");
+                        serviceApp.modifier(a);
+                        // Notify applicant
+                        try {
+                            String offerTitle = offer.getTitle() != null ? offer.getTitle() : "Offer #" + offer.getId();
+                            serviceNotification.notifyInterview(a.getApplicantId(), "REJECTED",
+                                    offerTitle + ": Application auto-rejected (AI fit score: " + score + "%). Minimum required: 60%.", 0);
+                        } catch (Exception notifEx) {
+                            System.err.println("Auto-reject notification failed: " + notifEx.getMessage());
+                        }
+                        showInfo("AI Score: " + score + "/100 — Auto-rejected (below 60% threshold)");
+                    } else {
+                        a.setStatus("REVIEWED");
+                        serviceApp.modifier(a);
+                        showInfo("AI Score: " + score + "/100");
+                    }
                     refreshApplications();
                 } catch (Exception ex) {
                     // Couldn't parse JSON, store raw feedback
@@ -1157,17 +1437,156 @@ public class OfferContractController {
                     box.getChildren().add(btnVerify);
                 }
 
-                if (isOwnerOrAdmin && "DRAFT".equals(c.getStatus())) {
-                    Button btnActivate = new Button("Activate");
-                    btnActivate.getStyleClass().add("oc-btn-primary");
-                    btnActivate.setOnAction(e -> {
-                        try {
-                            c.setStatus("ACTIVE");
-                            serviceContract.modifier(c);
-                            refreshContracts();
-                        } catch (SQLException ex) { showError(ex.getMessage()); }
-                    });
-                    box.getChildren().add(0, btnActivate);
+                String st = c.getStatus();
+
+                // ── Owner/Admin actions ──
+                if (isOwnerOrAdmin) {
+                    if (Contract.STATUS_DRAFT.equals(st)) {
+                        // Send to applicant for review
+                        Button btnSend = new Button("📧 Send");
+                        btnSend.getStyleClass().add("oc-btn-primary");
+                        btnSend.setTooltip(new Tooltip("Send to applicant for review"));
+                        btnSend.setOnAction(e -> {
+                            try {
+                                c.setStatus(Contract.STATUS_PENDING_REVIEW);
+                                serviceContract.modifier(c);
+                                serviceNotification.create(c.getApplicantId(), "CONTRACT",
+                                        "📋 Contract Ready for Review",
+                                        "Contract for offer #" + c.getOfferId() + " is ready for your review.",
+                                        c.getId(), "CONTRACT");
+                                refreshContracts();
+                            } catch (SQLException ex) { showError(ex.getMessage()); }
+                        });
+                        box.getChildren().add(0, btnSend);
+
+                        // Also keep Activate shortcut for direct activation
+                        Button btnActivate = new Button("Activate");
+                        btnActivate.getStyleClass().add("oc-btn-secondary");
+                        btnActivate.setOnAction(e -> {
+                            try { c.setStatus(Contract.STATUS_ACTIVE); serviceContract.modifier(c); refreshContracts(); }
+                            catch (SQLException ex) { showError(ex.getMessage()); }
+                        });
+                        box.getChildren().add(1, btnActivate);
+                    }
+
+                    if (Contract.STATUS_COUNTER_PROPOSED.equals(st)) {
+                        // Applicant counter-offered → owner can accept or reject the counter
+                        Button btnAcceptCounter = new Button("✅ Accept Counter");
+                        btnAcceptCounter.getStyleClass().add("oc-btn-primary");
+                        btnAcceptCounter.setOnAction(e -> {
+                            try {
+                                // Apply counter-proposed values
+                                if (c.getCounterAmount() != null) c.setAmount(c.getCounterAmount());
+                                if (c.getCounterTerms() != null && !c.getCounterTerms().isEmpty()) c.setTerms(c.getCounterTerms());
+                                c.setStatus(Contract.STATUS_PENDING_SIGNATURE);
+                                c.setCounterAmount(null);
+                                c.setCounterTerms(null);
+                                c.setNegotiationRound(c.getNegotiationRound() + 1);
+                                serviceContract.modifier(c);
+                                serviceNotification.create(c.getApplicantId(), "CONTRACT",
+                                        "✅ Counter-Offer Accepted",
+                                        "Your counter-offer for contract #" + c.getId() + " was accepted. Ready for signature.",
+                                        c.getId(), "CONTRACT");
+                                refreshContracts();
+                            } catch (SQLException ex) { showError(ex.getMessage()); }
+                        });
+
+                        Button btnRejectCounter = new Button("❌ Reject Counter");
+                        btnRejectCounter.getStyleClass().add("oc-btn-secondary");
+                        btnRejectCounter.setStyle("-fx-text-fill: #FF4444;");
+                        btnRejectCounter.setOnAction(e -> {
+                            try {
+                                c.setStatus(Contract.STATUS_DRAFT);
+                                c.setCounterAmount(null);
+                                c.setCounterTerms(null);
+                                serviceContract.modifier(c);
+                                serviceNotification.create(c.getApplicantId(), "CONTRACT",
+                                        "❌ Counter-Offer Rejected",
+                                        "Your counter-offer for contract #" + c.getId() + " was not accepted. Revised terms incoming.",
+                                        c.getId(), "CONTRACT");
+                                refreshContracts();
+                            } catch (SQLException ex) { showError(ex.getMessage()); }
+                        });
+                        box.getChildren().add(0, btnAcceptCounter);
+                        box.getChildren().add(1, btnRejectCounter);
+                    }
+
+                    // Owner can complete or terminate active contracts
+                    if (Contract.STATUS_ACTIVE.equals(st)) {
+                        Button btnComplete = new Button("✓ Complete");
+                        btnComplete.getStyleClass().add("oc-btn-primary");
+                        btnComplete.setOnAction(e -> {
+                            try {
+                                c.setStatus(Contract.STATUS_COMPLETED);
+                                serviceContract.modifier(c);
+                                serviceNotification.create(c.getApplicantId(), "CONTRACT",
+                                        "🎉 Contract Completed",
+                                        "Contract #" + c.getId() + " has been marked as completed.",
+                                        c.getId(), "CONTRACT");
+                                refreshContracts();
+                            } catch (SQLException ex) { showError(ex.getMessage()); }
+                        });
+                        Button btnTerminate = new Button("✕ Terminate");
+                        btnTerminate.getStyleClass().add("oc-btn-secondary");
+                        btnTerminate.setStyle("-fx-text-fill: #FF4444;");
+                        btnTerminate.setOnAction(e -> {
+                            try {
+                                c.setStatus(Contract.STATUS_TERMINATED);
+                                serviceContract.modifier(c);
+                                serviceNotification.create(c.getApplicantId(), "CONTRACT",
+                                        "⚠ Contract Terminated",
+                                        "Contract #" + c.getId() + " has been terminated.",
+                                        c.getId(), "CONTRACT");
+                                refreshContracts();
+                            } catch (SQLException ex) { showError(ex.getMessage()); }
+                        });
+                        box.getChildren().add(0, btnComplete);
+                        box.getChildren().add(1, btnTerminate);
+                    }
+                }
+
+                // ── Applicant actions ──
+                if (!isOwnerOrAdmin) {
+                    if (Contract.STATUS_PENDING_REVIEW.equals(st)) {
+                        // Applicant can accept, counter-offer, or reject
+                        Button btnAccept = new Button("✅ Accept");
+                        btnAccept.getStyleClass().add("oc-btn-primary");
+                        btnAccept.setOnAction(e -> {
+                            try {
+                                c.setStatus(Contract.STATUS_PENDING_SIGNATURE);
+                                serviceContract.modifier(c);
+                                serviceNotification.create(c.getOwnerId(), "CONTRACT",
+                                        "✅ Contract Accepted",
+                                        getUserName(c.getApplicantId()) + " accepted contract #" + c.getId() + ".",
+                                        c.getId(), "CONTRACT");
+                                refreshContracts();
+                            } catch (SQLException ex) { showError(ex.getMessage()); }
+                        });
+
+                        Button btnCounter = new Button("💬 Counter-Offer");
+                        btnCounter.getStyleClass().add("oc-btn-secondary");
+                        btnCounter.setOnAction(e -> showCounterOfferDialog(c));
+
+                        Button btnReject = new Button("❌ Reject");
+                        btnReject.getStyleClass().add("oc-btn-secondary");
+                        btnReject.setStyle("-fx-text-fill: #FF4444;");
+                        btnReject.setOnAction(e -> {
+                            try {
+                                c.setStatus(Contract.STATUS_TERMINATED);
+                                c.setNegotiationNotes((c.getNegotiationNotes() != null ? c.getNegotiationNotes() + "\n" : "")
+                                        + "Rejected by applicant.");
+                                serviceContract.modifier(c);
+                                serviceNotification.create(c.getOwnerId(), "CONTRACT",
+                                        "❌ Contract Rejected",
+                                        getUserName(c.getApplicantId()) + " rejected contract #" + c.getId() + ".",
+                                        c.getId(), "CONTRACT");
+                                refreshContracts();
+                            } catch (SQLException ex) { showError(ex.getMessage()); }
+                        });
+                        box.getChildren().add(0, btnAccept);
+                        box.getChildren().add(1, btnCounter);
+                        box.getChildren().add(2, btnReject);
+                    }
                 }
 
                 setGraphic(box);
@@ -1197,6 +1616,81 @@ public class OfferContractController {
     }
 
     @FXML private void onContractStatusFilterChanged() { refreshContracts(); }
+
+    // ================================================================
+    // CONTRACT COUNTER-OFFER DIALOG (APPLICANT)
+    // ================================================================
+
+    private void showCounterOfferDialog(Contract c) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Counter-Offer");
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.getDialogPane().setMinWidth(500);
+        dialog.getDialogPane().setStyle("-fx-background-color: #1E1E2E;");
+        try { dialog.initOwner(contractsTable.getScene().getWindow()); } catch (Exception ignored) {}
+
+        VBox content = new VBox(14);
+        content.setPadding(new Insets(16));
+
+        Label title = new Label("💬 Propose a Counter-Offer");
+        title.setStyle("-fx-text-fill: #E0E0F0; -fx-font-size: 18; -fx-font-weight: bold;");
+
+        Label currentInfo = new Label("Current: " + c.getCurrency() + " " + String.format("%.2f", c.getAmount()) +
+                " | Round: " + (c.getNegotiationRound() + 1));
+        currentInfo.setStyle("-fx-text-fill: #8888AA; -fx-font-size: 12;");
+
+        Label amountLabel = new Label("Proposed Amount:");
+        amountLabel.setStyle("-fx-text-fill: #C0C0D8;");
+        TextField amountField = new TextField(String.format("%.2f", c.getAmount()));
+        amountField.setStyle("-fx-background-color: #2A2A3C; -fx-text-fill: #E0E0F0; -fx-background-radius: 8; -fx-padding: 10;");
+        amountField.setPromptText("Enter your proposed amount");
+
+        Label termsLabel = new Label("Proposed Terms (optional changes):");
+        termsLabel.setStyle("-fx-text-fill: #C0C0D8;");
+        TextArea termsArea = new TextArea(c.getTerms() != null ? c.getTerms() : "");
+        termsArea.setWrapText(true);
+        termsArea.setPrefRowCount(5);
+        termsArea.setStyle("-fx-background-color: #2A2A3C; -fx-text-fill: #E0E0F0; -fx-background-radius: 8;");
+
+        Label notesLabel = new Label("Message to employer (optional):");
+        notesLabel.setStyle("-fx-text-fill: #C0C0D8;");
+        TextField notesField = new TextField();
+        notesField.setPromptText("Explain your counter-offer...");
+        notesField.setStyle("-fx-background-color: #2A2A3C; -fx-text-fill: #E0E0F0; -fx-background-radius: 8; -fx-padding: 10;");
+
+        content.getChildren().addAll(title, currentInfo, amountLabel, amountField, termsLabel, termsArea, notesLabel, notesField);
+        dialog.getDialogPane().setContent(content);
+
+        dialog.showAndWait().ifPresent(bt -> {
+            if (bt != ButtonType.OK) return;
+            try {
+                double proposedAmount = Double.parseDouble(amountField.getText().trim());
+                c.setCounterAmount(proposedAmount);
+                c.setCounterTerms(termsArea.getText().trim());
+                String note = notesField.getText().trim();
+                if (!note.isEmpty()) {
+                    c.setNegotiationNotes((c.getNegotiationNotes() != null ? c.getNegotiationNotes() + "\n" : "")
+                            + "Applicant (round " + (c.getNegotiationRound() + 1) + "): " + note);
+                }
+                c.setNegotiationRound(c.getNegotiationRound() + 1);
+                c.setStatus(Contract.STATUS_COUNTER_PROPOSED);
+                serviceContract.modifier(c);
+
+                serviceNotification.create(c.getOwnerId(), "CONTRACT",
+                        "💬 Counter-Offer Received",
+                        getUserName(c.getApplicantId()) + " counter-offered on contract #" + c.getId()
+                                + ": " + c.getCurrency() + " " + String.format("%.2f", proposedAmount),
+                        c.getId(), "CONTRACT");
+
+                SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
+                refreshContracts();
+            } catch (NumberFormatException ex) {
+                showError("Invalid amount. Please enter a valid number.");
+            } catch (SQLException ex) {
+                showError("Failed to submit counter-offer: " + ex.getMessage());
+            }
+        });
+    }
 
     // ================================================================
     // QR CODE VERIFICATION DIALOG (HR)

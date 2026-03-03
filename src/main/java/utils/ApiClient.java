@@ -10,6 +10,8 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Duration;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Lightweight HTTP client for the SynergyGig REST API.
@@ -24,6 +26,32 @@ public class ApiClient {
     private static final String BASE_URL = AppConfig.getRestBaseUrl();
     private static final Gson gson = new GsonBuilder().create();
 
+    /**
+     * Tracks endpoint base paths that have already returned 404,
+     * so we only log the error once instead of flooding the console.
+     */
+    private static final Set<String> logged404Paths = ConcurrentHashMap.newKeySet();
+
+    /** Extract a normalized base path for dedup: strip query params and trailing numeric segments. */
+    private static String basePath(String path) {
+        int q = path.indexOf('?');
+        String base = q > 0 ? path.substring(0, q) : path;
+        // Collapse trailing numeric path params: /chat_room_members/room/24 → /chat_room_members/room/{id}
+        return base.replaceAll("/\\d+", "/{id}");
+    }
+
+    /** Log a 4xx/5xx only once per base path for 404s. Always log other errors. */
+    private static void logApiError(String method, String path, int status, String body) {
+        if (status == 404) {
+            String key = method + ":" + basePath(path);
+            if (!logged404Paths.add(key)) return; // already logged
+            System.err.println("❌ API " + method + " " + path + " → " + status
+                    + " (further 404s for this endpoint suppressed)");
+        } else {
+            System.err.println("❌ API " + method + " " + path + " → " + status + ": " + body);
+        }
+    }
+
     /** Send a GET request, return the response body as a JsonElement. */
     public static JsonElement get(String path) {
         try {
@@ -34,7 +62,7 @@ public class ApiClient {
                     .build();
             HttpResponse<String> resp = client.send(req, BodyHandlers.ofString());
             if (resp.statusCode() >= 400) {
-                System.err.println("❌ API GET " + path + " → " + resp.statusCode() + ": " + resp.body());
+                logApiError("GET", path, resp.statusCode(), resp.body());
                 return null;
             }
             return JsonParser.parseString(resp.body());
@@ -56,7 +84,7 @@ public class ApiClient {
                     .build();
             HttpResponse<String> resp = client.send(req, BodyHandlers.ofString());
             if (resp.statusCode() >= 400) {
-                System.err.println("❌ API POST " + path + " → " + resp.statusCode() + ": " + resp.body());
+                logApiError("POST", path, resp.statusCode(), resp.body());
                 return null;
             }
             return JsonParser.parseString(resp.body());
@@ -78,7 +106,7 @@ public class ApiClient {
                     .build();
             HttpResponse<String> resp = client.send(req, BodyHandlers.ofString());
             if (resp.statusCode() >= 400) {
-                System.err.println("❌ API PUT " + path + " → " + resp.statusCode() + ": " + resp.body());
+                logApiError("PUT", path, resp.statusCode(), resp.body());
                 return null;
             }
             return JsonParser.parseString(resp.body());
@@ -98,7 +126,7 @@ public class ApiClient {
                     .build();
             HttpResponse<String> resp = client.send(req, BodyHandlers.ofString());
             if (resp.statusCode() >= 400) {
-                System.err.println("❌ API DELETE " + path + " → " + resp.statusCode() + ": " + resp.body());
+                logApiError("DELETE", path, resp.statusCode(), resp.body());
                 return null;
             }
             return JsonParser.parseString(resp.body());

@@ -168,12 +168,22 @@ public class FaceRecognitionUtil {
     }
 
     private static Path getPythonDir() {
-        // Try project-root/python first
+        // Try project-root/python first (IDE mode)
         Path projectRoot = Paths.get(System.getProperty("user.dir"));
         Path pyDir = projectRoot.resolve(PYTHON_DIR);
         if (Files.isDirectory(pyDir)) return pyDir;
 
-        // Fallback: relative to class resources  
+        // Try next to exe (jpackage app-image mode)
+        String appPath = System.getProperty("jpackage.app-path");
+        if (appPath != null) {
+            Path appDir = Paths.get(appPath).getParent();
+            if (appDir != null) {
+                Path pyDirApp = appDir.resolve(PYTHON_DIR);
+                if (Files.isDirectory(pyDirApp)) return pyDirApp;
+            }
+        }
+
+        // Fallback
         return pyDir;
     }
 

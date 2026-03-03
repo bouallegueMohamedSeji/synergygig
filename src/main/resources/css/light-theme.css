@@ -479,6 +479,23 @@
     -fx-stroke: #7c3aed;
 }
 .msg-ai-typing { -fx-text-fill: #7c3aed; }
+.typing-label { -fx-text-fill: #613039; }
+.typing-dot { -fx-fill: #DE95A2; }
+.reaction-pill {
+    -fx-background-color: #F5F0F1;
+    -fx-text-fill: #4A3B3E;
+    -fx-border-color: #D6CDD0;
+}
+.reaction-pill:hover { -fx-background-color: #EDE6E8; }
+.reaction-pill-active { -fx-background-color: rgba(97,48,57,0.15); -fx-border-color: #613039; }
+.reaction-add-btn { -fx-text-fill: #B0A5A8; }
+.reaction-add-btn:hover { -fx-text-fill: #613039; }
+.reaction-picker {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #D6CDD0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 10, 0, 0, 3);
+}
+.reaction-emoji-btn:hover { -fx-effect: dropshadow(gaussian, rgba(222,149,162,0.5), 6, 0, 0, 0); }
 
 /* ── Chat Textarea (light) ── */
 .chat-textarea {
@@ -662,6 +679,14 @@
 }
 .weather-card-hint {
     -fx-text-fill: #B8ADB0;
+}
+
+/* ---------- QUOTE WIDGET ---------- */
+.quote-text {
+    -fx-text-fill: #1A0D10;
+}
+.quote-author {
+    -fx-text-fill: #613039;
 }
 
 /* ---------- WEATHER POPUP (Light Glassmorphism) ---------- */
@@ -1591,6 +1616,12 @@
     -fx-fill: #2d1b69;
 }
 
+/* ── Live Transcription CC (video popup is always dark, these are for consistency) ── */
+.video-popup-btn-cc.video-popup-btn-active {
+    -fx-background-color: rgba(44, 102, 110, 0.5);
+    -fx-border-color: #2C666E;
+}
+
 /* ══════════════════════════════════════════════════════════════
    COMMUNITY – LIGHT THEME
    ══════════════════════════════════════════════════════════════ */
@@ -1724,24 +1755,81 @@
     -fx-background-color: rgba(97, 48, 57, 0.08);
 }
 
-/* ── Community Line Tabs (light) ── */
-.community-tab-bar {
-    -fx-background-color: #FAFAFA;
-    -fx-border-color: #E0D6D8;
+/* ── Community Left Sidebar (light) ── */
+.community-sidebar {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: transparent #E0D6D8 transparent transparent;
+    -fx-border-width: 0 1 0 0;
 }
-.community-tab {
+.community-nav-link {
+    -fx-background-color: transparent;
     -fx-text-fill: #8A7C7F;
 }
-.community-tab:hover {
-    -fx-text-fill: #4A3F44;
-    -fx-background-color: rgba(123, 97, 255, 0.06);
+.community-nav-link:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.06);
+    -fx-text-fill: #613039;
 }
-.community-tab-active {
-    -fx-text-fill: #6A4FE6;
-    -fx-border-color: #6A4FE6;
+.community-nav-link-active {
+    -fx-background-color: rgba(97, 48, 57, 0.10);
+    -fx-text-fill: #613039;
+    -fx-border-color: transparent transparent transparent #613039;
 }
-.community-tab-active:hover {
-    -fx-text-fill: #6A4FE6;
+.community-nav-link-active:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.14);
+    -fx-text-fill: #613039;
+}
+
+/* ── Global Search (light) ── */
+.community-global-search-box {
+    -fx-background-color: #F5F0F1;
+    -fx-border-color: #E0D6D8;
+}
+.community-global-search {
+    -fx-background-color: transparent;
+    -fx-text-fill: #0D0A0B;
+    -fx-prompt-text-fill: #B0A5A8;
+}
+.community-global-search:focused {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-effect: none;
+}
+
+/* ── Content Area (light) ── */
+.community-content-area {
+    -fx-background-color: #F0EDED;
+}
+
+/* ── Group Detail Header (light) ── */
+.community-group-detail-header {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: transparent transparent #E0D6D8 transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+/* ── Follow button (light) ── */
+.community-follow-btn {
+    -fx-background-color: linear-gradient(to right, #330B11, #613039);
+    -fx-text-fill: #FFFFFF;
+}
+.community-follow-btn:hover {
+    -fx-background-color: linear-gradient(to right, #613039, #DE95A2);
+}
+.community-follow-btn-active {
+    -fx-background-color: #F5F0F1;
+    -fx-text-fill: #613039;
+    -fx-border-color: #E0D6D8;
+    -fx-border-width: 1;
+}
+.community-follow-btn-active:hover {
+    -fx-background-color: #EDE5E7;
+    -fx-text-fill: #FF4444;
+    -fx-border-color: #FF4444;
+}
+
+/* ── Nested Comment Reply (light) ── */
+.community-reply {
+    -fx-border-color: #613039;
 }
 
 /* ── Wikipedia Tab (light) ── */
@@ -1771,10 +1859,10 @@
     -fx-text-fill: #3D3437;
 }
 .wiki-article-link {
-    -fx-text-fill: #6A4FE6;
+    -fx-text-fill: #613039;
 }
 .wiki-article-link:hover {
-    -fx-text-fill: #7B61FF;
+    -fx-text-fill: #DE95A2;
 }
 
 /* ── Quotes Tab (light) ── */
@@ -1783,7 +1871,7 @@
     -fx-border-color: #E0D6D8;
 }
 .quote-big-mark {
-    -fx-text-fill: #6A4FE6;
+    -fx-text-fill: #613039;
 }
 .quote-text {
     -fx-text-fill: #1A1517;
@@ -2443,6 +2531,26 @@
 .tr-cert-number { -fx-text-fill: #8B8BA0; }
 .tr-cert-date   { -fx-text-fill: #6B6B78; }
 
+/* Signature badges — light theme */
+.tr-signed-badge {
+    -fx-text-fill: #059669; -fx-background-color: rgba(5,150,105,0.10);
+    -fx-border-color: rgba(5,150,105,0.25);
+}
+.tr-unsigned-badge {
+    -fx-text-fill: #B45309; -fx-background-color: rgba(180,83,9,0.10);
+    -fx-border-color: rgba(180,83,9,0.25);
+}
+
+.tr-sign-btn {
+    -fx-background-color: linear-gradient(to right, #613039, #330B11) !important;
+    -fx-text-fill: #F0EDED !important;
+    -fx-border-color: #DE95A2;
+}
+.tr-sign-btn:hover {
+    -fx-background-color: linear-gradient(to right, #330B11, #613039) !important;
+    -fx-effect: dropshadow(gaussian, rgba(222,149,162,0.35), 8, 0, 0, 2);
+}
+
 .tr-manage-row {
     -fx-background-color: #FFFFFF; -fx-border-color: #E0E0E8;
 }
@@ -2859,6 +2967,29 @@
     -fx-border-color: #5B5BCC;
 }
 
+/* Skills bar — light */
+.js-skills-label { -fx-text-fill: #613039; }
+.js-skill-pill {
+    -fx-background-color: rgba(91,91,204,0.10);
+    -fx-text-fill: #5B5BCC;
+    -fx-border-color: rgba(91,91,204,0.25);
+}
+.js-skill-pill:hover {
+    -fx-background-color: rgba(91,91,204,0.25);
+    -fx-text-fill: #3B3BAA;
+    -fx-border-color: #5B5BCC;
+}
+.js-skill-certified {
+    -fx-background-color: rgba(97,48,57,0.10);
+    -fx-text-fill: #613039;
+    -fx-border-color: rgba(97,48,57,0.25);
+}
+.js-skill-certified:hover {
+    -fx-background-color: rgba(97,48,57,0.25);
+    -fx-text-fill: #4A1E28;
+    -fx-border-color: #613039;
+}
+
 /* Job type badge — light */
 .js-badge-jobtype {
     -fx-background-color: rgba(91,91,204,0.10);
@@ -2875,3 +3006,154 @@
 
 /* Muted meta text — light */
 .js-meta-muted { -fx-text-fill: #9CA3AF; }
+
+/* ═══ Tool page TextAreas (light) ═══ */
+.tool-textarea {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #0D0A0B;
+    -fx-prompt-text-fill: #B0A5A8;
+    -fx-border-color: #E0D6D8;
+    -fx-control-inner-background: #FFFFFF;
+}
+.tool-textarea:focused {
+    -fx-border-color: #613039;
+    -fx-background-color: #FFFFFF;
+    -fx-control-inner-background: #FFFFFF;
+    -fx-effect: dropshadow(gaussian, rgba(97, 48, 57, 0.15), 6, 0, 0, 0);
+}
+.tool-textarea .content {
+    -fx-background-color: #FFFFFF;
+}
+.tool-back-btn {
+    -fx-text-fill: #613039;
+}
+.tool-back-btn:hover {
+    -fx-text-fill: #330B11;
+}
+
+/* ═══ Interview Prep Coach (light) ═══ */
+.ip-header {
+    -fx-border-color: transparent transparent #E0D6D8 transparent;
+}
+.ip-icon-circle {
+    -fx-fill: rgba(97, 48, 57, 0.1);
+    -fx-stroke: #613039;
+}
+.ip-title { -fx-text-fill: #0D0A0B; }
+.ip-subtitle { -fx-text-fill: #8A7C7F; }
+.ip-question-badge {
+    -fx-background-color: rgba(97, 48, 57, 0.1);
+    -fx-text-fill: #613039;
+    -fx-border-color: rgba(97, 48, 57, 0.2);
+}
+.ip-progress-bar .track { -fx-background-color: #E0D6D8; }
+.ip-progress-bar .bar {
+    -fx-background-color: linear-gradient(to right, #330B11, #613039, #DE95A2);
+}
+.ip-chat-scroll .viewport { -fx-background-color: #F0EDED; }
+.ip-chat-scroll .scroll-bar:vertical .thumb { -fx-background-color: #D0C8CA; }
+.ip-user-bubble {
+    -fx-background-color: linear-gradient(to right, #330B11, #613039);
+    -fx-text-fill: #FFFFFF;
+}
+.ip-timestamp { -fx-text-fill: #B0A5A8; }
+.ip-bot-avatar {
+    -fx-fill: rgba(97, 48, 57, 0.08);
+    -fx-stroke: #613039;
+}
+.ip-bot-name { -fx-text-fill: #613039; }
+.ip-bot-bubble {
+    -fx-background-color: #FFFFFF;
+    -fx-text-fill: #0D0A0B;
+    -fx-border-color: #E0D6D8;
+}
+.ip-typing-text { -fx-text-fill: #613039; }
+.ip-typing-dot { -fx-fill: #613039; }
+.ip-system-chip {
+    -fx-background-color: rgba(97, 48, 57, 0.06);
+    -fx-text-fill: #8A7C7F;
+    -fx-border-color: rgba(97, 48, 57, 0.1);
+}
+.ip-welcome-card {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0D6D8;
+}
+.ip-welcome-title { -fx-text-fill: #0D0A0B; }
+.ip-welcome-body { -fx-text-fill: #6B5D60; }
+.ip-chip {
+    -fx-background-color: rgba(97, 48, 57, 0.08);
+    -fx-border-color: rgba(97, 48, 57, 0.15);
+}
+.ip-chip-text { -fx-text-fill: #613039; }
+.ip-setup-card {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0D6D8;
+}
+.ip-setup-title { -fx-text-fill: #0D0A0B; }
+.ip-field-label { -fx-text-fill: #6B5D60; }
+.ip-input-area {
+    -fx-border-color: #E0D6D8 transparent transparent transparent;
+}
+.ip-summary-card {
+    -fx-background-color: linear-gradient(to bottom right, rgba(97,48,57,0.08), rgba(222,149,162,0.1));
+    -fx-border-color: rgba(97, 48, 57, 0.15);
+    -fx-effect: dropshadow(gaussian, rgba(97,48,57,0.08), 12, 0, 0, 3);
+}
+.ip-summary-title { -fx-text-fill: #0D0A0B; }
+.ip-summary-count {
+    -fx-background-color: rgba(97, 48, 57, 0.1);
+    -fx-text-fill: #613039;
+}
+.ip-summary-body { -fx-text-fill: #4A3F42; }
+
+/* ═══ Chat / Messenger polish (light) ═══ */
+.chat-empty-state .empty-state-avatar-circle {
+    -fx-fill: rgba(97, 48, 57, 0.06);
+    -fx-stroke: rgba(222, 149, 162, 0.2);
+}
+.empty-state-title { -fx-text-fill: #0D0A0B; }
+.empty-state-subtitle { -fx-text-fill: #8A7C7F; }
+.call-btn {
+    -fx-background-color: rgba(97, 48, 57, 0.08);
+    -fx-border-color: rgba(97, 48, 57, 0.2);
+}
+.call-btn:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.15);
+    -fx-border-color: #613039;
+}
+.active-call-bar {
+    -fx-background-color: linear-gradient(to right, rgba(51,11,17,0.06), rgba(97,48,57,0.08));
+    -fx-border-color: transparent transparent #E0D6D8 transparent;
+}
+.call-bar-label { -fx-text-fill: #613039; }
+.call-timer-label { -fx-text-fill: #8A7C7F; }
+.call-screen-share-btn, .call-mute-btn {
+    -fx-background-color: rgba(0,0,0,0.04);
+}
+.call-screen-share-btn:hover, .call-mute-btn:hover {
+    -fx-background-color: rgba(0,0,0,0.08);
+}
+.chat-attach-btn {
+    -fx-background-color: rgba(0,0,0,0.03);
+}
+.chat-attach-btn:hover {
+    -fx-background-color: rgba(0,0,0,0.07);
+}
+.msg-file-card {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #E0D6D8;
+}
+.msg-file-card:hover { -fx-background-color: #F5F0F1; }
+.msg-file-name { -fx-text-fill: #0D0A0B; }
+.msg-file-size { -fx-text-fill: #8A7C7F; }
+.msg-file-download-btn {
+    -fx-background-color: rgba(97, 48, 57, 0.1);
+    -fx-text-fill: #613039;
+}
+.msg-file-download-btn:hover {
+    -fx-background-color: rgba(97, 48, 57, 0.2);
+}
+.room-cell-subtitle { -fx-text-fill: #8A7C7F; }
+.fav-toggle-btn { -fx-text-fill: #B0A5A8; }
+.fav-toggle-btn:hover { -fx-text-fill: #613039; }
+.fav-toggle-btn-active { -fx-text-fill: #DE95A2; }

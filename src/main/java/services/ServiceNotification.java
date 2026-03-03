@@ -232,6 +232,27 @@ public class ServiceNotification {
                 contractId, "CONTRACT");
     }
 
+    public void notifyFriendRequest(int toUserId, String fromName, int fromUserId) {
+        create(toUserId, "FRIEND_REQUEST",
+                "Friend Request from " + fromName,
+                fromName + " sent you a friend request.",
+                fromUserId, "USER");
+    }
+
+    public void notifyFriendAccepted(int toUserId, String accepterName, int accepterId) {
+        create(toUserId, "NEW_FRIEND",
+                accepterName + " accepted your request",
+                "You and " + accepterName + " are now friends!",
+                accepterId, "USER");
+    }
+
+    public void notifyNewFollower(int toUserId, String followerName, int followerId) {
+        create(toUserId, "NEW_FRIEND",
+                "New friend: " + followerName,
+                followerName + " is now your friend.",
+                followerId, "USER");
+    }
+
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  PARSERS
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

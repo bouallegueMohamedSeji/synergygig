@@ -36,7 +36,7 @@ public class ServiceLeave implements IService<Leave> {
         if (obj.has("end_date") && !obj.get("end_date").isJsonNull()) {
             endDate = java.sql.Date.valueOf(obj.get("end_date").getAsString());
         }
-        return new Leave(
+        Leave l = new Leave(
                 obj.get("id").getAsInt(),
                 obj.get("user_id").getAsInt(),
                 obj.has("type") && !obj.get("type").isJsonNull() ? obj.get("type").getAsString() : "VACATION",
@@ -46,6 +46,9 @@ public class ServiceLeave implements IService<Leave> {
                 obj.has("status") && !obj.get("status").isJsonNull() ? obj.get("status").getAsString() : "PENDING",
                 createdAt
         );
+        if (obj.has("rejection_reason") && !obj.get("rejection_reason").isJsonNull())
+            l.setRejectionReason(obj.get("rejection_reason").getAsString());
+        return l;
     }
 
     private List<Leave> jsonArrayToList(JsonElement el) {
@@ -70,13 +73,14 @@ public class ServiceLeave implements IService<Leave> {
             body.put("end_date", l.getEndDate() != null ? l.getEndDate().toString() : null);
             body.put("reason", l.getReason());
             body.put("status", l.getStatus());
+            body.put("rejection_reason", l.getRejectionReason());
             JsonElement resp = ApiClient.post("/leaves", body);
             if (resp != null && resp.isJsonObject()) {
                 l.setId(resp.getAsJsonObject().get("id").getAsInt());
             }
             return;
         }
-        String sql = "INSERT INTO leaves (user_id, type, start_date, end_date, reason, status) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO leaves (user_id, type, start_date, end_date, reason, status, rejection_reason) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = MyDatabase.getInstance().getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setInt(1, l.getUserId());
@@ -85,6 +89,7 @@ public class ServiceLeave implements IService<Leave> {
             ps.setDate(4, l.getEndDate());
             ps.setString(5, l.getReason());
             ps.setString(6, l.getStatus());
+            ps.setString(7, l.getRejectionReason());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) l.setId(keys.getInt(1));
@@ -103,10 +108,11 @@ public class ServiceLeave implements IService<Leave> {
             body.put("end_date", l.getEndDate() != null ? l.getEndDate().toString() : null);
             body.put("reason", l.getReason());
             body.put("status", l.getStatus());
+            body.put("rejection_reason", l.getRejectionReason());
             ApiClient.put("/leaves/" + l.getId(), body);
             return;
         }
-        String sql = "UPDATE leaves SET user_id=?, type=?, start_date=?, end_date=?, reason=?, status=? WHERE id=?";
+        String sql = "UPDATE leaves SET user_id=?, type=?, start_date=?, end_date=?, reason=?, status=?, rejection_reason=? WHERE id=?";
         try (Connection conn = MyDatabase.getInstance().getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, l.getUserId());
@@ -115,7 +121,8 @@ public class ServiceLeave implements IService<Leave> {
             ps.setDate(4, l.getEndDate());
             ps.setString(5, l.getReason());
             ps.setString(6, l.getStatus());
-            ps.setInt(7, l.getId());
+            ps.setString(7, l.getRejectionReason());
+            ps.setInt(8, l.getId());
             ps.executeUpdate();
         }
         InMemoryCache.evictByPrefix("leaves:");
@@ -186,7 +193,7 @@ public class ServiceLeave implements IService<Leave> {
     }
 
     private Leave rowToLeave(ResultSet rs) throws SQLException {
-        return new Leave(
+        Leave l = new Leave(
                 rs.getInt("id"),
                 rs.getInt("user_id"),
                 rs.getString("type"),
@@ -196,5 +203,7 @@ public class ServiceLeave implements IService<Leave> {
                 rs.getString("status"),
                 rs.getTimestamp("created_at")
         );
+        try { l.setRejectionReason(rs.getString("rejection_reason")); } catch (SQLException ignored) {}
+        return l;
     }
 }

@@ -5,7 +5,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -15,6 +17,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class AudioCallService {
 
+    /**
+     * Listener for raw PCM audio data (used by live transcription).
+     */
+    public interface AudioDataListener {
+        /**
+         * @param data    Raw PCM bytes (16 kHz, 16-bit, mono, LE)
+         * @param length  Valid byte count
+         * @param isLocal true = local mic data, false = remote speaker data
+         */
+        void onAudioData(byte[] data, int length, boolean isLocal);
+    }
+
     // Audio format: 16kHz, 16-bit, mono, signed, little-endian
     private static final AudioFormat AUDIO_FORMAT = new AudioFormat(16000, 16, 1, true, false);
     private static final int BUFFER_SIZE = 640; // 20ms of audio at 16kHz 16-bit mono
@@ -22,6 +36,7 @@ public class AudioCallService {
 
     private final AtomicBoolean running = new AtomicBoolean(false);
     private final AtomicBoolean muted = new AtomicBoolean(false);
+    private final List<AudioDataListener> audioDataListeners = new CopyOnWriteArrayList<>();
 
     private WebSocket webSocket;
     private TargetDataLine micLine;   // microphone input
@@ -86,6 +101,8 @@ public class AudioCallService {
                             if (running.get() && speakerLine != null && speakerLine.isOpen()) {
                                 byte[] audioData = new byte[data.remaining()];
                                 data.get(audioData);
+                                // Notify listeners BEFORE volume adjustment (raw remote audio)
+                                notifyAudioListeners(audioData, audioData.length, false);
                                 AudioDeviceManager.applyVolume(audioData, audioData.length,
                                         AudioDeviceManager.getInstance().getSpeakerVolume());
                                 speakerLine.write(audioData, 0, audioData.length);
@@ -125,6 +142,8 @@ public class AudioCallService {
                         // Apply mic volume before sending
                         AudioDeviceManager.applyVolume(buffer, read,
                                 AudioDeviceManager.getInstance().getMicVolume());
+                        // Notify listeners with mic audio (for transcription)
+                        notifyAudioListeners(buffer, read, true);
                         // Noise gate: suppress low-level background noise
                         byte[] toSend = isAboveNoiseGate(buffer, read) ? buffer : silence;
                         try {
@@ -207,5 +226,26 @@ public class AudioCallService {
         }
         double rms = Math.sqrt((double) sumSquares / sampleCount);
         return rms > NOISE_GATE_THRESHOLD;
+    }
+
+    // ── Audio data listeners (for live transcription) ──
+
+    /** Register a listener to receive raw PCM audio data. */
+    public void addAudioDataListener(AudioDataListener listener) {
+        if (listener != null) audioDataListeners.add(listener);
+    }
+
+    /** Remove a previously registered listener. */
+    public void removeAudioDataListener(AudioDataListener listener) {
+        audioDataListeners.remove(listener);
+    }
+
+    /** Notify all listeners of audio data. */
+    private void notifyAudioListeners(byte[] data, int length, boolean isLocal) {
+        for (AudioDataListener l : audioDataListeners) {
+            try {
+                l.onAudioData(data, length, isLocal);
+            } catch (Exception ignored) {}
+        }
     }
 }

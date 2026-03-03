@@ -13,6 +13,9 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
 import services.ServiceInterview;
 import services.ServiceUser;
+import services.ServiceJobApplication;
+import services.ServiceContract;
+import services.ServiceOffer;
 import javafx.animation.PauseTransition;
 import javafx.util.Duration;
 import utils.AnimatedButton;
@@ -23,6 +26,7 @@ import utils.StyledAlert;
 import utils.SoundManager;
 import javafx.stage.Window;
 
+import java.io.File;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
@@ -119,7 +123,7 @@ public class InterviewController {
             try {
                 List<User> users = serviceUser.recuperer();
                 List<Interview> interviews;
-                if ("GIG_WORKER".equals(currentRole)) {
+                if ("GIG_WORKER".equals(currentRole) || "EMPLOYEE".equals(currentRole)) {
                     interviews = serviceInterview.getByCandidate(currentUserId);
                 } else {
                     interviews = serviceInterview.recuperer();
@@ -229,8 +233,8 @@ public class InterviewController {
 
     private void loadInterviews() {
         try {
-            if ("GIG_WORKER".equals(currentRole)) {
-                // GIG_WORKER only sees interviews where they are the candidate
+            if ("GIG_WORKER".equals(currentRole) || "EMPLOYEE".equals(currentRole)) {
+                // GIG_WORKER / EMPLOYEE only sees interviews where they are the candidate
                 allInterviews = serviceInterview.getByCandidate(currentUserId);
             } else {
                 allInterviews = serviceInterview.recuperer();
@@ -578,6 +582,28 @@ public class InterviewController {
             linkInfo.getChildren().addAll(linkLbl, linkVal);
             linkRow.getChildren().addAll(linkIcon, linkInfo);
 
+            // ── Linked Application/Offer info ──
+            VBox pipelineInfo = new VBox(2);
+            if (interview.getApplicationId() > 0) {
+                Label pipeLabel = new Label("📋 Linked to Application #" + interview.getApplicationId());
+                pipeLabel.setStyle("-fx-text-fill: #8A8AFF; -fx-font-size: 11; -fx-font-weight: bold;");
+                pipelineInfo.getChildren().add(pipeLabel);
+                // Try to show offer name
+                if (interview.getOfferId() > 0) {
+                    try {
+                        ServiceOffer svcOffer = new ServiceOffer();
+                        entities.Offer offer = svcOffer.recuperer().stream()
+                                .filter(o -> o.getId() == interview.getOfferId())
+                                .findFirst().orElse(null);
+                        if (offer != null) {
+                            Label offerLabel = new Label("Position: " + offer.getTitle());
+                            offerLabel.setStyle("-fx-text-fill: #facc15; -fx-font-size: 11;");
+                            pipelineInfo.getChildren().add(offerLabel);
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+
             Separator sep3 = new Separator();
             sep3.getStyleClass().add("card-separator");
 
@@ -624,7 +650,13 @@ public class InterviewController {
                 actions.getChildren().add(readOnlyLabel);
             }
 
-            content.getChildren().addAll(dateRow, sep1, peopleRow, sep2, linkRow, sep3, actions);
+            content.getChildren().addAll(dateRow, sep1, peopleRow, sep2, linkRow);
+            if (!pipelineInfo.getChildren().isEmpty()) {
+                Separator sepPipeline = new Separator();
+                sepPipeline.getStyleClass().add("card-separator");
+                content.getChildren().addAll(sepPipeline, pipelineInfo);
+            }
+            content.getChildren().addAll(sep3, actions);
             card.getChildren().addAll(header, content);
 
             CardEffects.applyHoverEffect(card);
@@ -649,10 +681,107 @@ public class InterviewController {
                     "Your interview has been " + newStatus.toLowerCase() + ".",
                     interview.getId());
 
+            // ── Pipeline link: update the linked JobApplication ──
+            if (interview.getApplicationId() > 0) {
+                try {
+                    ServiceJobApplication serviceApp = new ServiceJobApplication();
+                    List<entities.JobApplication> apps = serviceApp.recuperer();
+                    entities.JobApplication linkedApp = apps.stream()
+                            .filter(a -> a.getId() == interview.getApplicationId())
+                            .findFirst().orElse(null);
+
+                    if (linkedApp != null) {
+                        if ("ACCEPTED".equals(newStatus)) {
+                            linkedApp.setStatus("ACCEPTED");
+                            serviceApp.modifier(linkedApp);
+                            System.out.println("[Interview] Application #" + linkedApp.getId() + " auto-ACCEPTED via interview pipeline.");
+
+                            // Trigger contract creation via OfferContractController
+                            Platform.runLater(() -> {
+                                try {
+                                    ServiceContract serviceContract = new ServiceContract();
+                                    ServiceOffer serviceOffer = new ServiceOffer();
+                                    ServiceUser svcUser = new ServiceUser();
+                                    entities.Offer offer = serviceOffer.recuperer().stream()
+                                            .filter(o -> o.getId() == linkedApp.getOfferId())
+                                            .findFirst().orElse(null);
+
+                                    if (offer != null) {
+                                        // Generate contract terms
+                                        String terms = "Employment contract for " + offer.getTitle()
+                                                + "\nParties: " + getUserDisplayName(offer.getOwnerId()) + " (Employer) and "
+                                                + getUserDisplayName(linkedApp.getApplicantId()) + " (Employee)"
+                                                + "\nCompensation: " + offer.getCurrency() + " " + offer.getAmount()
+                                                + "\n\n[Terms to be finalized]";
+
+                                        entities.Contract c = new entities.Contract(
+                                                offer.getId(), linkedApp.getApplicantId(), offer.getOwnerId(),
+                                                terms, offer.getAmount(), offer.getCurrency(),
+                                                "DRAFT", offer.getStartDate(), offer.getEndDate()
+                                        );
+                                        String hash = utils.BlockchainVerifier.generateHash(0, "Contract from hiring pipeline", offer.getAmount());
+                                        c.setBlockchainHash(hash);
+                                        serviceContract.ajouter(c);
+                                        System.out.println("[Interview] Contract #" + c.getId() + " created for application #" + linkedApp.getId());
+
+                                        // Notify applicant about contract
+                                        serviceNotification.notifyContractReady(
+                                                linkedApp.getApplicantId(),
+                                                getUserDisplayName(linkedApp.getApplicantId()),
+                                                offer.getTitle(), c.getId());
+
+                                        // Generate PDF + email in background
+                                        String applicantName = getUserDisplayName(linkedApp.getApplicantId());
+                                        String ownerName = getUserDisplayName(offer.getOwnerId());
+                                        AppThreadPool.io(() -> {
+                                            try {
+                                                File pdf = utils.ContractPdfGenerator.generatePdf(c, offer.getTitle(), ownerName, applicantName);
+                                                entities.User applicant = svcUser.getById(linkedApp.getApplicantId());
+                                                if (applicant != null && applicant.getEmail() != null) {
+                                                    utils.EmailService.sendContractEmail(
+                                                            applicant.getEmail(), applicant.getFirstName(),
+                                                            ownerName, offer.getTitle(),
+                                                            offer.getCurrency(), offer.getAmount(), hash, pdf);
+                                                }
+                                            } catch (Exception ex) {
+                                                System.err.println("[Interview] Contract post-processing failed: " + ex.getMessage());
+                                            }
+                                        });
+                                    }
+                                } catch (Exception ex) {
+                                    System.err.println("[Interview] Contract creation failed: " + ex.getMessage());
+                                }
+                            });
+                        } else if ("REJECTED".equals(newStatus)) {
+                            linkedApp.setStatus("REJECTED");
+                            serviceApp.modifier(linkedApp);
+                            System.out.println("[Interview] Application #" + linkedApp.getId() + " auto-REJECTED via interview pipeline.");
+
+                            // Notify applicant
+                            serviceNotification.notifyInterview(linkedApp.getApplicantId(), "Rejected",
+                                    "Your application has been rejected following the interview.", 0);
+                        }
+                    }
+                } catch (SQLException appEx) {
+                    System.err.println("[Interview] Failed to update linked application: " + appEx.getMessage());
+                }
+            }
+
             loadInterviews();
         } catch (SQLException e) {
             System.err.println("Failed to update status: " + e.getMessage());
         }
+    }
+
+    /** Helper to get display name from userId. */
+    private String getUserDisplayName(int userId) {
+        String name = idToName.get(userId);
+        if (name != null) return name;
+        try {
+            entities.User u = serviceUser.getById(userId);
+            if (u != null) return u.getFirstName() + " " + u.getLastName();
+        } catch (Exception ignored) {}
+        return "User #" + userId;
     }
 
     // ========== Form Status ==========

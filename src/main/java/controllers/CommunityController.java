@@ -1,9 +1,12 @@
 package controllers;
 
 import entities.Comment;
+import entities.CommunityGroup;
+import entities.GroupMember;
 import entities.Post;
 import entities.Reaction;
 import entities.User;
+import entities.UserFollow;
 import javafx.animation.FadeTransition;
 import javafx.animation.ParallelTransition;
 import javafx.animation.TranslateTransition;
@@ -12,6 +15,7 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Side;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.stage.Window;
 import utils.StyledAlert;
@@ -28,9 +32,16 @@ import javafx.stage.FileChooser;
 import javafx.stage.Popup;
 import javafx.util.Duration;
 import services.ServiceComment;
+import services.ServiceCommunityGroup;
+import services.ServiceGroupMember;
 import services.ServicePost;
 import services.ServiceReaction;
 import services.ServiceUser;
+import services.ServiceUserFollow;
+import services.ServiceNotification;
+import services.ServiceChatRoom;
+import services.ServiceChatRoomMember;
+import entities.ChatRoom;
 import utils.AnimatedButton;
 import utils.AppThreadPool;
 import utils.BadWordsService;
@@ -80,11 +91,24 @@ public class CommunityController implements Stoppable {
     @FXML private VBox detailView;
     @FXML private VBox detailContent;
 
-    // Tab bar + tab buttons
-    @FXML private HBox tabBar;
+    // Navigation buttons (sidebar)
+    @FXML private Button tabHome;
     @FXML private Button tabFeed;
+    // Profile accessed via header avatar (no sidebar button)
     @FXML private Button tabWiki;
     @FXML private Button tabQuotes;
+
+    // Header + Sidebar
+    @FXML private TextField globalSearchField;
+    @FXML private StackPane headerProfileAvatar;
+    @FXML private VBox sidebarPane;
+    @FXML private VBox sidebarGroupsList;
+
+    // Group Detail
+    @FXML private VBox groupDetailPane;
+    @FXML private Label groupDetailName;
+    @FXML private Label groupDetailMeta;
+    @FXML private VBox groupDetailContent;
 
     // Wikipedia tab
     @FXML private VBox wikiPane;
@@ -98,8 +122,27 @@ public class CommunityController implements Stoppable {
     @FXML private Button btnRefreshQuote;
     @FXML private VBox quoteBox;
 
+    // Groups
+    @FXML private VBox groupsPane;
+    @FXML private Button btnCreateGroup;
+    @FXML private VBox groupsContainer;
+    private CommunityGroup currentViewingGroup;
+
+    // Profile tab
+    @FXML private VBox profilePane;
+    @FXML private VBox profileContainer;
+
     // Animated "+ New Post" button (replaces btnNewPost in init)
     private javafx.scene.layout.StackPane animNewPostBtn;
+
+    // Post visibility ComboBox (built programmatically in the post form)
+    private ComboBox<String> visibilityCombo;
+
+    // People/Search pane (built programmatically)
+    @FXML private VBox peoplePane;
+    @FXML private VBox peopleContainer;
+    @FXML private TextField peopleSearchField;
+    @FXML private Button tabPeople;
 
     // Bot author ID — posts from this user are hidden from the community feed
     private static final int BOT_AUTHOR_ID = 1;
@@ -108,6 +151,12 @@ public class CommunityController implements Stoppable {
     private final ServiceComment serviceComment = new ServiceComment();
     private final ServiceReaction serviceReaction = new ServiceReaction();
     private final ServiceUser serviceUser = new ServiceUser();
+    private final ServiceUserFollow serviceFollow = new ServiceUserFollow();
+    private final ServiceCommunityGroup serviceGroup = new ServiceCommunityGroup();
+    private final ServiceGroupMember serviceGroupMember = new ServiceGroupMember();
+    private final ServiceNotification serviceNotif = new ServiceNotification();
+    private final ServiceChatRoom serviceChatRoom = new ServiceChatRoom();
+    private final ServiceChatRoomMember serviceChatMember = new ServiceChatRoomMember();
 
     private Map<Integer, User> userCache = new HashMap<>();
     private String pendingImageBase64 = null;
@@ -144,6 +193,9 @@ public class CommunityController implements Stoppable {
     // Bookmark/saved view mode
     private boolean showingBookmarks = false;
 
+    // Profile view: which user's profile we're viewing (null = own)
+    private User viewingProfileUser = null;
+
     // ── Performance: caches and pagination ──
     private final Map<Integer, List<Reaction>> reactionsCache = new java.util.concurrent.ConcurrentHashMap<>();
     private final Map<Integer, Image> postImageCache = new HashMap<>();
@@ -177,11 +229,67 @@ public class CommunityController implements Stoppable {
         computeServerTimeOffset();
         initTabs();
 
+        // Add visibility selector to the new post form
+        visibilityCombo = new ComboBox<>();
+        visibilityCombo.getItems().addAll("🌍 Public", "👥 Friends", "🔒 Only Me");
+        visibilityCombo.setValue("🌍 Public");
+        visibilityCombo.setStyle("-fx-font-size: 11; -fx-pref-height: 28; -fx-background-color: #1A1A2E; -fx-text-fill: #ccc; -fx-background-radius: 6; -fx-border-color: #2A2A3C; -fx-border-radius: 6;");
+        visibilityCombo.setMaxWidth(130);
+        // Insert into the bottom HBox of newPostForm (before Cancel)
+        Platform.runLater(() -> {
+            if (newPostForm.getChildren().size() > 0) {
+                javafx.scene.Node formContent = newPostForm.getChildren().get(0);
+                if (formContent instanceof VBox) {
+                    VBox formVBox = (VBox) formContent;
+                    for (javafx.scene.Node child : formVBox.getChildren()) {
+                        if (child instanceof HBox) {
+                            HBox row = (HBox) child;
+                            if (row.getChildren().contains(btnSubmitPost)) {
+                                // Insert visibility combo before the Region spacer
+                                for (int i = 0; i < row.getChildren().size(); i++) {
+                                    if (row.getChildren().get(i) instanceof Region) {
+                                        row.getChildren().add(i, visibilityCombo);
+                                        break;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
         // Load users in background, then load feed when ready
         AppThreadPool.io(() -> {
+            serviceFollow.ensureTable();
+            serviceGroup.ensureTable();
+            serviceGroupMember.ensureTable();
             loadUsers();
-            Platform.runLater(() -> loadFeed());
+            Platform.runLater(() -> {
+                loadFeed();
+                loadSidebarGroups();
+                setupHeaderAvatar();
+
+                // Check if we should navigate to a specific user's profile (e.g. from notification click)
+                Integer pendingProfileId = SessionManager.getInstance().consumePendingCommunityProfile();
+                if (pendingProfileId != null) {
+                    showUserProfile(pendingProfileId);
+                }
+            });
         });
+
+        // Global search handler
+        if (globalSearchField != null) {
+            globalSearchField.setOnKeyPressed(e -> {
+                if (e.getCode() == KeyCode.ENTER) handleGlobalSearch();
+            });
+        }
+
+        // Click header avatar to go to profile
+        if (headerProfileAvatar != null) {
+            headerProfileAvatar.setOnMouseClicked(e -> switchToProfile());
+        }
 
         // ── Twemoji icon on the image attach button ──
         Platform.runLater(() -> {
@@ -430,6 +538,13 @@ public class CommunityController implements Stoppable {
 
         try {
             Post post = new Post(me.getId(), text != null ? text.trim() : "", pendingImageBase64);
+            // Set visibility from combo
+            if (visibilityCombo != null) {
+                String sel = visibilityCombo.getValue();
+                if (sel != null && sel.contains("Friends")) post.setVisibility(Post.VISIBILITY_FRIENDS);
+                else if (sel != null && sel.contains("Only Me")) post.setVisibility(Post.VISIBILITY_ONLY_ME);
+                else post.setVisibility(Post.VISIBILITY_PUBLIC);
+            }
             servicePost.ajouter(post);
             SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
             handleCancelPost();
@@ -506,7 +621,6 @@ public class CommunityController implements Stoppable {
     private void handleBackToFeed() {
         detailPost = null;
         if (detailView != null) { detailView.setVisible(false); detailView.setManaged(false); }
-        if (tabBar != null) { tabBar.setVisible(true); tabBar.setManaged(true); }
         switchToFeed();
     }
 
@@ -517,7 +631,6 @@ public class CommunityController implements Stoppable {
         feedScroll.setVisible(false); feedScroll.setManaged(false);
         if (wikiPane != null) { wikiPane.setVisible(false); wikiPane.setManaged(false); }
         if (quotesPane != null) { quotesPane.setVisible(false); quotesPane.setManaged(false); }
-        if (tabBar != null) { tabBar.setVisible(false); tabBar.setManaged(false); }
         if (animNewPostBtn != null) { animNewPostBtn.setVisible(false); animNewPostBtn.setManaged(false); }
         handleCancelPost(); // hide new post form
         if (detailView != null) { detailView.setVisible(true); detailView.setManaged(true); }
@@ -530,6 +643,10 @@ public class CommunityController implements Stoppable {
 
     /** Filter out bot-generated posts (Wikipedia, Weather, Quotes from SynergyBot). */
     private List<Post> filterHumanPosts(List<Post> posts) {
+        User me = SessionManager.getInstance().getCurrentUser();
+        int myId = me != null ? me.getId() : 0;
+        Set<Integer> myFriends = myId > 0 ? serviceFollow.getFriendIds(myId) : Collections.emptySet();
+
         List<Post> human = new ArrayList<>();
         for (Post p : posts) {
             String c = p.getContent();
@@ -540,6 +657,10 @@ public class CommunityController implements Stoppable {
                         || c.startsWith("**Weather in") || c.startsWith("**Quote of the Day**"))) {
                 continue;
             }
+            // Visibility filtering
+            String vis = p.getVisibility();
+            if (Post.VISIBILITY_ONLY_ME.equals(vis) && p.getAuthorId() != myId) continue;
+            if (Post.VISIBILITY_FRIENDS.equals(vis) && p.getAuthorId() != myId && !myFriends.contains(p.getAuthorId())) continue;
             human.add(p);
         }
         return human;
@@ -641,15 +762,57 @@ public class CommunityController implements Stoppable {
         HBox.setHgrow(nameCol, Priority.ALWAYS);
         Label nameLabel = new Label(authorName);
         nameLabel.getStyleClass().add("community-author-name");
+        // Click on name → view user's profile
+        nameLabel.setCursor(javafx.scene.Cursor.HAND);
+        nameLabel.setOnMouseClicked(e -> showUserProfile(post.getAuthorId()));
 
         String timeText = post.getCreatedAt() != null
                 ? formatTimeAgo(post.getCreatedAt().getTime())
                 : "";
         Label timeLabel = new Label(timeText);
         timeLabel.getStyleClass().add("community-time-label");
-        nameCol.getChildren().addAll(nameLabel, timeLabel);
+
+        // Visibility indicator
+        String visIcon = "";
+        if (Post.VISIBILITY_FRIENDS.equals(post.getVisibility())) visIcon = " · 👥";
+        else if (Post.VISIBILITY_ONLY_ME.equals(post.getVisibility())) visIcon = " · 🔒";
+        else visIcon = " · 🌍";
+        Label visLabel = new Label(visIcon);
+        visLabel.setStyle("-fx-text-fill: #8888AA; -fx-font-size: 11;");
+        HBox timeLine = new HBox(2, timeLabel, visLabel);
+        timeLine.setAlignment(Pos.CENTER_LEFT);
+
+        nameCol.getChildren().addAll(nameLabel, timeLine);
 
         header.getChildren().addAll(avatar, nameCol);
+
+        // ── Follow button (for other users' posts) ──
+        if (post.getAuthorId() != myId && myId > 0) {
+            boolean following = serviceFollow.isFollowing(myId, post.getAuthorId());
+            Button followBtn = new Button(following ? "Following" : "Follow");
+            followBtn.getStyleClass().addAll("community-follow-btn");
+            if (following) followBtn.getStyleClass().add("community-follow-btn-active");
+            followBtn.setOnAction(e -> {
+                AppThreadPool.io(() -> {
+                    try {
+                        if (serviceFollow.isFollowing(myId, post.getAuthorId())) {
+                            serviceFollow.unfollow(myId, post.getAuthorId());
+                        } else {
+                            serviceFollow.follow(myId, post.getAuthorId());
+                        }
+                        utils.InMemoryCache.evictByPrefix("follows:");
+                        Platform.runLater(() -> {
+                            if (detailPost != null) renderDetailView(detailPost);
+                            else if ("home".equals(activeTab)) loadHomeFeed();
+                            else loadFeed();
+                        });
+                    } catch (SQLException ex) {
+                        Platform.runLater(() -> showToast("Follow action failed: " + ex.getMessage(), true));
+                    }
+                });
+            });
+            header.getChildren().add(followBtn);
+        }
 
         // ── 3-dot menu ──
         HBox actionBtns = new HBox(4);
@@ -961,16 +1124,36 @@ public class CommunityController implements Stoppable {
         } else {
             try {
                 List<Comment> comments = serviceComment.getByPostId(post.getId());
-                commentErrorCache.remove(post.getId()); // success — clear any cached error
+                commentErrorCache.remove(post.getId());
                 if (comments.isEmpty()) {
                     Label empty = new Label("No comments yet. Be the first!");
                     empty.getStyleClass().add("community-time-label");
                     empty.setStyle("-fx-padding: 8 0;");
                     section.getChildren().add(empty);
                 } else {
+                    // Build threaded comments: top-level + replies
+                    Map<Integer, List<Comment>> repliesMap = new LinkedHashMap<>();
+                    List<Comment> topLevel = new ArrayList<>();
                     for (Comment c : comments) {
-                        HBox row = buildCommentRow(c, myId);
+                        if (c.getParentId() != null) {
+                            repliesMap.computeIfAbsent(c.getParentId(), k -> new ArrayList<>()).add(c);
+                        } else {
+                            topLevel.add(c);
+                        }
+                    }
+                    for (Comment c : topLevel) {
+                        HBox row = buildCommentRow(c, myId, post);
                         section.getChildren().add(row);
+                        // Render replies indented
+                        List<Comment> replies = repliesMap.get(c.getId());
+                        if (replies != null) {
+                            for (Comment reply : replies) {
+                                HBox replyRow = buildCommentRow(reply, myId, post);
+                                replyRow.setPadding(new Insets(0, 0, 0, 40));
+                                replyRow.setStyle("-fx-border-color: transparent transparent transparent #2A2A3C; -fx-border-width: 0 0 0 2;");
+                                section.getChildren().add(replyRow);
+                            }
+                        }
                     }
                 }
             } catch (SQLException e) {
@@ -1019,7 +1202,7 @@ public class CommunityController implements Stoppable {
         section.getChildren().add(inputRow);
     }
 
-    private HBox buildCommentRow(Comment comment, int myId) {
+    private HBox buildCommentRow(Comment comment, int myId, Post post) {
         User author = userCache.get(comment.getAuthorId());
         String name = author != null
                 ? author.getFirstName() + " " + author.getLastName()
@@ -1054,7 +1237,51 @@ public class CommunityController implements Stoppable {
         contentLabel.setMaxWidth(560);
         contentLabel.getStyleClass().add("community-comment-text");
 
-        col.getChildren().addAll(nameRow, contentLabel);
+        // Reply button (only for top-level comments)
+        HBox actionsRow = new HBox(12);
+        actionsRow.setAlignment(Pos.CENTER_LEFT);
+        if (comment.getParentId() == null && post != null) {
+            Button replyBtn = new Button("↩ Reply");
+            replyBtn.setStyle("-fx-text-fill: #2C666E; -fx-font-size: 10; -fx-background-color: transparent; -fx-cursor: hand; -fx-padding: 1 4;");
+            replyBtn.setOnAction(e -> {
+                // Show an inline reply field
+                TextField replyField = new TextField();
+                replyField.setPromptText("Reply to " + name + "...");
+                replyField.getStyleClass().add("input-field");
+                replyField.setStyle("-fx-font-size: 11; -fx-pref-height: 30; -fx-padding: 4 8;");
+                Button sendReply = new Button("➤");
+                sendReply.getStyleClass().add("btn-primary");
+                sendReply.setStyle("-fx-font-size: 11; -fx-min-width: 30; -fx-min-height: 30; -fx-padding: 0;");
+                HBox replyRow = new HBox(6, replyField, sendReply);
+                HBox.setHgrow(replyField, Priority.ALWAYS);
+                replyRow.setAlignment(Pos.CENTER_LEFT);
+                replyRow.setPadding(new Insets(4, 0, 0, 0));
+
+                Runnable doReply = () -> {
+                    String txt = replyField.getText();
+                    if (txt != null && !txt.trim().isEmpty()) {
+                        submitReply(post, comment.getId(), txt.trim());
+                    }
+                };
+                sendReply.setOnAction(ev -> doReply.run());
+                replyField.setOnKeyPressed(ev -> { if (ev.getCode() == KeyCode.ENTER) doReply.run(); });
+
+                // Add below content, remove after send
+                int idx = col.getChildren().indexOf(actionsRow);
+                if (idx >= 0 && idx + 1 < col.getChildren().size()
+                        && col.getChildren().get(idx + 1) instanceof HBox
+                        && ((HBox) col.getChildren().get(idx + 1)).getChildren().stream().anyMatch(n -> n instanceof TextField)) {
+                    // Already showing reply field — toggle off
+                    col.getChildren().remove(idx + 1);
+                } else {
+                    col.getChildren().add(idx + 1, replyRow);
+                    replyField.requestFocus();
+                }
+            });
+            actionsRow.getChildren().add(replyBtn);
+        }
+
+        col.getChildren().addAll(nameRow, contentLabel, actionsRow);
         row.getChildren().addAll(avatar, col);
 
         // 3-dot menu for own comments
@@ -1091,6 +1318,27 @@ public class CommunityController implements Stoppable {
         }
 
         return row;
+    }
+
+    /** Submit a reply to a comment (nested comment with parentId). */
+    private void submitReply(Post post, int parentCommentId, String text) {
+        User me = SessionManager.getInstance().getCurrentUser();
+        if (me == null) return;
+        BadWordsService.CheckResult check = BadWordsService.check(text);
+        if (check.hasBadWords) {
+            showToast("Your reply contains inappropriate language.", true);
+            return;
+        }
+        try {
+            Comment reply = new Comment(post.getId(), me.getId(), text, parentCommentId);
+            serviceComment.ajouter(reply);
+            SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
+            expandedComments.add(post.getId());
+            if (detailPost != null) renderDetailView(detailPost);
+            else loadFeed();
+        } catch (SQLException e) {
+            showToast("Failed to reply: " + e.getMessage(), true);
+        }
     }
 
     private void submitComment(Post post, String text) {
@@ -1394,12 +1642,21 @@ public class CommunityController implements Stoppable {
         "Happiness is not something readymade. It comes from your own actions.|Dalai Lama"
     };
 
-    private String activeTab = "feed";
+    private String activeTab = "home";
 
     private void initTabs() {
         if (wikiSearchField != null) {
             wikiSearchField.setOnKeyPressed(e -> {
                 if (e.getCode() == KeyCode.ENTER) handleWikiSearch();
+            });
+        }
+        if (peopleSearchField != null) {
+            peopleSearchField.setOnKeyPressed(e -> {
+                if (e.getCode() == KeyCode.ENTER) loadPeople(peopleSearchField.getText());
+            });
+            peopleSearchField.textProperty().addListener((obs, oldv, newv) -> {
+                // Debounced live search as user types
+                loadPeople(newv);
             });
         }
         // Show welcome state in wiki pane
@@ -1413,23 +1670,57 @@ public class CommunityController implements Stoppable {
     }
 
     @FXML
+    private void switchToHome() {
+        activeTab = "home";
+        setTabActive(tabHome);
+        hideAllPanes();
+        feedScroll.setVisible(true); feedScroll.setManaged(true);
+        if (animNewPostBtn != null) { animNewPostBtn.setVisible(true); animNewPostBtn.setManaged(true); }
+        loadHomeFeed();
+    }
+
+    @FXML
     private void switchToFeed() {
         activeTab = "feed";
         setTabActive(tabFeed);
+        hideAllPanes();
         feedScroll.setVisible(true); feedScroll.setManaged(true);
-        if (wikiPane != null) { wikiPane.setVisible(false); wikiPane.setManaged(false); }
-        if (quotesPane != null) { quotesPane.setVisible(false); quotesPane.setManaged(false); }
         if (animNewPostBtn != null) { animNewPostBtn.setVisible(true); animNewPostBtn.setManaged(true); }
         loadFeed();
+    }
+
+    @FXML
+    private void switchToGroups() {
+        activeTab = "groups";
+        // No dedicated tab button in sidebar — clear all nav highlights
+        for (Button tab : new Button[]{tabHome, tabFeed, tabWiki, tabQuotes, tabPeople}) {
+            if (tab != null) tab.getStyleClass().remove("community-nav-link-active");
+        }
+        hideAllPanes();
+        if (groupsPane != null) { groupsPane.setVisible(true); groupsPane.setManaged(true); }
+        if (animNewPostBtn != null) { animNewPostBtn.setVisible(false); animNewPostBtn.setManaged(false); }
+        handleCancelPost();
+        loadGroups();
+    }
+
+    @FXML
+    private void switchToProfile() {
+        activeTab = "profile";
+        setTabActive(null); // no sidebar button — clear all
+        hideAllPanes();
+        if (profilePane != null) { profilePane.setVisible(true); profilePane.setManaged(true); }
+        if (animNewPostBtn != null) { animNewPostBtn.setVisible(false); animNewPostBtn.setManaged(false); }
+        handleCancelPost();
+        viewingProfileUser = SessionManager.getInstance().getCurrentUser();
+        loadProfile(viewingProfileUser);
     }
 
     @FXML
     private void switchToWiki() {
         activeTab = "wiki";
         setTabActive(tabWiki);
-        feedScroll.setVisible(false); feedScroll.setManaged(false);
+        hideAllPanes();
         if (wikiPane != null) { wikiPane.setVisible(true); wikiPane.setManaged(true); }
-        if (quotesPane != null) { quotesPane.setVisible(false); quotesPane.setManaged(false); }
         if (animNewPostBtn != null) { animNewPostBtn.setVisible(false); animNewPostBtn.setManaged(false); }
         handleCancelPost();
         Platform.runLater(() -> { if (wikiSearchField != null) wikiSearchField.requestFocus(); });
@@ -1439,20 +1730,1301 @@ public class CommunityController implements Stoppable {
     private void switchToQuotes() {
         activeTab = "quotes";
         setTabActive(tabQuotes);
-        feedScroll.setVisible(false); feedScroll.setManaged(false);
-        if (wikiPane != null) { wikiPane.setVisible(false); wikiPane.setManaged(false); }
+        hideAllPanes();
         if (quotesPane != null) { quotesPane.setVisible(true); quotesPane.setManaged(true); }
         if (animNewPostBtn != null) { animNewPostBtn.setVisible(false); animNewPostBtn.setManaged(false); }
         handleCancelPost();
     }
 
+    @FXML
+    private void switchToPeople() {
+        activeTab = "people";
+        setTabActive(tabPeople);
+        hideAllPanes();
+        if (peoplePane != null) { peoplePane.setVisible(true); peoplePane.setManaged(true); }
+        if (animNewPostBtn != null) { animNewPostBtn.setVisible(false); animNewPostBtn.setManaged(false); }
+        handleCancelPost();
+        loadPeople("");
+        Platform.runLater(() -> { if (peopleSearchField != null) peopleSearchField.requestFocus(); });
+    }
+
+    private void hideAllPanes() {
+        feedScroll.setVisible(false); feedScroll.setManaged(false);
+        if (wikiPane != null) { wikiPane.setVisible(false); wikiPane.setManaged(false); }
+        if (quotesPane != null) { quotesPane.setVisible(false); quotesPane.setManaged(false); }
+        if (groupsPane != null) { groupsPane.setVisible(false); groupsPane.setManaged(false); }
+        if (groupDetailPane != null) { groupDetailPane.setVisible(false); groupDetailPane.setManaged(false); }
+        if (profilePane != null) { profilePane.setVisible(false); profilePane.setManaged(false); }
+        if (peoplePane != null) { peoplePane.setVisible(false); peoplePane.setManaged(false); }
+        if (detailView != null) { detailView.setVisible(false); detailView.setManaged(false); }
+    }
+
     private void setTabActive(Button active) {
-        for (Button tab : new Button[]{tabFeed, tabWiki, tabQuotes}) {
+        for (Button tab : new Button[]{tabHome, tabFeed, tabWiki, tabQuotes, tabPeople}) {
             if (tab == null) continue;
-            tab.getStyleClass().remove("community-tab-active");
+            tab.getStyleClass().remove("community-nav-link-active");
         }
-        if (active != null) active.getStyleClass().add("community-tab-active");
+        if (active != null) active.getStyleClass().add("community-nav-link-active");
         SoundManager.getInstance().play(SoundManager.TAB_SWITCH);
+    }
+
+    // ═══════════════════════════════════════════
+    //  HOME FEED — ranked posts from people you follow
+    // ═══════════════════════════════════════════
+
+    /** Engagement score for ranking: reactions*3 + comments*2 + recency bonus. */
+    private double engagementScore(Post p) {
+        List<Reaction> rx = reactionsCache.get(p.getId());
+        int reactions = rx != null ? rx.size() : 0;
+        double score = reactions * 3.0 + p.getCommentsCount() * 2.0 + p.getSharesCount() * 1.5;
+        // Recency bonus: posts from last 24h get a boost
+        if (p.getCreatedAt() != null) {
+            long ageHours = ChronoUnit.HOURS.between(p.getCreatedAt().toInstant(), Instant.now());
+            if (ageHours < 1) score += 50;
+            else if (ageHours < 6) score += 30;
+            else if (ageHours < 24) score += 15;
+            else if (ageHours < 72) score += 5;
+        }
+        return score;
+    }
+
+    private void loadHomeFeed() {
+        User me = SessionManager.getInstance().getCurrentUser();
+        if (me == null) { loadFeed(); return; }
+        int myId = me.getId();
+        AppThreadPool.io(() -> {
+            try {
+                Set<Integer> followedIds = serviceFollow.getFollowedIds(myId);
+                List<Post> posts = filterHumanPosts(servicePost.recuperer());
+
+                // Filter to only posts from followed users + own posts
+                List<Post> homePosts;
+                if (followedIds.isEmpty()) {
+                    homePosts = posts; // fallback: show all if not following anyone
+                } else {
+                    Set<Integer> showIds = new HashSet<>(followedIds);
+                    showIds.add(myId);
+                    homePosts = posts.stream()
+                            .filter(p -> showIds.contains(p.getAuthorId()))
+                            .collect(Collectors.toList());
+                }
+
+                // Pre-fetch reactions for scoring, then rank by engagement
+                prefetchReactions(homePosts.subList(0, Math.min(homePosts.size(), PAGE_SIZE * 2)));
+                homePosts.sort((a, b) -> Double.compare(engagementScore(b), engagementScore(a)));
+
+                int limit = Math.min(homePosts.size(), PAGE_SIZE);
+                List<Post> page = homePosts.subList(0, limit);
+                prefetchReactions(page);
+                Platform.runLater(() -> {
+                    allPosts = homePosts;
+                    displayedPostCount = limit;
+
+                    feedContainer.getChildren().clear();
+                    if (followedIds.isEmpty()) {
+                        // Show hint to follow people
+                        Label hint = new Label("👋 Follow people to personalize your Home feed!\nShowing all posts for now.");
+                        hint.setWrapText(true);
+                        hint.setStyle("-fx-text-fill: #8888AA; -fx-font-size: 13; -fx-padding: 10 16; -fx-background-color: #1A1A2E; -fx-background-radius: 8;");
+                        feedContainer.getChildren().add(hint);
+                    }
+                    renderFeed(page, homePosts.size() > limit);
+                });
+            } catch (SQLException e) {
+                System.err.println("Home feed error: " + e.getMessage());
+            }
+        });
+    }
+
+    // ═══════════════════════════════════════════
+    //  GROUPS — list, create, join
+    // ═══════════════════════════════════════════
+
+    private void loadGroups() {
+        if (groupsContainer == null) return;
+        User me = SessionManager.getInstance().getCurrentUser();
+        int myId = me != null ? me.getId() : 0;
+
+        AppThreadPool.io(() -> {
+            try {
+                List<CommunityGroup> groups = serviceGroup.getAll();
+                Set<Integer> myGroups = serviceGroupMember.getGroupIdsForUser(myId);
+
+                Platform.runLater(() -> {
+                    groupsContainer.getChildren().clear();
+
+                    if (groups.isEmpty()) {
+                        Label empty = new Label("No groups yet. Create the first one!");
+                        empty.setStyle("-fx-text-fill: #6B6B80; -fx-font-size: 14; -fx-padding: 40;");
+                        groupsContainer.getChildren().add(empty);
+                        return;
+                    }
+
+                    for (CommunityGroup group : groups) {
+                        VBox card = buildGroupCard(group, myId, myGroups.contains(group.getId()));
+                        card.setMaxWidth(680);
+                        groupsContainer.getChildren().add(card);
+                    }
+                });
+            } catch (SQLException e) {
+                Platform.runLater(() -> showToast("Failed to load groups: " + e.getMessage(), true));
+            }
+        });
+    }
+
+    private VBox buildGroupCard(CommunityGroup group, int myId, boolean isMember) {
+        VBox card = new VBox(8);
+        card.getStyleClass().add("community-card");
+        card.setPadding(new Insets(16));
+        card.setStyle("-fx-cursor: hand;");
+
+        HBox header = new HBox(12);
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        // Group icon
+        Label icon = new Label("👥");
+        icon.setStyle("-fx-font-size: 32; -fx-min-width: 48; -fx-min-height: 48; -fx-alignment: center; " +
+                "-fx-background-color: #2A2A3C; -fx-background-radius: 12;");
+
+        VBox info = new VBox(2);
+        HBox.setHgrow(info, Priority.ALWAYS);
+
+        Label nameLabel = new Label(group.getName());
+        nameLabel.setStyle("-fx-text-fill: #E0E0F0; -fx-font-size: 16; -fx-font-weight: bold;");
+
+        Label desc = new Label(group.getDescription() != null ? group.getDescription() : "");
+        desc.setStyle("-fx-text-fill: #8888AA; -fx-font-size: 12;");
+        desc.setWrapText(true);
+        desc.setMaxHeight(40);
+
+        Label meta = new Label(group.getMemberCount() + " members • " + group.getPrivacy());
+        meta.setStyle("-fx-text-fill: #6B6B80; -fx-font-size: 11;");
+
+        info.getChildren().addAll(nameLabel, desc, meta);
+
+        // Join/Leave button
+        Button actionBtn;
+        if (group.getCreatorId() == myId) {
+            actionBtn = new Button("Admin");
+            actionBtn.getStyleClass().addAll("community-follow-btn", "community-follow-btn-active");
+            actionBtn.setDisable(true);
+        } else if (isMember) {
+            actionBtn = new Button("Leave");
+            actionBtn.getStyleClass().add("community-follow-btn");
+            actionBtn.setStyle("-fx-text-fill: #FF4444;");
+            actionBtn.setOnAction(e -> {
+                AppThreadPool.io(() -> {
+                    try {
+                        serviceGroupMember.leave(group.getId(), myId);
+                        serviceGroup.refreshMemberCount(group.getId());
+                        utils.InMemoryCache.evictByPrefix("gmembers:");
+                        utils.InMemoryCache.evictByPrefix("cgroups:");
+                        Platform.runLater(() -> loadGroups());
+                    } catch (SQLException ex) {
+                        Platform.runLater(() -> showToast("Failed to leave group: " + ex.getMessage(), true));
+                    }
+                });
+            });
+        } else {
+            actionBtn = new Button("Join");
+            actionBtn.getStyleClass().add("btn-primary");
+            actionBtn.setStyle("-fx-font-size: 12; -fx-padding: 6 16;");
+            actionBtn.setOnAction(e -> {
+                AppThreadPool.io(() -> {
+                    try {
+                        serviceGroupMember.join(group.getId(), myId, GroupMember.ROLE_MEMBER);
+                        serviceGroup.refreshMemberCount(group.getId());
+                        utils.InMemoryCache.evictByPrefix("gmembers:");
+                        utils.InMemoryCache.evictByPrefix("cgroups:");
+                        Platform.runLater(() -> loadGroups());
+                    } catch (SQLException ex) {
+                        Platform.runLater(() -> showToast("Failed to join group: " + ex.getMessage(), true));
+                    }
+                });
+            });
+        }
+
+        header.getChildren().addAll(icon, info, actionBtn);
+        card.getChildren().add(header);
+
+        // Click card to open group detail page
+        card.setOnMouseClicked(e -> {
+            if (!(e.getTarget() instanceof Button)) openGroupDetail(group);
+        });
+
+        return card;
+    }
+
+    @FXML
+    private void handleCreateGroup() {
+        Dialog<CommunityGroup> dialog = new Dialog<>();
+        dialog.setTitle("Create Group");
+        dialog.initOwner(feedScroll.getScene().getWindow());
+
+        DialogPane dp = dialog.getDialogPane();
+        dp.setStyle("-fx-background-color: #1E1E2E;");
+        dp.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        VBox form = new VBox(12);
+        form.setPadding(new Insets(16));
+
+        Label title = new Label("Create a New Group");
+        title.setStyle("-fx-text-fill: #E0E0F0; -fx-font-size: 18; -fx-font-weight: bold;");
+
+        TextField nameField = new TextField();
+        nameField.setPromptText("Group name");
+        nameField.setStyle("-fx-background-color: #2A2A3C; -fx-text-fill: #E0E0F0; -fx-prompt-text-fill: #6B6B80; -fx-background-radius: 8; -fx-padding: 10;");
+
+        TextArea descArea = new TextArea();
+        descArea.setPromptText("Description (optional)");
+        descArea.setPrefRowCount(3);
+        descArea.setWrapText(true);
+        descArea.setStyle("-fx-background-color: #2A2A3C; -fx-text-fill: #E0E0F0; -fx-prompt-text-fill: #6B6B80; -fx-background-radius: 8;");
+
+        ComboBox<String> privacyBox = new ComboBox<>();
+        privacyBox.getItems().addAll("PUBLIC", "PRIVATE");
+        privacyBox.setValue("PUBLIC");
+        privacyBox.setStyle("-fx-background-color: #2A2A3C; -fx-text-fill: #E0E0F0;");
+
+        form.getChildren().addAll(title, new Label("Name:") {{ setStyle("-fx-text-fill: #8888AA;"); }},
+                nameField, new Label("Description:") {{ setStyle("-fx-text-fill: #8888AA;"); }},
+                descArea, new Label("Privacy:") {{ setStyle("-fx-text-fill: #8888AA;"); }}, privacyBox);
+        dp.setContent(form);
+
+        dialog.setResultConverter(bt -> {
+            if (bt == ButtonType.OK && !nameField.getText().trim().isEmpty()) {
+                CommunityGroup g = new CommunityGroup(nameField.getText().trim(), descArea.getText().trim(),
+                        SessionManager.getInstance().getCurrentUser().getId());
+                g.setPrivacy(privacyBox.getValue());
+                return g;
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(group -> {
+            AppThreadPool.io(() -> {
+                try {
+                    int groupId = serviceGroup.create(group);
+                    if (groupId > 0) {
+                        serviceGroupMember.join(groupId, group.getCreatorId(), GroupMember.ROLE_ADMIN);
+                        serviceGroup.refreshMemberCount(groupId);
+                        utils.InMemoryCache.evictByPrefix("cgroups:");
+                        utils.InMemoryCache.evictByPrefix("gmembers:");
+                    }
+                    Platform.runLater(() -> {
+                        SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
+                        loadGroups();
+                    });
+                } catch (SQLException e) {
+                    Platform.runLater(() -> showToast("Failed to create group: " + e.getMessage(), true));
+                }
+            });
+        });
+    }
+
+    // ═══════════════════════════════════════════
+    //  HEADER — avatar, global search
+    // ═══════════════════════════════════════════
+
+    /** Set current user's avatar in the header top-right */
+    private void setupHeaderAvatar() {
+        if (headerProfileAvatar == null) return;
+        User me = SessionManager.getInstance().getCurrentUser();
+        if (me == null) return;
+        StackPane av = createAvatar(me, 36);
+        headerProfileAvatar.getChildren().clear();
+        headerProfileAvatar.getChildren().addAll(av.getChildren());
+    }
+
+    /** Global search: searches people first, could expand to posts later */
+    @FXML
+    private void handleGlobalSearch() {
+        if (globalSearchField == null) return;
+        String q = globalSearchField.getText();
+        if (q == null || q.trim().isEmpty()) return;
+        // Switch to People tab and search
+        switchToPeople();
+        if (peopleSearchField != null) peopleSearchField.setText(q.trim());
+        loadPeople(q.trim());
+    }
+
+    // ═══════════════════════════════════════════
+    //  SIDEBAR — groups list
+    // ═══════════════════════════════════════════
+
+    /** Load the user's groups in the left sidebar */
+    private void loadSidebarGroups() {
+        if (sidebarGroupsList == null) return;
+        User me = SessionManager.getInstance().getCurrentUser();
+        int myId = me != null ? me.getId() : 0;
+        AppThreadPool.io(() -> {
+            try {
+                List<CommunityGroup> allGroups = serviceGroup.getAll();
+                Set<Integer> myGroupIds = serviceGroupMember.getGroupIdsForUser(myId);
+                Platform.runLater(() -> {
+                    sidebarGroupsList.getChildren().clear();
+                    for (CommunityGroup g : allGroups) {
+                        if (myGroupIds.contains(g.getId())) {
+                            Button groupBtn = new Button("👥  " + g.getName());
+                            groupBtn.getStyleClass().add("community-nav-link");
+                            groupBtn.setMaxWidth(Double.MAX_VALUE);
+                            groupBtn.setAlignment(Pos.CENTER_LEFT);
+                            groupBtn.setOnAction(e -> openGroupDetail(g));
+                            sidebarGroupsList.getChildren().add(groupBtn);
+                        }
+                    }
+                    // "See All Groups" link
+                    Button seeAll = new Button("See all groups →");
+                    seeAll.setStyle("-fx-background-color: transparent; -fx-text-fill: #90DDF0; -fx-font-size: 12; -fx-cursor: hand; -fx-padding: 8 14;");
+                    seeAll.setMaxWidth(Double.MAX_VALUE);
+                    seeAll.setAlignment(Pos.CENTER_LEFT);
+                    seeAll.setOnAction(e -> switchToGroups());
+                    sidebarGroupsList.getChildren().add(seeAll);
+                });
+            } catch (SQLException e) {
+                // Silently fail - sidebar is not critical
+            }
+        });
+    }
+
+    // ═══════════════════════════════════════════
+    //  GROUP DETAIL — dedicated page for a group
+    // ═══════════════════════════════════════════
+
+    /** Navigate to a group's own page */
+    private void openGroupDetail(CommunityGroup group) {
+        currentViewingGroup = group;
+        activeTab = "group-detail";
+        for (Button tab : new Button[]{tabHome, tabFeed, tabWiki, tabQuotes, tabPeople}) {
+            if (tab != null) tab.getStyleClass().remove("community-nav-link-active");
+        }
+        hideAllPanes();
+        if (groupDetailPane != null) { groupDetailPane.setVisible(true); groupDetailPane.setManaged(true); }
+        if (animNewPostBtn != null) { animNewPostBtn.setVisible(false); animNewPostBtn.setManaged(false); }
+        handleCancelPost();
+        loadGroupDetail(group);
+    }
+
+    /** Load group detail page with post form and group-specific feed */
+    private void loadGroupDetail(CommunityGroup group) {
+        if (groupDetailContent == null) return;
+        if (groupDetailName != null) groupDetailName.setText(group.getName());
+        if (groupDetailMeta != null) groupDetailMeta.setText(group.getMemberCount() + " members • " + group.getPrivacy());
+
+        User me = SessionManager.getInstance().getCurrentUser();
+        int myId = me != null ? me.getId() : 0;
+
+        AppThreadPool.io(() -> {
+            try {
+                List<Post> allPosts = filterHumanPosts(servicePost.recuperer());
+                List<Post> groupPosts = allPosts.stream()
+                        .filter(p -> group.getId() == (p.getGroupId() != null ? p.getGroupId() : 0))
+                        .collect(Collectors.toList());
+                prefetchReactions(groupPosts.subList(0, Math.min(groupPosts.size(), PAGE_SIZE)));
+
+                Set<Integer> memberIds = serviceGroupMember.getMembers(group.getId()).stream()
+                        .map(gm -> gm.getUserId()).collect(Collectors.toSet());
+
+                Platform.runLater(() -> {
+                    groupDetailContent.getChildren().clear();
+
+                    // Group info card
+                    VBox infoCard = new VBox(6);
+                    infoCard.getStyleClass().add("community-card");
+                    infoCard.setPadding(new Insets(16));
+                    infoCard.setMaxWidth(680);
+                    Label groupIcon = new Label("👥");
+                    groupIcon.setStyle("-fx-font-size: 36;");
+                    Label groupName = new Label(group.getName());
+                    groupName.setStyle("-fx-text-fill: #E0E0F0; -fx-font-size: 20; -fx-font-weight: bold;");
+                    Label groupDesc = new Label(group.getDescription() != null ? group.getDescription() : "");
+                    groupDesc.setStyle("-fx-text-fill: #8888AA; -fx-font-size: 13;");
+                    groupDesc.setWrapText(true);
+                    Label memberLabel = new Label(memberIds.size() + " members • " + group.getPrivacy());
+                    memberLabel.setStyle("-fx-text-fill: #6B6B80; -fx-font-size: 12;");
+                    infoCard.getChildren().addAll(groupIcon, groupName, groupDesc, memberLabel);
+                    groupDetailContent.getChildren().add(infoCard);
+
+                    // Post creation (inline, for group)
+                    VBox postBox = new VBox(8);
+                    postBox.getStyleClass().add("community-card");
+                    postBox.setPadding(new Insets(14));
+                    postBox.setMaxWidth(680);
+                    Label postLabel = new Label("Write something to " + group.getName() + "...");
+                    postLabel.setStyle("-fx-text-fill: #8888AA; -fx-font-size: 13;");
+                    TextArea groupPostArea = new TextArea();
+                    groupPostArea.setPromptText("What's on your mind?");
+                    groupPostArea.setWrapText(true);
+                    groupPostArea.setPrefRowCount(3);
+                    groupPostArea.setMaxHeight(120);
+                    groupPostArea.getStyleClass().add("chat-textarea");
+                    Button postBtn = new Button("Post");
+                    postBtn.getStyleClass().add("btn-primary");
+                    postBtn.setStyle("-fx-font-size: 12;");
+                    postBtn.setOnAction(e -> {
+                        String content = groupPostArea.getText();
+                        if (content == null || content.trim().isEmpty()) return;
+                        // Profanity filter
+                        if (BadWordsService.check(content.trim()).hasBadWords) {
+                            showToast("Your post contains inappropriate language.", true);
+                            return;
+                        }
+                        postBtn.setDisable(true);
+                        AppThreadPool.io(() -> {
+                            try {
+                                Post p = new Post(myId, content.trim(), null);
+                                p.setGroupId(group.getId());
+                                p.setVisibility(Post.VISIBILITY_PUBLIC);
+                                servicePost.ajouter(p);
+                                Platform.runLater(() -> {
+                                    groupPostArea.clear();
+                                    postBtn.setDisable(false);
+                                    SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
+                                    loadGroupDetail(group);
+                                });
+                            } catch (SQLException ex) {
+                                Platform.runLater(() -> {
+                                    postBtn.setDisable(false);
+                                    showToast("Failed to post: " + ex.getMessage(), true);
+                                });
+                            }
+                        });
+                    });
+                    HBox postActions = new HBox(8);
+                    postActions.setAlignment(Pos.CENTER_RIGHT);
+                    postActions.getChildren().add(postBtn);
+                    postBox.getChildren().addAll(postLabel, groupPostArea, postActions);
+                    groupDetailContent.getChildren().add(postBox);
+
+                    // Group posts
+                    if (groupPosts.isEmpty()) {
+                        Label noPosts = new Label("No posts in this group yet. Be the first!");
+                        noPosts.setStyle("-fx-text-fill: #6B6B80; -fx-font-size: 14; -fx-padding: 20;");
+                        groupDetailContent.getChildren().add(noPosts);
+                    } else {
+                        for (int i = 0; i < Math.min(groupPosts.size(), PAGE_SIZE); i++) {
+                            VBox postCard = buildPostCard(groupPosts.get(i), myId, false);
+                            postCard.setMaxWidth(680);
+                            groupDetailContent.getChildren().add(postCard);
+                        }
+                    }
+                });
+            } catch (SQLException e) {
+                Platform.runLater(() -> showToast("Failed to load group", true));
+            }
+        });
+    }
+
+    @FXML
+    private void handleBackToGroups() {
+        currentViewingGroup = null;
+        switchToGroups();
+    }
+
+    // ═══════════════════════════════════════════
+    //  PEOPLE — search & browse users
+    // ═══════════════════════════════════════════
+
+    /** Load and display all people, optionally filtered by search query */
+    private void loadPeople(String query) {
+        if (peopleContainer == null) return;
+        int myId = SessionManager.getInstance().getCurrentUser().getId();
+        AppThreadPool.io(() -> {
+            try {
+                // Get fresh friend IDs for button state
+                Set<Integer> friendIds = serviceFollow.getFriendIds(myId);
+                Set<Integer> followedIds = serviceFollow.getFollowedIds(myId);
+                List<User> allUsers = serviceUser.recuperer();
+                for (User u : allUsers) userCache.put(u.getId(), u);
+                String q = query == null ? "" : query.trim().toLowerCase();
+                List<User> filtered = allUsers.stream()
+                    .filter(u -> u.getId() != myId)
+                    .filter(u -> q.isEmpty()
+                        || (u.getFullName() != null && u.getFullName().toLowerCase().contains(q))
+                        || (u.getBio() != null && u.getBio().toLowerCase().contains(q))
+                        || (u.getEmail() != null && u.getEmail().toLowerCase().contains(q)))
+                    .sorted((a, b) -> {
+                        boolean af = friendIds.contains(a.getId()), bf = friendIds.contains(b.getId());
+                        if (af != bf) return af ? -1 : 1;
+                        return String.valueOf(a.getFullName()).compareToIgnoreCase(String.valueOf(b.getFullName()));
+                    })
+                    .collect(Collectors.toList());
+                Platform.runLater(() -> {
+                    peopleContainer.getChildren().clear();
+                    if (filtered.isEmpty()) {
+                        Label empty = new Label("No people found" + (q.isEmpty() ? "" : " for \"" + q + "\""));
+                        empty.setStyle("-fx-text-fill: #888; -fx-font-size: 14; -fx-padding: 30 0;");
+                        peopleContainer.getChildren().add(empty);
+                    } else {
+                        Label countLabel = new Label(filtered.size() + " people" + (q.isEmpty() ? "" : " matching \"" + q + "\""));
+                        countLabel.setStyle("-fx-text-fill: #888; -fx-font-size: 12; -fx-padding: 0 0 8 0;");
+                        peopleContainer.getChildren().add(countLabel);
+                        for (User u : filtered) {
+                            peopleContainer.getChildren().add(buildPersonCard(u, myId, friendIds, followedIds));
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showToast("Failed to load people", true));
+            }
+        });
+    }
+
+    /** Build a card for a person in the People tab */
+    private HBox buildPersonCard(User user, int myId, Set<Integer> friendIds, Set<Integer> followedIds) {
+        HBox card = new HBox(14);
+        card.setAlignment(Pos.CENTER_LEFT);
+        card.setPadding(new Insets(14, 18, 14, 18));
+        card.setMinHeight(70);
+        card.setMaxWidth(620);
+        card.setStyle("-fx-background-color: #232228; -fx-background-radius: 12; -fx-cursor: hand; "
+            + "-fx-border-color: #333; -fx-border-radius: 12; "
+            + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 6, 0, 0, 2);");
+        card.setOnMouseEntered(e -> card.setStyle("-fx-background-color: #2A2930; -fx-background-radius: 12; -fx-cursor: hand; "
+            + "-fx-border-color: #2C666E; -fx-border-radius: 12; "
+            + "-fx-effect: dropshadow(gaussian, rgba(44,102,110,0.3), 8, 0, 0, 2);"));
+        card.setOnMouseExited(e -> card.setStyle("-fx-background-color: #232228; -fx-background-radius: 12; -fx-cursor: hand; "
+            + "-fx-border-color: #333; -fx-border-radius: 12; "
+            + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 6, 0, 0, 2);"));
+
+        // Avatar
+        Circle avatar = new Circle(28);
+        avatar.setFill(Color.web("#3A3945"));
+        avatar.setStroke(Color.web("#2C666E"));
+        avatar.setStrokeWidth(2);
+        if (user.getAvatarPath() != null && !user.getAvatarPath().isEmpty()) {
+            try {
+                File f = new File(user.getAvatarPath());
+                if (f.exists()) {
+                    Image img = new Image(f.toURI().toString(), 56, 56, true, true);
+                    avatar.setFill(new ImagePattern(img));
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // Info column
+        VBox info = new VBox(2);
+        info.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(info, Priority.ALWAYS);
+        Label name = new Label(user.getFullName() != null ? user.getFullName() : "User #" + user.getId());
+        name.setStyle("-fx-text-fill: white; -fx-font-size: 14; -fx-font-weight: bold;");
+        info.getChildren().add(name);
+        if (user.getBio() != null && !user.getBio().isEmpty()) {
+            Label bio = new Label(user.getBio());
+            bio.setStyle("-fx-text-fill: #999; -fx-font-size: 12;");
+            bio.setWrapText(true);
+            bio.setMaxWidth(400);
+            info.getChildren().add(bio);
+        }
+        String subtitle = user.getEmail() != null ? user.getEmail() : "";
+        if (!subtitle.isEmpty()) {
+            Label emailLbl = new Label(subtitle);
+            emailLbl.setStyle("-fx-text-fill: #666; -fx-font-size: 11;");
+            info.getChildren().add(emailLbl);
+        }
+
+        // Relationship badge
+        boolean isFriend = friendIds.contains(user.getId());
+        boolean isFollowed = followedIds.contains(user.getId());
+
+        HBox buttons = new HBox(8);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
+
+        if (isFriend) {
+            Label badge = new Label("✓ Friends");
+            badge.setStyle("-fx-text-fill: #90DDF0; -fx-font-size: 12; -fx-font-weight: bold; -fx-padding: 4 12; "
+                + "-fx-background-color: rgba(44,102,110,0.15); -fx-background-radius: 14;");
+            Button msgBtn = new Button("💬");
+            msgBtn.setStyle("-fx-text-fill: #90DDF0; -fx-font-size: 13; -fx-padding: 4 10; "
+                + "-fx-background-color: rgba(44,102,110,0.15); -fx-background-radius: 14; -fx-cursor: hand;");
+            msgBtn.setOnAction(ev -> openDirectMessage(user.getId(), user.getFullName()));
+            buttons.getChildren().addAll(badge, msgBtn);
+        } else {
+            // Check pending status
+            AppThreadPool.io(() -> {
+                try {
+                    String relStatus = serviceFollow.getRelationshipStatus(myId, user.getId());
+                    String reverseStatus = serviceFollow.getRelationshipStatus(user.getId(), myId);
+                    Platform.runLater(() -> {
+                        if (UserFollow.STATUS_PENDING.equals(relStatus)) {
+                            Label pending = new Label("⏳ Request Sent");
+                            pending.setStyle("-fx-text-fill: #F5A623; -fx-font-size: 12; -fx-padding: 4 12; "
+                                + "-fx-background-color: rgba(245,166,35,0.15); -fx-background-radius: 14;");
+                            buttons.getChildren().add(pending);
+                        } else if (UserFollow.STATUS_PENDING.equals(reverseStatus)) {
+                            Button accept = new Button("✓ Accept");
+                            accept.setStyle("-fx-text-fill: white; -fx-font-size: 11; -fx-padding: 4 12; "
+                                + "-fx-background-color: #2C666E; -fx-background-radius: 14; -fx-cursor: hand;");
+                            accept.setOnAction(ev -> {
+                                AppThreadPool.io(() -> {
+                                    try {
+                                        serviceFollow.acceptFriendRequest(user.getId(), myId);
+                                        User currentMe = SessionManager.getInstance().getCurrentUser();
+                                        if (currentMe != null) serviceNotif.notifyFriendAccepted(user.getId(), currentMe.getFullName(), myId);
+                                        Platform.runLater(() -> loadPeople(peopleSearchField != null ? peopleSearchField.getText() : ""));
+                                    } catch (Exception ex) { Platform.runLater(() -> showToast("Error", true)); }
+                                });
+                            });
+                            Button decline = new Button("✕");
+                            decline.setStyle("-fx-text-fill: #FF5555; -fx-font-size: 11; -fx-padding: 4 8; "
+                                + "-fx-background-color: rgba(255,85,85,0.15); -fx-background-radius: 14; -fx-cursor: hand;");
+                            decline.setOnAction(ev -> {
+                                AppThreadPool.io(() -> {
+                                    try {
+                                        serviceFollow.rejectFriendRequest(user.getId(), myId);
+                                        Platform.runLater(() -> loadPeople(peopleSearchField != null ? peopleSearchField.getText() : ""));
+                                    } catch (Exception ex) { Platform.runLater(() -> showToast("Error", true)); }
+                                });
+                            });
+                            buttons.getChildren().addAll(accept, decline);
+                        } else {
+                            Button addFriend = new Button("👥 Add Friend");
+                            addFriend.setStyle("-fx-text-fill: white; -fx-font-size: 11; -fx-padding: 4 12; "
+                                + "-fx-background-color: #2C666E; -fx-background-radius: 14; -fx-cursor: hand;");
+                            addFriend.setOnAction(ev -> {
+                                AppThreadPool.io(() -> {
+                                    try {
+                                        serviceFollow.sendFriendRequest(myId, user.getId());
+                                        User currentMe = SessionManager.getInstance().getCurrentUser();
+                                        if (currentMe != null) serviceNotif.notifyFriendRequest(user.getId(), currentMe.getFullName(), myId);
+                                        Platform.runLater(() -> loadPeople(peopleSearchField != null ? peopleSearchField.getText() : ""));
+                                    } catch (Exception ex) { Platform.runLater(() -> showToast("Error: " + ex.getMessage(), true)); }
+                                });
+                            });
+                            buttons.getChildren().add(addFriend);
+                            if (!isFollowed) {
+                                Button followBtn = new Button("+ Follow");
+                                followBtn.setStyle("-fx-text-fill: #90DDF0; -fx-font-size: 11; -fx-padding: 4 12; "
+                                    + "-fx-background-color: transparent; -fx-border-color: #2C666E; -fx-border-radius: 14; "
+                                    + "-fx-background-radius: 14; -fx-cursor: hand;");
+                                followBtn.setOnAction(ev -> {
+                                    AppThreadPool.io(() -> {
+                                        try {
+                                            serviceFollow.follow(myId, user.getId());
+                                            Platform.runLater(() -> loadPeople(peopleSearchField != null ? peopleSearchField.getText() : ""));
+                                        } catch (Exception ex) { Platform.runLater(() -> showToast("Error", true)); }
+                                    });
+                                });
+                                buttons.getChildren().add(followBtn);
+                            }
+                        }
+                    });
+                } catch (Exception ignored) {}
+            });
+        }
+
+        // Click card to view profile
+        card.setOnMouseClicked(e -> showUserProfile(user.getId()));
+
+        card.getChildren().addAll(avatar, info, buttons);
+        return card;
+    }
+
+    // ═══════════════════════════════════════════
+    //  PROFILE — user posts, followers/following
+    // ═══════════════════════════════════════════
+
+    /** Show another user's profile (from clicking their name on a post) */
+    private void showUserProfile(int userId) {
+        User user = userCache.get(userId);
+        if (user == null) {
+            // User not in cache — try fetching
+            AppThreadPool.io(() -> {
+                try {
+                    List<User> all = serviceUser.recuperer();
+                    for (User u : all) userCache.put(u.getId(), u);
+                    User fetched = userCache.get(userId);
+                    if (fetched != null) Platform.runLater(() -> showUserProfile(userId));
+                } catch (Exception ignored) {}
+            });
+            return;
+        }
+        viewingProfileUser = user;
+        activeTab = "profile";
+        setTabActive(null); // no sidebar button
+        hideAllPanes();
+        if (profilePane != null) { profilePane.setVisible(true); profilePane.setManaged(true); }
+        if (animNewPostBtn != null) { animNewPostBtn.setVisible(false); animNewPostBtn.setManaged(false); }
+        loadProfile(user);
+    }
+
+    private void loadProfile(User user) {
+        if (profileContainer == null || user == null) return;
+        User me = SessionManager.getInstance().getCurrentUser();
+        int myId = me != null ? me.getId() : 0;
+        int userId = user.getId();
+        boolean isOwnProfile = myId == userId;
+
+        AppThreadPool.io(() -> {
+            try {
+                int followerCount = serviceFollow.getFollowerCount(userId);
+                int followingCount = serviceFollow.getFollowingCount(userId);
+                int friendCount = serviceFollow.getFriendCount(userId);
+                boolean isFollowing = myId > 0 && !isOwnProfile && serviceFollow.isFollowing(myId, userId);
+                String relStatus = myId > 0 && !isOwnProfile ? serviceFollow.getRelationshipStatus(myId, userId) : null;
+                String reverseStatus = myId > 0 && !isOwnProfile ? serviceFollow.getRelationshipStatus(userId, myId) : null;
+                List<UserFollow> pendingRequests = isOwnProfile ? serviceFollow.getPendingRequests(myId) : Collections.emptyList();
+
+                List<Post> allUserPosts = filterHumanPosts(servicePost.recuperer());
+                List<Post> userPosts = allUserPosts.stream()
+                        .filter(p -> p.getAuthorId() == userId)
+                        .collect(Collectors.toList());
+                prefetchReactions(userPosts.subList(0, Math.min(userPosts.size(), PAGE_SIZE)));
+
+                Platform.runLater(() -> {
+                    profileContainer.getChildren().clear();
+
+                    // ── Profile Card (no cover photo) ──
+                    VBox profileCard = new VBox(12);
+                    profileCard.getStyleClass().add("community-card");
+                    profileCard.setMaxWidth(680);
+                    profileCard.setAlignment(Pos.CENTER);
+                    profileCard.setPadding(new Insets(24, 24, 20, 24));
+
+                    // Avatar
+                    StackPane profileAvatar = createAvatar(user, 90);
+                    profileAvatar.setStyle("-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 8, 0, 0, 2);");
+
+                    Label nameLabel = new Label(user.getFirstName() + " " + user.getLastName());
+                    nameLabel.getStyleClass().add("community-author-name");
+                    nameLabel.setStyle("-fx-font-size: 22;");
+
+                    Label roleLabel = new Label(user.getRole() != null ? user.getRole() : "Member");
+                    roleLabel.getStyleClass().add("community-time-label");
+                    roleLabel.setStyle("-fx-font-size: 13;");
+
+                    // Bio
+                    String bioText = user.getBio() != null && !user.getBio().isEmpty() ? user.getBio() : "No bio yet.";
+                    Label bioLabel = new Label(bioText);
+                    bioLabel.setWrapText(true);
+                    bioLabel.setMaxWidth(500);
+                    bioLabel.getStyleClass().add("community-time-label");
+                    bioLabel.setStyle("-fx-font-size: 13; -fx-padding: 4 0;");
+                    bioLabel.setAlignment(Pos.CENTER);
+
+                    // Stats row — clickable to show popup
+                    final int fFollowerCount = followerCount;
+                    final int fFollowingCount = followingCount;
+                    final int fFriendCount = friendCount;
+                    HBox stats = new HBox(24);
+                    stats.setAlignment(Pos.CENTER);
+                    stats.setPadding(new Insets(10, 0, 6, 0));
+                    VBox postsStatBox = buildStatBox(String.valueOf(userPosts.size()), "Posts");
+                    VBox friendsStatBox = buildStatBox(String.valueOf(friendCount), "Friends");
+                    friendsStatBox.setStyle("-fx-cursor: hand;");
+                    friendsStatBox.setOnMouseClicked(e -> showPeoplePopup("Friends", userId, "friends"));
+                    VBox followerStatBox = buildStatBox(String.valueOf(followerCount), "Followers");
+                    followerStatBox.setStyle("-fx-cursor: hand;");
+                    followerStatBox.setOnMouseClicked(e -> showPeoplePopup("Followers", userId, "followers"));
+                    VBox followingStatBox = buildStatBox(String.valueOf(followingCount), "Following");
+                    followingStatBox.setStyle("-fx-cursor: hand;");
+                    followingStatBox.setOnMouseClicked(e -> showPeoplePopup("Following", userId, "following"));
+                    stats.getChildren().addAll(postsStatBox, friendsStatBox, followerStatBox, followingStatBox);
+
+                    profileCard.getChildren().addAll(profileAvatar, nameLabel, roleLabel, bioLabel, stats);
+
+                    // ── Action buttons ──
+                    if (isOwnProfile) {
+                        // Edit Profile button
+                        Button editProfileBtn = new Button("✏️ Edit Profile");
+                        editProfileBtn.getStyleClass().add("btn-secondary");
+                        editProfileBtn.setStyle("-fx-font-size: 13; -fx-padding: 8 24;");
+                        editProfileBtn.setOnAction(e -> showEditProfileDialog(user));
+                        profileCard.getChildren().add(editProfileBtn);
+                    } else if (myId > 0) {
+                        HBox actionRow = new HBox(12);
+                        actionRow.setAlignment(Pos.CENTER);
+
+                        // Friend request / follow button logic
+                        boolean areFriends = serviceFollow.areFriends(myId, userId);
+                        if (areFriends) {
+                            Button friendBtn = new Button("✓ Friends");
+                            friendBtn.getStyleClass().addAll("community-follow-btn", "community-follow-btn-active");
+                            friendBtn.setStyle("-fx-font-size: 13; -fx-padding: 8 24;");
+                            friendBtn.setOnAction(e -> {
+                                AppThreadPool.io(() -> {
+                                    try {
+                                        serviceFollow.unfollow(myId, userId);
+                                        utils.InMemoryCache.evictByPrefix("follows:");
+                                        Platform.runLater(() -> loadProfile(user));
+                                    } catch (SQLException ex) {
+                                        Platform.runLater(() -> showToast("Action failed", true));
+                                    }
+                                });
+                            });
+                            actionRow.getChildren().add(friendBtn);
+
+                            // Message button — opens DM chat with this friend
+                            Button msgBtn = new Button("💬 Message");
+                            msgBtn.getStyleClass().add("community-follow-btn");
+                            msgBtn.setStyle("-fx-font-size: 13; -fx-padding: 8 20;");
+                            msgBtn.setOnAction(e -> openDirectMessage(userId, user.getFullName()));
+                            actionRow.getChildren().add(msgBtn);
+                        } else if (UserFollow.STATUS_PENDING.equals(relStatus)) {
+                            Button pendingBtn = new Button("⏳ Request Sent");
+                            pendingBtn.getStyleClass().add("community-follow-btn");
+                            pendingBtn.setStyle("-fx-font-size: 13; -fx-padding: 8 24; -fx-opacity: 0.7;");
+                            pendingBtn.setOnAction(e -> {
+                                // Cancel request
+                                AppThreadPool.io(() -> {
+                                    try {
+                                        serviceFollow.rejectFriendRequest(myId, userId);
+                                        utils.InMemoryCache.evictByPrefix("follows:");
+                                        Platform.runLater(() -> loadProfile(user));
+                                    } catch (SQLException ex) {
+                                        Platform.runLater(() -> showToast("Action failed", true));
+                                    }
+                                });
+                            });
+                            actionRow.getChildren().add(pendingBtn);
+                        } else if (UserFollow.STATUS_PENDING.equals(reverseStatus)) {
+                            // They sent us a request
+                            Button acceptBtn = new Button("✓ Accept");
+                            acceptBtn.getStyleClass().add("btn-primary");
+                            acceptBtn.setStyle("-fx-font-size: 13; -fx-padding: 8 20;");
+                            acceptBtn.setOnAction(e -> {
+                                AppThreadPool.io(() -> {
+                                    try {
+                                        serviceFollow.acceptFriendRequest(userId, myId);
+                                        // Also follow them back
+                                        serviceFollow.follow(myId, userId);
+                                        utils.InMemoryCache.evictByPrefix("follows:");
+                                        User currentMe = SessionManager.getInstance().getCurrentUser();
+                                        if (currentMe != null) serviceNotif.notifyFriendAccepted(userId, currentMe.getFullName(), myId);
+                                        Platform.runLater(() -> loadProfile(user));
+                                    } catch (SQLException ex) {
+                                        Platform.runLater(() -> showToast("Action failed", true));
+                                    }
+                                });
+                            });
+                            Button declineBtn = new Button("✕ Decline");
+                            declineBtn.getStyleClass().add("btn-secondary");
+                            declineBtn.setStyle("-fx-font-size: 13; -fx-padding: 8 20;");
+                            declineBtn.setOnAction(e -> {
+                                AppThreadPool.io(() -> {
+                                    try {
+                                        serviceFollow.rejectFriendRequest(userId, myId);
+                                        utils.InMemoryCache.evictByPrefix("follows:");
+                                        Platform.runLater(() -> loadProfile(user));
+                                    } catch (SQLException ex) {
+                                        Platform.runLater(() -> showToast("Action failed", true));
+                                    }
+                                });
+                            });
+                            actionRow.getChildren().addAll(acceptBtn, declineBtn);
+                        } else {
+                            // No relationship — show Add Friend + Follow
+                            Button addFriendBtn = new Button("👥 Add Friend");
+                            addFriendBtn.getStyleClass().add("btn-primary");
+                            addFriendBtn.setStyle("-fx-font-size: 13; -fx-padding: 8 20;");
+                            addFriendBtn.setOnAction(e -> {
+                                AppThreadPool.io(() -> {
+                                    try {
+                                        serviceFollow.sendFriendRequest(myId, userId);
+                                        utils.InMemoryCache.evictByPrefix("follows:");
+                                        User currentMe = SessionManager.getInstance().getCurrentUser();
+                                        if (currentMe != null) serviceNotif.notifyFriendRequest(userId, currentMe.getFullName(), myId);
+                                        Platform.runLater(() -> loadProfile(user));
+                                    } catch (SQLException ex) {
+                                        Platform.runLater(() -> showToast("Action failed", true));
+                                    }
+                                });
+                            });
+
+                            Button followBtn = new Button(isFollowing ? "✓ Following" : "+ Follow");
+                            followBtn.getStyleClass().add("community-follow-btn");
+                            if (isFollowing) followBtn.getStyleClass().add("community-follow-btn-active");
+                            followBtn.setStyle("-fx-font-size: 13; -fx-padding: 8 20;");
+                            followBtn.setOnAction(e -> {
+                                AppThreadPool.io(() -> {
+                                    try {
+                                        if (serviceFollow.isFollowing(myId, userId))
+                                            serviceFollow.unfollow(myId, userId);
+                                        else
+                                            serviceFollow.follow(myId, userId);
+                                        utils.InMemoryCache.evictByPrefix("follows:");
+                                        Platform.runLater(() -> loadProfile(user));
+                                    } catch (SQLException ex) {
+                                        Platform.runLater(() -> showToast("Follow failed", true));
+                                    }
+                                });
+                            });
+                            actionRow.getChildren().addAll(addFriendBtn, followBtn);
+                        }
+                        profileCard.getChildren().add(actionRow);
+                    }
+
+                    // Add profile card directly (no cover)
+                    profileCard.setMaxWidth(680);
+                    profileContainer.getChildren().add(profileCard);
+
+                    // ── Pending Friend Requests (own profile) ──
+                    if (isOwnProfile && !pendingRequests.isEmpty()) {
+                        VBox requestsCard = new VBox(8);
+                        requestsCard.getStyleClass().add("community-card");
+                        requestsCard.setPadding(new Insets(14, 20, 14, 20));
+                        requestsCard.setMaxWidth(680);
+
+                        Label reqTitle = new Label("👥 Friend Requests (" + pendingRequests.size() + ")");
+                        reqTitle.setStyle("-fx-text-fill: #E0E0F0; -fx-font-size: 15; -fx-font-weight: bold;");
+                        requestsCard.getChildren().add(reqTitle);
+
+                        for (UserFollow req : pendingRequests) {
+                            User sender = userCache.get(req.getFollowerId());
+                            if (sender == null) continue;
+
+                            HBox reqRow = new HBox(10);
+                            reqRow.setAlignment(Pos.CENTER_LEFT);
+                            reqRow.setPadding(new Insets(6, 0, 6, 0));
+
+                            StackPane reqAvatar = createAvatar(sender, 40);
+                            Label reqName = new Label(sender.getFirstName() + " " + sender.getLastName());
+                            reqName.setStyle("-fx-text-fill: #E0E0F0; -fx-font-size: 13; -fx-font-weight: bold;");
+                            reqName.setCursor(javafx.scene.Cursor.HAND);
+                            reqName.setOnMouseClicked(ev -> showUserProfile(sender.getId()));
+                            Region spacer = new Region();
+                            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                            Button acceptBtn = new Button("✓ Accept");
+                            acceptBtn.getStyleClass().add("btn-primary");
+                            acceptBtn.setStyle("-fx-font-size: 11; -fx-padding: 5 12;");
+                            acceptBtn.setOnAction(ev -> {
+                                AppThreadPool.io(() -> {
+                                    try {
+                                        serviceFollow.acceptFriendRequest(sender.getId(), myId);
+                                        serviceFollow.follow(myId, sender.getId());
+                                        utils.InMemoryCache.evictByPrefix("follows:");
+                                        User currentMe = SessionManager.getInstance().getCurrentUser();
+                                        if (currentMe != null) serviceNotif.notifyFriendAccepted(sender.getId(), currentMe.getFullName(), myId);
+                                        Platform.runLater(() -> loadProfile(user));
+                                    } catch (SQLException ex) {
+                                        Platform.runLater(() -> showToast("Accept failed", true));
+                                    }
+                                });
+                            });
+
+                            Button declineBtn = new Button("✕");
+                            declineBtn.getStyleClass().add("btn-secondary");
+                            declineBtn.setStyle("-fx-font-size: 11; -fx-padding: 5 8;");
+                            declineBtn.setOnAction(ev -> {
+                                AppThreadPool.io(() -> {
+                                    try {
+                                        serviceFollow.rejectFriendRequest(sender.getId(), myId);
+                                        utils.InMemoryCache.evictByPrefix("follows:");
+                                        Platform.runLater(() -> loadProfile(user));
+                                    } catch (SQLException ex) {
+                                        Platform.runLater(() -> showToast("Decline failed", true));
+                                    }
+                                });
+                            });
+
+                            reqRow.getChildren().addAll(reqAvatar, reqName, spacer, acceptBtn, declineBtn);
+                            requestsCard.getChildren().add(reqRow);
+                        }
+                        profileContainer.getChildren().add(requestsCard);
+                    }
+
+                    // ── User's Posts ──
+                    if (userPosts.isEmpty()) {
+                        Label noPosts = new Label("No posts yet.");
+                        noPosts.setStyle("-fx-text-fill: #6B6B80; -fx-font-size: 14; -fx-padding: 20;");
+                        profileContainer.getChildren().add(noPosts);
+                    } else {
+                        Label postsHeader = new Label("Posts");
+                        postsHeader.setStyle("-fx-text-fill: #E0E0F0; -fx-font-size: 16; -fx-font-weight: bold; -fx-padding: 10 0 4 0;");
+                        profileContainer.getChildren().add(postsHeader);
+
+                        int limit = Math.min(userPosts.size(), PAGE_SIZE);
+                        for (int i = 0; i < limit; i++) {
+                            VBox postCard = buildPostCard(userPosts.get(i), myId, false);
+                            postCard.setMaxWidth(680);
+                            profileContainer.getChildren().add(postCard);
+                        }
+                    }
+                });
+            } catch (SQLException e) {
+                Platform.runLater(() -> showToast("Failed to load profile: " + e.getMessage(), true));
+            }
+        });
+    }
+
+    /** Dialog for editing own bio. */
+    private void showEditProfileDialog(User user) {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Edit Profile");
+        dialog.initOwner(ownerWindow());
+
+        DialogPane dp = dialog.getDialogPane();
+        dp.setStyle("-fx-background-color: #12111A; -fx-border-color: #2A2A3C; -fx-border-radius: 12; -fx-background-radius: 12;");
+        dp.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        VBox form = new VBox(10);
+        form.setPadding(new Insets(16));
+        form.setMinWidth(400);
+
+        Label title = new Label("Edit Profile");
+        title.setStyle("-fx-text-fill: #E0E0F0; -fx-font-size: 18; -fx-font-weight: bold;");
+
+        TextField bioField = new TextField(user.getBio() != null ? user.getBio() : "");
+        bioField.setPromptText("Write a short bio...");
+        bioField.setStyle("-fx-background-color: #2A2A3C; -fx-text-fill: #E0E0F0; -fx-prompt-text-fill: #6B6B80; -fx-background-radius: 8; -fx-padding: 10;");
+
+        form.getChildren().addAll(title,
+                new Label("Bio:") {{ setStyle("-fx-text-fill: #8888AA;"); }}, bioField);
+        dp.setContent(form);
+
+        dialog.setResultConverter(bt -> bt == ButtonType.OK ? bioField.getText().trim() : null);
+
+        dialog.showAndWait().ifPresent(newBio -> {
+            user.setBio(newBio);
+            AppThreadPool.io(() -> {
+                try {
+                    serviceUser.modifier(user);
+                    Platform.runLater(() -> {
+                        showToast("Profile updated!", false);
+                        loadProfile(user);
+                    });
+                } catch (SQLException e) {
+                    Platform.runLater(() -> showToast("Update failed: " + e.getMessage(), true));
+                }
+            });
+        });
+    }
+
+    private VBox buildStatBox(String value, String label) {
+        VBox box = new VBox(2);
+        box.setAlignment(Pos.CENTER);
+        Label valLabel = new Label(value);
+        valLabel.getStyleClass().add("community-author-name");
+        valLabel.setStyle("-fx-font-size: 20;");
+        Label lblLabel = new Label(label);
+        lblLabel.getStyleClass().add("community-time-label");
+        lblLabel.setStyle("-fx-font-size: 12;");
+        box.getChildren().addAll(valLabel, lblLabel);
+        return box;
+    }
+
+    /** Open a DM chat room with the given user, navigating to the Chat module. */
+    private void openDirectMessage(int otherUserId, String otherName) {
+        User me = SessionManager.getInstance().getCurrentUser();
+        if (me == null) return;
+        int myId = me.getId();
+        AppThreadPool.io(() -> {
+            try {
+                // DM room name convention: dm_<lower>_<higher>
+                int lo = Math.min(myId, otherUserId);
+                int hi = Math.max(myId, otherUserId);
+                String roomName = "dm_" + lo + "_" + hi;
+                ChatRoom room = serviceChatRoom.getOrCreateRoom(roomName);
+                if (room != null) {
+                    // Ensure both users are members
+                    try { serviceChatMember.addMember(room.getId(), myId, "member"); } catch (Exception ignored) {}
+                    try { serviceChatMember.addMember(room.getId(), otherUserId, "member"); } catch (Exception ignored) {}
+                }
+                Platform.runLater(() -> {
+                    // Navigate to Chat via DashboardController
+                    try {
+                        javafx.scene.Scene scene = feedScroll.getScene();
+                        if (scene == null) return;
+                        // The root is Dashboard's BorderPane; contentArea is its center
+                        javafx.scene.Parent root = scene.getRoot();
+                        // Look up the DashboardController's btnMessages button and fire it
+                        javafx.scene.Node btnMsg = root.lookup("#btnMessages");
+                        if (btnMsg instanceof Button) {
+                            ((Button) btnMsg).fire();
+                        }
+                    } catch (Exception ex) {
+                        showToast("Could not open chat", true);
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showToast("Failed to open chat: " + e.getMessage(), true));
+            }
+        });
+    }
+
+    /** Show a popup dialog listing Friends / Followers / Following */
+    private void showPeoplePopup(String title, int userId, String type) {
+        AppThreadPool.io(() -> {
+            try {
+                Set<Integer> ids;
+                switch (type) {
+                    case "friends":   ids = serviceFollow.getFriendIds(userId); break;
+                    case "followers": ids = serviceFollow.getFollowerIds(userId); break;
+                    case "following": ids = serviceFollow.getFollowedIds(userId); break;
+                    default: return;
+                }
+                List<User> allUsers = serviceUser.recuperer();
+                Map<Integer, User> uMap = new HashMap<>();
+                for (User u : allUsers) uMap.put(u.getId(), u);
+                List<User> people = new ArrayList<>();
+                for (int id : ids) { if (uMap.containsKey(id)) people.add(uMap.get(id)); }
+                people.sort((a, b) -> String.valueOf(a.getFullName()).compareToIgnoreCase(String.valueOf(b.getFullName())));
+
+                // Pre-fetch friend IDs to show message button for friends
+                int myId = SessionManager.getInstance().getCurrentUser() != null
+                        ? SessionManager.getInstance().getCurrentUser().getId() : 0;
+                Set<Integer> myFriends = serviceFollow.getFriendIds(myId);
+
+                Platform.runLater(() -> {
+                    boolean dk = SessionManager.getInstance().isDarkTheme();
+                    // Theme colors
+                    String bgColor    = dk ? "#1A1929" : "#FFFFFF";
+                    String cardBg     = dk ? "#222136" : "#F7F5F6";
+                    String headerClr  = dk ? "#F0EDEE" : "#0D0A0B";
+                    String nameClr    = dk ? "#E8E6E9" : "#1A1318";
+                    String roleClr    = dk ? "#8B8A94" : "#8A7C7F";
+                    String accentClr  = dk ? "#2C666E" : "#613039";
+                    String hoverBg    = dk ? "rgba(44,102,110,0.12)" : "rgba(97,48,57,0.07)";
+                    String emptyClr   = dk ? "#6B6B80" : "#9A8C8F";
+                    String dividerClr = dk ? "#2A293C" : "#E8E0E2";
+                    String btnBg      = dk ? "#2C666E" : "#613039";
+                    String btnHover   = dk ? "#348891" : "#7A3D49";
+
+                    // Emoji for title
+                    String titleIcon = "friends".equals(type) ? "\uD83E\uDD1D" : "followers".equals(type) ? "\uD83D\uDC65" : "\uD83D\uDC64";
+
+                    Dialog<Void> dialog = new Dialog<>();
+                    dialog.setTitle(title);
+                    dialog.setHeaderText(null);
+
+                    DialogPane dp = dialog.getDialogPane();
+                    dp.getStylesheets().addAll(feedScroll.getScene().getStylesheets());
+                    dp.setStyle("-fx-background-color: " + bgColor + "; -fx-padding: 0; -fx-background-radius: 14; -fx-border-radius: 14;");
+                    dp.getStyleClass().add("community-card");
+                    dp.setPrefWidth(400);
+                    // Auto-size: min for few people, max for many
+                    int rowCount = Math.max(people.size(), 1);
+                    double dynamicH = Math.min(80 + rowCount * 64, 520);
+                    dp.setPrefHeight(dynamicH);
+                    dp.setMinHeight(Region.USE_PREF_SIZE);
+                    dp.setMaxHeight(Region.USE_PREF_SIZE);
+
+                    VBox content = new VBox(0);
+                    content.setStyle("-fx-background-color: " + bgColor + ";");
+
+                    // ── Top header ──
+                    HBox headerRow = new HBox(8);
+                    headerRow.setAlignment(Pos.CENTER_LEFT);
+                    headerRow.setPadding(new Insets(16, 18, 12, 18));
+                    Label iconLbl = new Label(titleIcon);
+                    iconLbl.setStyle("-fx-font-size: 20;");
+                    Label headerLbl = new Label(title);
+                    headerLbl.setStyle("-fx-font-size: 17; -fx-font-weight: bold; -fx-text-fill: " + headerClr + ";");
+                    Label countLbl = new Label(String.valueOf(people.size()));
+                    countLbl.setStyle("-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: white; " +
+                            "-fx-background-color: " + accentClr + "; -fx-background-radius: 12; " +
+                            "-fx-padding: 2 8; -fx-min-width: 24; -fx-alignment: center;");
+                    Region hSpacer = new Region();
+                    HBox.setHgrow(hSpacer, Priority.ALWAYS);
+                    headerRow.getChildren().addAll(iconLbl, headerLbl, countLbl, hSpacer);
+                    content.getChildren().add(headerRow);
+
+                    // Divider
+                    Region divider = new Region();
+                    divider.setMinHeight(1); divider.setMaxHeight(1);
+                    divider.setStyle("-fx-background-color: " + dividerClr + ";");
+                    content.getChildren().add(divider);
+
+                    // ── List area ──
+                    VBox listArea = new VBox(2);
+                    listArea.setPadding(new Insets(8, 10, 12, 10));
+
+                    if (people.isEmpty()) {
+                        VBox emptyBox = new VBox(8);
+                        emptyBox.setAlignment(Pos.CENTER);
+                        emptyBox.setPadding(new Insets(28, 0, 20, 0));
+                        Label emptyIcon = new Label("friends".equals(type) ? "\uD83D\uDE14" : "\uD83D\uDC64");
+                        emptyIcon.setStyle("-fx-font-size: 32;");
+                        Label emptyText = new Label("No " + title.toLowerCase() + " yet.");
+                        emptyText.setStyle("-fx-text-fill: " + emptyClr + "; -fx-font-size: 14;");
+                        emptyBox.getChildren().addAll(emptyIcon, emptyText);
+                        listArea.getChildren().add(emptyBox);
+                    } else {
+                        for (User u : people) {
+                            HBox row = new HBox(12);
+                            row.setAlignment(Pos.CENTER_LEFT);
+                            row.setPadding(new Insets(8, 12, 8, 12));
+                            String baseStyle = "-fx-background-color: " + cardBg + "; -fx-background-radius: 10; -fx-cursor: hand;";
+                            String hoverStyle = "-fx-background-color: " + hoverBg + "; -fx-background-radius: 10; -fx-cursor: hand;";
+                            row.setStyle(baseStyle);
+                            row.setOnMouseEntered(e -> row.setStyle(hoverStyle));
+                            row.setOnMouseExited(e -> row.setStyle(baseStyle));
+
+                            // Avatar
+                            StackPane av = createAvatar(u, 40);
+
+                            // Name + role column
+                            VBox infoCol = new VBox(1);
+                            HBox.setHgrow(infoCol, Priority.ALWAYS);
+                            Label nm = new Label(u.getFullName() != null ? u.getFullName() : "User #" + u.getId());
+                            nm.setStyle("-fx-font-size: 13.5; -fx-font-weight: bold; -fx-text-fill: " + nameClr + ";");
+                            Label roleLbl = new Label(u.getRole() != null ? u.getRole().replace("_", " ") : "");
+                            roleLbl.setStyle("-fx-font-size: 11; -fx-text-fill: " + roleClr + ";");
+                            infoCol.getChildren().addAll(nm, roleLbl);
+
+                            row.getChildren().addAll(av, infoCol);
+
+                            // Action buttons (right side)
+                            HBox actions = new HBox(6);
+                            actions.setAlignment(Pos.CENTER_RIGHT);
+
+                            if (u.getId() != myId && myFriends.contains(u.getId())) {
+                                Button msgBtn = new Button("\uD83D\uDCAC");
+                                msgBtn.setStyle("-fx-font-size: 14; -fx-background-color: " + btnBg + "; " +
+                                        "-fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 4 10; -fx-cursor: hand;");
+                                msgBtn.setTooltip(new Tooltip("Send message"));
+                                msgBtn.setOnMouseEntered(e -> msgBtn.setStyle("-fx-font-size: 14; -fx-background-color: " + btnHover + "; " +
+                                        "-fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 4 10; -fx-cursor: hand;"));
+                                msgBtn.setOnMouseExited(e -> msgBtn.setStyle("-fx-font-size: 14; -fx-background-color: " + btnBg + "; " +
+                                        "-fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 4 10; -fx-cursor: hand;"));
+                                msgBtn.setOnAction(ev -> {
+                                    dialog.close();
+                                    openDirectMessage(u.getId(), u.getFullName());
+                                });
+                                actions.getChildren().add(msgBtn);
+                            }
+
+                            Button viewBtn = new Button("\u279C");
+                            viewBtn.setStyle("-fx-font-size: 13; -fx-background-color: transparent; " +
+                                    "-fx-text-fill: " + accentClr + "; -fx-background-radius: 8; " +
+                                    "-fx-padding: 4 8; -fx-cursor: hand; -fx-border-color: " + accentClr + "; -fx-border-radius: 8; -fx-border-width: 1;");
+                            viewBtn.setTooltip(new Tooltip("View profile"));
+                            viewBtn.setOnAction(ev -> { dialog.close(); showUserProfile(u.getId()); });
+                            actions.getChildren().add(viewBtn);
+
+                            row.getChildren().add(actions);
+
+                            // Clicking anywhere on the row also navigates
+                            row.setOnMouseClicked(e -> {
+                                if (!(e.getTarget() instanceof Button)) {
+                                    dialog.close();
+                                    showUserProfile(u.getId());
+                                }
+                            });
+
+                            listArea.getChildren().add(row);
+                        }
+                    }
+
+                    ScrollPane sp = new ScrollPane(listArea);
+                    sp.setFitToWidth(true);
+                    sp.setStyle("-fx-background-color: transparent; -fx-border-color: transparent; -fx-background: transparent;");
+                    sp.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+                    VBox.setVgrow(sp, Priority.ALWAYS);
+                    content.getChildren().add(sp);
+
+                    dp.setContent(content);
+                    dp.getButtonTypes().add(ButtonType.CLOSE);
+                    Node closeBtn = dp.lookupButton(ButtonType.CLOSE);
+                    if (closeBtn != null) { closeBtn.setVisible(false); closeBtn.setManaged(false); }
+
+                    dialog.showAndWait();
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> showToast("Failed to load " + title.toLowerCase(), true));
+            }
+        });
     }
 
     // ═══════════════════════════════════════════

@@ -59,6 +59,11 @@ import java.util.concurrent.*;
 
 public class DashboardController {
 
+    private static DashboardController instance;
+
+    /** Other controllers call this to navigate. */
+    public static DashboardController getInstance() { return instance; }
+
     // Top bar
     @FXML private Label welcomeLabel;
     @FXML private Label roleLabel;
@@ -81,6 +86,7 @@ public class DashboardController {
     @FXML private Button btnDashboard;
     @FXML private Button btnManageUsers;
     @FXML private Button btnHrDashboard;
+    @FXML private Button btnHRBacklog;
     @FXML private Button btnMessages;
     @FXML private Button btnRecruitment;
     @FXML private Button btnProjects;
@@ -128,6 +134,12 @@ public class DashboardController {
     // Dashboard stat sections (hidden for non-admin)
     @FXML private HBox statsCardsRow;
     @FXML private VBox platformOverviewCard;
+
+    // Quote card on dashboard
+    @FXML private VBox quoteCard;
+    @FXML private Label quoteText;
+    @FXML private Label quoteAuthor;
+    @FXML private Button quoteRefreshBtn;
 
     // Weather card on dashboard
     @FXML private VBox weatherCard;
@@ -182,6 +194,7 @@ public class DashboardController {
 
     @FXML
     public void initialize() {
+        instance = this;
         User currentUser = SessionManager.getInstance().getCurrentUser();
         if (currentUser == null)
             return;
@@ -260,6 +273,12 @@ public class DashboardController {
             notificationBellSlot.getChildren().add(notificationPanel.getNode());
         }
         notificationPanel.start(currentUser.getId());
+        notificationPanel.setOnNotificationAction((type, refId) -> {
+            if (refId != null && ("FRIEND_REQUEST".equals(type) || "NEW_FRIEND".equals(type))) {
+                SessionManager.getInstance().setPendingCommunityProfile(refId);
+                showCommunity();
+            }
+        });
 
         // Auto check-in attendance on login
         AppThreadPool.io(() -> {
@@ -269,6 +288,9 @@ public class DashboardController {
 
         // Load weather for dashboard card
         loadWeatherCard();
+
+        // Load motivational quote
+        loadQuote();
     }
 
     /**
@@ -436,7 +458,8 @@ public class DashboardController {
         List<Button> allButtons = Arrays.asList(
                 btnDashboard, btnManageUsers, btnHrDashboard,
                 btnMessages, btnRecruitment, btnProjects,
-                btnOffers, btnTraining, btnJobScanner, btnCommunity
+                btnOffers, btnTraining, btnJobScanner, btnCommunity,
+                btnAiAssistant
         );
         for (Button btn : allButtons) {
             btn.getStyleClass().remove("sidebar-btn-active");
@@ -451,7 +474,8 @@ public class DashboardController {
         List<Button> allButtons = Arrays.asList(
                 btnDashboard, btnManageUsers, btnHrDashboard,
                 btnMessages, btnRecruitment, btnProjects,
-                btnOffers, btnTraining, btnJobScanner, btnCommunity
+                btnOffers, btnTraining, btnJobScanner, btnCommunity,
+                btnAiAssistant
         );
         for (Button btn : allButtons) {
             btn.getStyleClass().remove("sidebar-btn-active");
@@ -618,6 +642,12 @@ public class DashboardController {
     private void showHrDashboard() {
         setActiveButton(btnHrDashboard);
         loadContent("/fxml/HRModule.fxml");
+    }
+
+    @FXML
+    private void showHRBacklog() {
+        setActiveButton(btnHRBacklog);
+        loadContent("/fxml/HRBacklog.fxml");
     }
 
     @FXML
@@ -843,6 +873,14 @@ public class DashboardController {
         }
     }
 
+    /**
+     * Public navigation entry point — module controllers can call:
+     * {@code DashboardController.getInstance().navigateTo("/fxml/ResumeParser.fxml");}
+     */
+    public void navigateTo(String fxmlPath) {
+        loadContent(fxmlPath);
+    }
+
     private void setContentVisible(javafx.scene.Node node) {
         contentArea.getChildren().setAll(node);
     }
@@ -900,6 +938,65 @@ public class DashboardController {
                     weatherCardSubtitle.setText("Unable to load");
                 });
             }
+        });
+    }
+
+    // ════════════════════════════════════════════════════════
+    //  MOTIVATIONAL QUOTE WIDGET
+    // ════════════════════════════════════════════════════════
+
+    @FXML
+    private void refreshQuote() {
+        SoundManager.getInstance().play(SoundManager.BUTTON_CLICK);
+        loadQuote();
+    }
+
+    private void loadQuote() {
+        if (quoteText == null) return;
+        quoteText.setText("Loading...");
+        quoteAuthor.setText("");
+        AppThreadPool.io(() -> {
+            try {
+                // ZenQuotes API - free, no key required
+                java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
+                        .connectTimeout(java.time.Duration.ofSeconds(8)).build();
+                java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
+                        .uri(java.net.URI.create("https://zenquotes.io/api/random"))
+                        .timeout(java.time.Duration.ofSeconds(8))
+                        .GET().build();
+                java.net.http.HttpResponse<String> resp = client.send(req,
+                        java.net.http.HttpResponse.BodyHandlers.ofString());
+                if (resp.statusCode() == 200) {
+                    com.google.gson.JsonArray arr = com.google.gson.JsonParser
+                            .parseString(resp.body()).getAsJsonArray();
+                    if (!arr.isEmpty()) {
+                        com.google.gson.JsonObject q = arr.get(0).getAsJsonObject();
+                        String text = q.get("q").getAsString();
+                        String author = q.get("a").getAsString();
+                        Platform.runLater(() -> {
+                            quoteText.setText("\"" + text + "\"");
+                            quoteAuthor.setText("— " + author);
+                        });
+                        return;
+                    }
+                }
+            } catch (Exception ignored) { }
+            // Fallback quotes if API fails
+            String[][] fallback = {
+                {"The only way to do great work is to love what you do.", "Steve Jobs"},
+                {"Innovation distinguishes between a leader and a follower.", "Steve Jobs"},
+                {"Stay hungry, stay foolish.", "Steve Jobs"},
+                {"The best time to plant a tree was 20 years ago. The second best time is now.", "Chinese Proverb"},
+                {"Success is not final, failure is not fatal: it is the courage to continue that counts.", "Winston Churchill"},
+                {"Believe you can and you're halfway there.", "Theodore Roosevelt"},
+                {"It does not matter how slowly you go as long as you do not stop.", "Confucius"},
+                {"The future belongs to those who believe in the beauty of their dreams.", "Eleanor Roosevelt"}
+            };
+            String[] pick = fallback[(int) (Math.random() * fallback.length)];
+            Platform.runLater(() -> {
+                quoteText.setText("\"" + pick[0] + "\"");
+                quoteAuthor.setText("— " + pick[1]);
+            });
         });
     }
 

@@ -27,6 +27,10 @@
         <Button fx:id="btnApiKeys" text="🔑  API Keys"
                 onAction="#showApiKeys"
                 styleClass="settings-nav-btn" maxWidth="1.7976931348623157E308"/>
+
+        <Button fx:id="btnThemeSchedule" text="🌗  Theme Schedule"
+                onAction="#showThemeSchedule"
+                styleClass="settings-nav-btn" maxWidth="1.7976931348623157E308"/>
     </VBox>
 
     <!-- ═══ Right Content ═══ -->
@@ -180,6 +184,36 @@
                         onAction="#handleSaveApiKeys"
                         styleClass="settings-btn,settings-api-save-btn"/>
                 <Label fx:id="lblApiKeyStatus" text="" styleClass="settings-api-status"/>
+            </HBox>
+        </VBox>
+
+        <!-- ── Theme Schedule Panel ── -->
+        <VBox fx:id="themeSchedulePanel" spacing="14" visible="false" managed="false">
+            <Label text="Theme Schedule" styleClass="settings-panel-title"/>
+            <Separator styleClass="settings-separator"/>
+            <Label text="Schedule automatic dark/light theme switching at specific times."
+                   styleClass="settings-api-desc" wrapText="true"/>
+
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Label text="Light mode at:" styleClass="settings-section-label" minWidth="100"/>
+                <TextField fx:id="txtLightTime" promptText="HH:mm (e.g. 07:00)"
+                           styleClass="input-field" prefWidth="120"/>
+            </HBox>
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Label text="Dark mode at:" styleClass="settings-section-label" minWidth="100"/>
+                <TextField fx:id="txtDarkTime" promptText="HH:mm (e.g. 19:00)"
+                           styleClass="input-field" prefWidth="120"/>
+            </HBox>
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <CheckBox fx:id="chkScheduleEnabled" styleClass="settings-checkbox"/>
+                <Label text="Enable automatic theme switching" styleClass="settings-toggle-label"/>
+            </HBox>
+            <Separator styleClass="settings-separator"/>
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Button fx:id="btnSaveSchedule" text="💾  Save Schedule"
+                        onAction="#handleSaveSchedule"
+                        styleClass="settings-btn,settings-api-save-btn"/>
+                <Label fx:id="lblScheduleStatus" text="" styleClass="settings-api-status"/>
             </HBox>
         </VBox>
 

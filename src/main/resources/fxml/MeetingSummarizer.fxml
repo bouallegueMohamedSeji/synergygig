@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fx:controller="controllers.MeetingSummarizerController"
+            xmlns:fx="http://javafx.com/fxml" fitToWidth="true"
+            styleClass="content-scroll" hbarPolicy="NEVER">
+    <VBox spacing="24" styleClass="page-container" alignment="TOP_CENTER">
+        <padding><Insets top="32" right="40" bottom="40" left="40"/></padding>
+
+        <Button text="← Back" styleClass="tool-back-btn" onAction="#handleBack"/>
+
+        <!-- Header -->
+        <VBox spacing="6">
+            <Label text="📝 Smart Meeting Summarizer" styleClass="page-title"
+                   style="-fx-font-size: 26; -fx-font-weight: bold;"/>
+            <Label text="Paste your meeting transcript or notes and get a structured AI summary"
+                   styleClass="page-subtitle" style="-fx-font-size: 13; -fx-opacity: 0.7;"/>
+        </VBox>
+
+        <!-- Input area -->
+        <VBox fx:id="inputSection" spacing="12">
+            <Label text="Meeting Transcript / Notes" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+            <TextArea fx:id="transcriptArea" promptText="Paste your meeting transcript, notes, or minutes here..."
+                      prefRowCount="12" wrapText="true" styleClass="tool-textarea"
+                      style="-fx-font-size: 13;"/>
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Button fx:id="summarizeBtn" text="✨ Summarize" onAction="#handleSummarize"
+                        styleClass="btn-primary" style="-fx-font-size: 14;"/>
+                <Button text="🗑 Clear" onAction="#handleClear" styleClass="btn-secondary"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="charCount" text="0 characters" style="-fx-font-size: 11; -fx-opacity: 0.5;"/>
+            </HBox>
+        </VBox>
+
+        <!-- Status -->
+        <HBox fx:id="statusBar" spacing="10" alignment="CENTER" visible="false" managed="false">
+            <ProgressIndicator prefWidth="20" prefHeight="20"/>
+            <Label fx:id="statusLabel" text="AI is summarizing..." style="-fx-font-size: 13;"/>
+        </HBox>
+
+        <!-- Result -->
+        <VBox fx:id="resultSection" spacing="14" visible="false" managed="false">
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Label text="📊 Summary" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="📋 Copy" onAction="#handleCopy" styleClass="btn-secondary" style="-fx-font-size: 12;"/>
+                <Button text="🔄 New" onAction="#handleNew" styleClass="btn-primary" style="-fx-font-size: 12;"/>
+            </HBox>
+            <VBox styleClass="card" spacing="0">
+                <padding><Insets top="20" right="24" bottom="20" left="24"/></padding>
+                <Label fx:id="summaryContent" wrapText="true" style="-fx-font-size: 13;"/>
+            </VBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

@@ -2,7 +2,9 @@ package controllers;
 
 import entities.Call;
 import entities.ChatRoom;
+import entities.ChatRoomMember;
 import entities.Message;
+import entities.Reaction;
 import entities.User;
 import javafx.animation.*;
 import javafx.stage.Window;
@@ -23,14 +25,17 @@ import javafx.stage.FileChooser;
 import javafx.util.Duration;
 import services.ServiceCall;
 import services.ServiceChatRoom;
+import services.ServiceChatRoomMember;
 import services.ServiceMessage;
 import services.ServiceUser;
+import services.ServiceUserFollow;
 import utils.BadWordsService;
 import utils.AIAssistantService;
 import utils.ApiClient;
 import utils.AudioCallService;
 import utils.CardEffects;
 import utils.DocumentExtractor;
+import utils.LiveTranscriptionManager;
 import utils.ScreenShareService;
 import utils.AppThreadPool;
 import utils.SessionManager;
@@ -83,9 +88,12 @@ public class ChatController implements Stoppable {
 
     // ── Services ──
     private final ServiceChatRoom serviceChat = new ServiceChatRoom();
+    private final ServiceChatRoomMember serviceMember = new ServiceChatRoomMember();
     private final ServiceMessage serviceMessage = new ServiceMessage();
     private final ServiceUser serviceUser = new ServiceUser();
     private final ServiceCall serviceCall = new ServiceCall();
+    private final ServiceUserFollow serviceFollow = new ServiceUserFollow();
+    private final services.ServiceReaction serviceReaction = new services.ServiceReaction();
     private final AudioCallService audioCallService = new AudioCallService();
     private final ScreenShareService screenShareService = new ScreenShareService();
 
@@ -122,6 +130,14 @@ public class ChatController implements Stoppable {
     private Button videoCameraBtn = null;
     private ImageView localPreviewView = null;
 
+    // ── Live transcription ──
+    private final LiveTranscriptionManager transcriptionManager = new LiveTranscriptionManager();
+    private Label subtitleLabel = null;         // subtitle text in video popup
+    private VBox subtitleBox = null;            // subtitle container in video popup
+    private Label subtitleOriginalLabel = null; // original text (when translated)
+    private Button videoCCBtn = null;           // CC toggle button in video popup
+    private boolean transcriptionEnabled = false;
+
     private static final String IMAGE_PREFIX = "[IMAGE]";
     private static final String IMAGE_SUFFIX = "[/IMAGE]";
     private static final String FILE_PREFIX = "[FILE]";
@@ -131,6 +147,19 @@ public class ChatController implements Stoppable {
     private int lastMessageCount = -1;
     /** Track last known message id to detect truly new messages */
     private int lastMessageId = 0;
+
+    // ── Typing indicator state ──
+    private HBox typingIndicatorRow = null;
+    private long lastTypingEmit = 0;
+    private static final long TYPING_DEBOUNCE_MS = 1500;
+    private volatile int typingRoomId = 0;
+    private volatile String typingUserName = "";
+    private Timeline typingExpireTimer = null;
+
+    // ── Emoji reactions cache (messageId → list of reactions) ──
+    private final Map<Integer, java.util.List<Reaction>> msgReactionsCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final int MSG_REACTION_OFFSET = 10_000_000;
+    private static final String[] QUICK_EMOJIS = {"❤", "😂", "👍", "🔥", "😮"};
 
     // ── AI in-memory chat ──
     private static class AIChatEntry {
@@ -155,11 +184,12 @@ public class ChatController implements Stoppable {
     public void initialize() {
         loadFavorites();
 
-        // Load users + ensure AI room in parallel, then load rooms
+        // Load users + ensure AI room + ensure members table in parallel, then load rooms
         AppThreadPool.io(() -> {
             CompletableFuture<Void> users = CompletableFuture.runAsync(() -> loadUsers());
             CompletableFuture<Void> aiRoom = CompletableFuture.runAsync(() -> ensureAIRoom());
-            CompletableFuture.allOf(users, aiRoom).join(); // parallel, not sequential
+            CompletableFuture<Void> membersTable = CompletableFuture.runAsync(() -> serviceMember.ensureTable());
+            CompletableFuture.allOf(users, aiRoom, membersTable).join();
             // Now fetch rooms + render on FX thread
             loadRoomsAsync(null);
         });
@@ -243,9 +273,12 @@ public class ChatController implements Stoppable {
             }
         });
 
-        // Clear error when typing
+        // Clear error when typing + emit typing signal (debounced)
         messageArea.textProperty().addListener((obs, o, n) -> {
-            if (n != null && !n.trim().isEmpty()) clearInputError();
+            if (n != null && !n.trim().isEmpty()) {
+                clearInputError();
+                emitTypingSignal();
+            }
         });
 
         // ── Scheduler: poll on background threads, render on FX thread ──
@@ -269,6 +302,15 @@ public class ChatController implements Stoppable {
         scheduler.scheduleAtFixedRate(this::pollIncomingCallsBackground, 2, 3, TimeUnit.SECONDS);
 
         // ── Instant incoming call via signaling (no polling delay) ──
+        SignalingService.getInstance().onMessage("typing", msg -> {
+            try {
+                com.google.gson.JsonObject data = msg.getAsJsonObject("data");
+                int roomId = data.has("roomId") ? data.get("roomId").getAsInt() : 0;
+                String name = data.has("name") ? data.get("name").getAsString() : "Someone";
+                Platform.runLater(() -> showTypingIndicator(roomId, name));
+            } catch (Exception ignored) {}
+        });
+
         SignalingService.getInstance().onMessage("call-state", msg -> {
             try {
                 JsonObject data = msg.getAsJsonObject("data");
@@ -418,8 +460,14 @@ public class ChatController implements Stoppable {
         int myId = me != null ? me.getId() : 0;
         List<ChatRoom> rooms = serviceChat.recuperer();
 
+            // Get group rooms the user is a member of
+            Set<Integer> myGroupRoomIds;
+            try { myGroupRoomIds = serviceMember.getRoomIdsForUser(myId); }
+            catch (SQLException e) { myGroupRoomIds = Collections.emptySet(); }
+
             List<ChatRoom> visible = new ArrayList<>();
             ChatRoom aiRoom = null;
+            Set<Integer> friendIds = serviceFollow.getFriendIds(myId);
 
             for (ChatRoom r : rooms) {
                 if (AIAssistantService.AI_ROOM_NAME.equals(r.getName())) { aiRoom = r; continue; }
@@ -431,12 +479,27 @@ public class ChatController implements Stoppable {
                             try {
                                 int a = Integer.parseInt(parts[1]);
                                 int b = Integer.parseInt(parts[2]);
-                                if (a == myId || b == myId) visible.add(r);
+                                if (a == myId || b == myId) {
+                                    // Only show DMs with friends
+                                    int otherId = (a == myId) ? b : a;
+                                    if (friendIds.contains(otherId)) visible.add(r);
+                                }
                             } catch (NumberFormatException ignored) {}
                         }
                     }
                 } else {
-                    visible.add(r);
+                    // Group rooms: show only if user is a member, OR if there are no members yet (legacy/open rooms)
+                    if (myGroupRoomIds.contains(r.getId())) {
+                        visible.add(r);
+                    } else {
+                        // Allow legacy rooms with no members to be visible (backward compat)
+                        try {
+                            List<ChatRoomMember> members = serviceMember.getByRoom(r.getId());
+                            if (members.isEmpty()) visible.add(r); // open/legacy room
+                        } catch (SQLException ignored) {
+                            visible.add(r); // on error, show it
+                        }
+                    }
                 }
             }
 
@@ -501,8 +564,10 @@ public class ChatController implements Stoppable {
         int myId = me != null ? me.getId() : 0;
 
         List<User> matches = new ArrayList<>();
+        Set<Integer> friendIds = serviceFollow.getFriendIds(myId);
         for (User u : userCache.values()) {
             if (u.getId() == myId) continue;
+            if (!friendIds.contains(u.getId())) continue; // friends only
             String fullName = (u.getFirstName() + " " + u.getLastName()).toLowerCase();
             if (fullName.contains(query) || u.getEmail().toLowerCase().contains(query)) matches.add(u);
         }
@@ -510,13 +575,13 @@ public class ChatController implements Stoppable {
         searchResultsBox.getChildren().clear();
         if (matches.isEmpty()) {
             HBox row = createSearchRow();
-            Label icon = new Label("\u2795");
+            Label icon = new Label("\uD83D\uDC65");
             icon.setStyle("-fx-font-size: 14;");
-            Label text = new Label("Create room \"" + roomNameField.getText().trim() + "\"");
+            Label text = new Label("No friends found. Add friends in Community \u2192 People to start chatting.");
             boolean dk = SessionManager.getInstance().isDarkTheme();
-            text.setStyle("-fx-text-fill: " + (dk ? "#90DDF0" : "#613039") + "; -fx-font-size: 12;");
+            text.setStyle("-fx-text-fill: " + (dk ? "#8888AA" : "#8A7C7F") + "; -fx-font-size: 12; -fx-wrap-text: true;");
+            text.setWrapText(true);
             row.getChildren().addAll(icon, text);
-            row.setOnMouseClicked(e -> { handleCreateRoom(); hideSearch(); });
             searchResultsBox.getChildren().add(row);
         } else {
             for (User u : matches) {
@@ -570,6 +635,11 @@ public class ChatController implements Stoppable {
         roomNameField.clear();
         User me = SessionManager.getInstance().getCurrentUser();
         if (me == null) return;
+        // Only allow DMs with friends
+        if (!serviceFollow.areFriends(me.getId(), other.getId())) {
+            showToast("Chat", "You can only message friends. Add " + other.getFirstName() + " as a friend first.");
+            return;
+        }
         int a = Math.min(me.getId(), other.getId());
         int b = Math.max(me.getId(), other.getId());
         String roomName = "dm_" + a + "_" + b;
@@ -590,23 +660,41 @@ public class ChatController implements Stoppable {
     }
 
     @FXML
+    private void openEmailComposer() {
+        DashboardController.getInstance().navigateTo("/fxml/EmailComposer.fxml");
+    }
+
+    @FXML
     private void handleCreateRoom() {
         String name = roomNameField.getText().trim();
-        if (!name.isEmpty()) {
-            User me = SessionManager.getInstance().getCurrentUser();
-            int creatorId = me != null ? me.getId() : 0;
-            roomNameField.clear();
-            hideSearch();
-            AppThreadPool.io(() -> {
-                try {
-                    serviceChat.ajouter(new ChatRoom(name, "group", creatorId));
-                    Platform.runLater(this::loadRooms);
-                } catch (SQLException e) {
-                    System.err.println("Chat: createRoom failed — " + e.getMessage());
-                    Platform.runLater(() -> showInputError("Failed to create room."));
-                }
-            });
+        if (name.isEmpty()) return;
+
+        User me = SessionManager.getInstance().getCurrentUser();
+        int creatorId = me != null ? me.getId() : 0;
+
+        // Check the user has at least one friend before allowing group creation
+        Set<Integer> friends = serviceFollow.getFriendIds(creatorId);
+        if (friends.isEmpty()) {
+            showToast("Chat", "Add friends in Community → People before creating a group.");
+            return;
         }
+
+        roomNameField.clear();
+        hideSearch();
+        AppThreadPool.io(() -> {
+            try {
+                ChatRoom created = new ChatRoom(name, "group", creatorId);
+                serviceChat.ajouter(created);
+                // Auto-add creator as OWNER member
+                if (created.getId() > 0) {
+                    serviceMember.addMember(created.getId(), creatorId, "OWNER");
+                }
+                Platform.runLater(this::loadRooms);
+            } catch (SQLException e) {
+                System.err.println("Chat: createRoom failed — " + e.getMessage());
+                Platform.runLater(() -> showInputError("Failed to create room."));
+            }
+        });
     }
 
     // ═══════════════════════════════════════════
@@ -644,7 +732,20 @@ public class ChatController implements Stoppable {
                 if (onlineStatusDot != null) { onlineStatusDot.setVisible(false); onlineStatusDot.setManaged(false); }
             }
         } else {
-            roomMembersLabel.setText("");
+            // Group room — show member count + join status
+            User me2 = SessionManager.getInstance().getCurrentUser();
+            int myId2 = me2 != null ? me2.getId() : 0;
+            try {
+                List<ChatRoomMember> members = serviceMember.getByRoom(room.getId());
+                boolean isMember = members.stream().anyMatch(m -> m.getUserId() == myId2);
+                if (members.isEmpty()) {
+                    roomMembersLabel.setText("Open room \u2014 anyone can chat");
+                } else {
+                    roomMembersLabel.setText(members.size() + " member" + (members.size() != 1 ? "s" : "") + (isMember ? " \u2022 Joined" : " \u2022 Not joined"));
+                }
+            } catch (SQLException ignored) {
+                roomMembersLabel.setText("");
+            }
             if (onlineStatusDot != null) { onlineStatusDot.setVisible(false); onlineStatusDot.setManaged(false); }
         }
 
@@ -675,6 +776,9 @@ public class ChatController implements Stoppable {
                 int prevLastId = lastMessageId;
                 lastMessageCount = count;
                 lastMessageId = latestId;
+
+                // Prefetch reactions in background
+                prefetchReactionsForRoom(messages);
 
                 // Update last message time for this room
                 if (!messages.isEmpty()) {
@@ -719,6 +823,8 @@ public class ChatController implements Stoppable {
                 int count = messages.size();
                 int latestId = messages.isEmpty() ? 0 : messages.get(messages.size() - 1).getId();
                 java.sql.Timestamp lastTime = messages.isEmpty() ? null : messages.get(messages.size() - 1).getTimestamp();
+                // Prefetch reactions in background
+                prefetchReactionsForRoom(messages);
                 Platform.runLater(() -> {
                     // Guard: room may have changed while query ran
                     if (currentRoom == null || currentRoom.getId() != roomId) return;
@@ -800,6 +906,234 @@ public class ChatController implements Stoppable {
         }
 
         Platform.runLater(() -> messagesScroll.setVvalue(1.0));
+
+        // Re-append typing indicator if active for this room
+        if (typingIndicatorRow != null && currentRoom != null && typingRoomId == currentRoom.getId()) {
+            messagesContainer.getChildren().add(typingIndicatorRow);
+        }
+    }
+
+    // ═══════════════════════════════════════════
+    //  TYPING INDICATOR
+    // ═══════════════════════════════════════════
+
+    private void emitTypingSignal() {
+        if (currentRoom == null || isAIRoom) return;
+        long now = System.currentTimeMillis();
+        if (now - lastTypingEmit < TYPING_DEBOUNCE_MS) return;
+        lastTypingEmit = now;
+
+        User me = SessionManager.getInstance().getCurrentUser();
+        if (me == null) return;
+        String myName = me.getFirstName();
+        int roomId = currentRoom.getId();
+
+        AppThreadPool.io(() -> {
+            try {
+                // For DM: send to the other user
+                User other = getOtherUser(currentRoom);
+                if (other != null) {
+                    com.google.gson.JsonObject data = new com.google.gson.JsonObject();
+                    data.addProperty("roomId", roomId);
+                    data.addProperty("name", myName);
+                    SignalingService.getInstance().send(other.getId(), "typing", data);
+                } else {
+                    // Group: broadcast to all members
+                    java.util.List<ChatRoomMember> members = serviceMember.getByRoom(roomId);
+                    for (ChatRoomMember m : members) {
+                        if (m.getUserId() != me.getId()) {
+                            com.google.gson.JsonObject data = new com.google.gson.JsonObject();
+                            data.addProperty("roomId", roomId);
+                            data.addProperty("name", myName);
+                            SignalingService.getInstance().send(m.getUserId(), "typing", data);
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
+    private void showTypingIndicator(int roomId, String name) {
+        if (currentRoom == null || currentRoom.getId() != roomId) {
+            // Store for later if they switch to this room
+            typingRoomId = roomId;
+            typingUserName = name;
+            return;
+        }
+
+        typingRoomId = roomId;
+        typingUserName = name;
+
+        // Build or update the indicator
+        if (typingIndicatorRow == null) {
+            typingIndicatorRow = new HBox(6);
+            typingIndicatorRow.setAlignment(Pos.CENTER_LEFT);
+            typingIndicatorRow.setPadding(new Insets(4, 0, 4, 44));
+            typingIndicatorRow.getStyleClass().add("typing-indicator-row");
+        }
+        typingIndicatorRow.getChildren().clear();
+
+        // Animated dots
+        HBox dotsBox = new HBox(3);
+        dotsBox.setAlignment(Pos.CENTER);
+        for (int i = 0; i < 3; i++) {
+            javafx.scene.shape.Circle dot = new javafx.scene.shape.Circle(3);
+            dot.getStyleClass().add("typing-dot");
+            dot.setOpacity(0.4);
+            // Staggered bounce animation
+            TranslateTransition bounce = new TranslateTransition(javafx.util.Duration.millis(400), dot);
+            bounce.setByY(-5);
+            bounce.setCycleCount(Animation.INDEFINITE);
+            bounce.setAutoReverse(true);
+            bounce.setDelay(javafx.util.Duration.millis(i * 150));
+            bounce.play();
+            // Fade in/out
+            FadeTransition fade = new FadeTransition(javafx.util.Duration.millis(400), dot);
+            fade.setFromValue(0.4);
+            fade.setToValue(1.0);
+            fade.setCycleCount(Animation.INDEFINITE);
+            fade.setAutoReverse(true);
+            fade.setDelay(javafx.util.Duration.millis(i * 150));
+            fade.play();
+            dotsBox.getChildren().add(dot);
+        }
+
+        Label typingLabel = new Label(name + " is typing");
+        typingLabel.getStyleClass().add("typing-label");
+
+        typingIndicatorRow.getChildren().addAll(typingLabel, dotsBox);
+
+        // Add to messages if not already there
+        if (!messagesContainer.getChildren().contains(typingIndicatorRow)) {
+            messagesContainer.getChildren().add(typingIndicatorRow);
+            Platform.runLater(() -> messagesScroll.setVvalue(1.0));
+        }
+
+        // Auto-expire after 4 seconds if no new "typing" signal
+        if (typingExpireTimer != null) typingExpireTimer.stop();
+        typingExpireTimer = new Timeline(new KeyFrame(
+                javafx.util.Duration.seconds(4), e -> hideTypingIndicator()));
+        typingExpireTimer.play();
+    }
+
+    private void hideTypingIndicator() {
+        typingRoomId = 0;
+        typingUserName = "";
+        if (typingIndicatorRow != null) {
+            messagesContainer.getChildren().remove(typingIndicatorRow);
+            typingIndicatorRow = null;
+        }
+        if (typingExpireTimer != null) { typingExpireTimer.stop(); typingExpireTimer = null; }
+    }
+
+    // ═══════════════════════════════════════════
+    //  EMOJI REACTIONS
+    // ═══════════════════════════════════════════
+
+    private void prefetchReactionsForRoom(java.util.List<Message> messages) {
+        if (messages == null || messages.isEmpty()) return;
+        for (Message m : messages) {
+            int reactableId = m.getId() + MSG_REACTION_OFFSET;
+            try {
+                java.util.List<Reaction> rxns = serviceReaction.getByPostId(reactableId);
+                msgReactionsCache.put(m.getId(), rxns);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private HBox buildReactionBar(Message msg, boolean isMe) {
+        HBox bar = new HBox(2);
+        bar.setAlignment(isMe ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+        bar.getStyleClass().add("reaction-bar");
+
+        int reactableId = msg.getId() + MSG_REACTION_OFFSET;
+        User me = SessionManager.getInstance().getCurrentUser();
+        int myId = me != null ? me.getId() : 0;
+        java.util.List<Reaction> existingRxns = msgReactionsCache.getOrDefault(msg.getId(), java.util.Collections.emptyList());
+
+        // Count reactions by type
+        java.util.Map<String, Integer> counts = new java.util.LinkedHashMap<>();
+        java.util.Set<String> myReactions = new java.util.HashSet<>();
+        for (Reaction r : existingRxns) {
+            counts.merge(r.getType(), 1, Integer::sum);
+            if (r.getUserId() == myId) myReactions.add(r.getType());
+        }
+
+        // Show existing reaction counts as small pills
+        for (java.util.Map.Entry<String, Integer> entry : counts.entrySet()) {
+            String type = entry.getKey();
+            int count = entry.getValue();
+            Label pill = new Label(type + (count > 1 ? " " + count : ""));
+            pill.getStyleClass().add("reaction-pill");
+            if (myReactions.contains(type)) pill.getStyleClass().add("reaction-pill-active");
+            pill.setCursor(javafx.scene.Cursor.HAND);
+            pill.setOnMouseClicked(e -> toggleMsgReaction(msg, type));
+            bar.getChildren().add(pill);
+        }
+
+        // "+" button to add a reaction (shown on hover)
+        Label addBtn = new Label("+");
+        addBtn.getStyleClass().add("reaction-add-btn");
+        addBtn.setCursor(javafx.scene.Cursor.HAND);
+        addBtn.setOnMouseClicked(e -> showQuickEmojiPicker(bar, msg, addBtn));
+
+        // Only show the "+" on hover for clean UI
+        addBtn.setVisible(false);
+        bar.setOnMouseEntered(ev -> addBtn.setVisible(true));
+        bar.setOnMouseExited(ev -> { if (bar.getChildren().size() <= 1) addBtn.setVisible(false); });
+        // Always keep visible if there are already reactions
+        if (!counts.isEmpty()) addBtn.setVisible(true);
+
+        bar.getChildren().add(addBtn);
+        return bar;
+    }
+
+    private void showQuickEmojiPicker(HBox bar, Message msg, Label anchor) {
+        javafx.stage.Popup popup = new javafx.stage.Popup();
+        popup.setAutoHide(true);
+        HBox picker = new HBox(4);
+        picker.getStyleClass().add("reaction-picker");
+        picker.setPadding(new Insets(6, 10, 6, 10));
+        for (String emoji : QUICK_EMOJIS) {
+            Label btn = new Label(emoji);
+            btn.getStyleClass().add("reaction-emoji-btn");
+            btn.setCursor(javafx.scene.Cursor.HAND);
+            btn.setOnMouseClicked(e -> {
+                popup.hide();
+                toggleMsgReaction(msg, emoji);
+            });
+            picker.getChildren().add(btn);
+        }
+        popup.getContent().add(picker);
+
+        javafx.geometry.Bounds bounds = anchor.localToScreen(anchor.getBoundsInLocal());
+        if (bounds != null) {
+            popup.show(anchor, bounds.getMinX(), bounds.getMinY() - 40);
+        }
+    }
+
+    private void toggleMsgReaction(Message msg, String type) {
+        User me = SessionManager.getInstance().getCurrentUser();
+        if (me == null) return;
+        int reactableId = msg.getId() + MSG_REACTION_OFFSET;
+        int myId = me.getId();
+
+        AppThreadPool.io(() -> {
+            try {
+                serviceReaction.toggleReaction(reactableId, myId, type);
+                // Refresh cache
+                java.util.List<Reaction> updated = serviceReaction.getByPostId(reactableId);
+                msgReactionsCache.put(msg.getId(), updated);
+                // Re-render messages to show updated reaction counts
+                if (currentRoom != null) {
+                    java.util.List<Message> msgs = serviceMessage.getByRoom(currentRoom.getId());
+                    Platform.runLater(() -> {
+                        SoundManager.getInstance().play(SoundManager.EMOJI_POP);
+                        renderMessages(msgs);
+                    });
+                }
+            } catch (Exception ignored) {}
+        });
     }
 
     // ═══════════════════════════════════════════
@@ -1052,6 +1386,11 @@ public class ChatController implements Stoppable {
             }
 
             col.getChildren().add(bubbleFlow);
+        }
+
+        // ── Emoji reactions bar ──
+        if (!isBot) {
+            col.getChildren().add(buildReactionBar(msg, isMe));
         }
 
         if (isLastInGroup && msg.getTimestamp() != null) {
@@ -1781,7 +2120,71 @@ public class ChatController implements Stoppable {
 
     private void updateKebabMenuVisibility() {
         User u = SessionManager.getInstance().getCurrentUser();
-        boolean show = u != null && "ADMIN".equalsIgnoreCase(u.getRole()) && currentRoom != null;
+        boolean isAdmin = u != null && "ADMIN".equalsIgnoreCase(u.getRole());
+        boolean hasRoom = currentRoom != null;
+        boolean isGroup = hasRoom && !currentRoom.isPrivate() && !isAIRoom;
+
+        // Remove dynamic items from previous
+        chatMenuBtn.getItems().removeIf(item -> "joinLeaveItem".equals(item.getId()) || "addMemberItem".equals(item.getId()));
+
+        if (isGroup && u != null) {
+            int myId = u.getId();
+            boolean isMember = false;
+            try { isMember = serviceMember.isMember(currentRoom.getId(), myId); } catch (SQLException ignored) {}
+
+            if (isMember) {
+                // Check if owner
+                boolean isOwner = false;
+                try {
+                    for (ChatRoomMember m : serviceMember.getByRoom(currentRoom.getId())) {
+                        if (m.getUserId() == myId && "OWNER".equals(m.getRole())) { isOwner = true; break; }
+                    }
+                } catch (SQLException ignored) {}
+
+                MenuItem leaveItem = new MenuItem("\uD83D\uDEAA Leave Room");
+                leaveItem.setId("joinLeaveItem");
+                if (isOwner) {
+                    leaveItem.setDisable(true);
+                    leaveItem.setText("\uD83D\uDEAA Leave (Owner)");
+                } else {
+                    leaveItem.setOnAction(e -> {
+                        AppThreadPool.io(() -> {
+                            try {
+                                serviceMember.removeMember(currentRoom.getId(), myId);
+                                Platform.runLater(() -> { loadRooms(); showEmptyState(); });
+                            } catch (SQLException ex) {
+                                Platform.runLater(() -> showInputError("Failed to leave: " + ex.getMessage()));
+                            }
+                        });
+                    });
+                }
+                chatMenuBtn.getItems().add(0, leaveItem);
+
+                // Add Member option for OWNER/ADMIN
+                if (isOwner || isAdmin) {
+                    MenuItem addItem = new MenuItem("\u2795 Add Member");
+                    addItem.setId("addMemberItem");
+                    addItem.setOnAction(e -> showAddMemberDialog());
+                    chatMenuBtn.getItems().add(1, addItem);
+                }
+            } else {
+                MenuItem joinItem = new MenuItem("\u2795 Join Room");
+                joinItem.setId("joinLeaveItem");
+                joinItem.setOnAction(e -> {
+                    AppThreadPool.io(() -> {
+                        try {
+                            serviceMember.addMember(currentRoom.getId(), myId, "MEMBER");
+                            Platform.runLater(() -> selectRoom(currentRoom));
+                        } catch (SQLException ex) {
+                            Platform.runLater(() -> showInputError("Failed to join: " + ex.getMessage()));
+                        }
+                    });
+                });
+                chatMenuBtn.getItems().add(0, joinItem);
+            }
+        }
+
+        boolean show = (isAdmin && hasRoom) || isGroup;
         chatMenuBtn.setVisible(show);
         chatMenuBtn.setManaged(show);
     }
@@ -1805,6 +2208,53 @@ public class ChatController implements Stoppable {
                 loadRooms();
             } catch (SQLException e) { System.err.println("Chat: deleteRoom failed — " + e.getMessage()); }
         }
+    }
+
+    // ═══════════════════════════════════════════
+    //  ROOM MEMBERSHIP
+    // ═══════════════════════════════════════════
+
+    private void showAddMemberDialog() {
+        if (currentRoom == null || currentRoom.isPrivate()) return;
+        ChoiceDialog<String> dlg = new ChoiceDialog<>();
+        dlg.setTitle("Add Member");
+        dlg.setHeaderText("Add a user to \"" + currentRoom.getName() + "\"");
+        dlg.setContentText("Select user:");
+        utils.DialogHelper.theme(dlg);
+
+        // Build user list excluding existing members
+        Set<Integer> existingIds = new HashSet<>();
+        try {
+            for (ChatRoomMember m : serviceMember.getByRoom(currentRoom.getId())) {
+                existingIds.add(m.getUserId());
+            }
+        } catch (SQLException ignored) {}
+
+        Map<String, Integer> nameToId = new LinkedHashMap<>();
+        for (User u : userCache.values()) {
+            if (existingIds.contains(u.getId())) continue;
+            String display = u.getFirstName() + " " + u.getLastName() + " (" + u.getEmail() + ")";
+            nameToId.put(display, u.getId());
+            dlg.getItems().add(display);
+        }
+
+        if (dlg.getItems().isEmpty()) {
+            showInputError("All users are already members.");
+            return;
+        }
+
+        dlg.showAndWait().ifPresent(sel -> {
+            Integer uid = nameToId.get(sel);
+            if (uid == null) return;
+            AppThreadPool.io(() -> {
+                try {
+                    serviceMember.addMember(currentRoom.getId(), uid, "MEMBER");
+                    Platform.runLater(() -> selectRoom(currentRoom));
+                } catch (SQLException ex) {
+                    Platform.runLater(() -> showInputError("Failed to add member: " + ex.getMessage()));
+                }
+            });
+        });
     }
 
     // ═══════════════════════════════════════════
@@ -1844,6 +2294,12 @@ public class ChatController implements Stoppable {
         User me = SessionManager.getInstance().getCurrentUser();
         User other = getOtherUser(currentRoom);
         if (me == null || other == null) return;
+
+        // Only allow calls with friends
+        if (!serviceFollow.areFriends(me.getId(), other.getId())) {
+            showToast("Call", "You can only call friends.");
+            return;
+        }
 
         // Check if other user is online
         if (!other.isOnline()) {
@@ -2128,6 +2584,16 @@ public class ChatController implements Stoppable {
         // Start audio
         audioCallService.start(callId, me.getId(), () -> Platform.runLater(this::handleCallDisconnected));
 
+        // Wire up live transcription audio listener
+        audioCallService.addAudioDataListener((data, length, isLocal) -> {
+            if (transcriptionEnabled) {
+                // Copy buffer since it's reused by the audio thread
+                byte[] copy = new byte[length];
+                System.arraycopy(data, 0, copy, 0, length);
+                transcriptionManager.feedAudio(copy, length, isLocal);
+            }
+        });
+
         // Connect to video relay for screen sharing (receive mode)
         screenShareService.connect(callId, me.getId(), this::handleRemoteFrame, () -> {
             System.out.println("[ScreenShare] Video relay disconnected");
@@ -2376,6 +2842,30 @@ public class ChatController implements Stoppable {
         StackPane.setMargin(localPreviewContainer, new javafx.geometry.Insets(0, 12, 12, 0));
         videoArea.getChildren().add(localPreviewContainer);
 
+        // ─── Subtitle overlay (live transcription) ───
+        subtitleLabel = new Label("");
+        subtitleLabel.getStyleClass().add("video-subtitle-text");
+        subtitleLabel.setWrapText(true);
+        subtitleLabel.setMaxWidth(700);
+
+        subtitleOriginalLabel = new Label("");
+        subtitleOriginalLabel.getStyleClass().add("video-subtitle-original");
+        subtitleOriginalLabel.setWrapText(true);
+        subtitleOriginalLabel.setMaxWidth(700);
+        subtitleOriginalLabel.setVisible(false);
+        subtitleOriginalLabel.setManaged(false);
+
+        subtitleBox = new VBox(2, subtitleOriginalLabel, subtitleLabel);
+        subtitleBox.getStyleClass().add("video-subtitle-box");
+        subtitleBox.setAlignment(Pos.CENTER);
+        subtitleBox.setMaxWidth(720);
+        subtitleBox.setMouseTransparent(true);
+        subtitleBox.setVisible(false);
+        subtitleBox.setManaged(false);
+        StackPane.setAlignment(subtitleBox, Pos.TOP_CENTER);
+        StackPane.setMargin(subtitleBox, new javafx.geometry.Insets(10, 0, 0, 0));
+        videoArea.getChildren().add(subtitleBox);
+
         // Wire up local preview callback
         screenShareService.setOnLocalFrame(frame -> {
             if (localPreviewView != null) {
@@ -2450,6 +2940,20 @@ public class ChatController implements Stoppable {
         }
         videoCameraBtn.setOnAction(e -> handleToggleCamera());
 
+        // CC (closed captions / live transcription) button
+        Label ccIcon = new Label("CC");
+        ccIcon.getStyleClass().add("video-btn-icon");
+        ccIcon.setStyle("-fx-font-weight: bold; -fx-font-size: 18;");
+        Label ccLabel = new Label("Captions");
+        ccLabel.getStyleClass().add("video-btn-label");
+        VBox ccContainer = new VBox(4, ccIcon, ccLabel);
+        ccContainer.setAlignment(Pos.CENTER);
+
+        videoCCBtn = new Button();
+        videoCCBtn.setGraphic(ccContainer);
+        videoCCBtn.getStyleClass().addAll("video-popup-btn", "video-popup-btn-cc");
+        videoCCBtn.setOnAction(e -> handleToggleTranscription(ccIcon, ccLabel));
+
         // End call button with hangup icon (rotated phone)
         Label endIcon = new Label("\u260E");
         endIcon.getStyleClass().add("video-btn-icon");
@@ -2486,7 +2990,7 @@ public class ChatController implements Stoppable {
         HBox volBox = new HBox(6, volIcon, volSlider);
         volBox.setAlignment(Pos.CENTER);
 
-        controlBar.getChildren().addAll(volBox, videoMuteBtn, videoScreenShareBtn, videoCameraBtn, videoEndBtn);
+        controlBar.getChildren().addAll(volBox, videoMuteBtn, videoScreenShareBtn, videoCameraBtn, videoCCBtn, videoEndBtn);
 
         // ─── Assemble layout ───
         VBox root = new VBox();
@@ -2519,6 +3023,10 @@ public class ChatController implements Stoppable {
             remoteVideoView = null;
             localPreviewView = null;
             videoCameraBtn = null;
+            videoCCBtn = null;
+            subtitleLabel = null;
+            subtitleOriginalLabel = null;
+            subtitleBox = null;
             // Show the in-chat call bar again since popup is closing
             if (activeCallBar != null && activeCall != null) {
                 activeCallBar.setVisible(true);
@@ -2537,6 +3045,80 @@ public class ChatController implements Stoppable {
             remoteVideoView = null;
             localPreviewView = null;
             videoCameraBtn = null;
+            videoCCBtn = null;
+            subtitleLabel = null;
+            subtitleOriginalLabel = null;
+            subtitleBox = null;
+        }
+    }
+
+    // ═══════════════════════════════════════════
+    //  LIVE TRANSCRIPTION (CC)
+    // ═══════════════════════════════════════════
+
+    /** Toggle live transcription on/off. */
+    private void handleToggleTranscription(Label ccIcon, Label ccLabel) {
+        SoundManager.getInstance().play(SoundManager.BUTTON_CLICK);
+        transcriptionEnabled = !transcriptionEnabled;
+
+        if (transcriptionEnabled) {
+            // Set up callback
+            transcriptionManager.setTranscriptCallback((entry, unused) -> {
+                if (entry == null) return;
+                // Update subtitle UI
+                if (subtitleBox != null) {
+                    subtitleBox.setVisible(true);
+                    subtitleBox.setManaged(true);
+                }
+                if (subtitleLabel != null) {
+                    String prefix = entry.isLocal ? "You: " : "Them: ";
+                    subtitleLabel.setText(prefix + entry.getDisplayText());
+                }
+                if (subtitleOriginalLabel != null && entry.hasTranslation()) {
+                    subtitleOriginalLabel.setText(entry.originalText);
+                    subtitleOriginalLabel.setVisible(true);
+                    subtitleOriginalLabel.setManaged(true);
+                } else if (subtitleOriginalLabel != null) {
+                    subtitleOriginalLabel.setVisible(false);
+                    subtitleOriginalLabel.setManaged(false);
+                }
+
+                // Auto-hide after 6 seconds of no new text
+                if (subtitleBox != null) {
+                    Timeline fadeTimer = new Timeline(new KeyFrame(Duration.seconds(6), e2 -> {
+                        if (subtitleBox != null) {
+                            subtitleBox.setVisible(false);
+                            subtitleBox.setManaged(false);
+                        }
+                    }));
+                    fadeTimer.setCycleCount(1);
+                    fadeTimer.play();
+                }
+            });
+            transcriptionManager.start();
+
+            // Update button appearance
+            ccLabel.setText("CC On");
+            if (videoCCBtn != null && !videoCCBtn.getStyleClass().contains("video-popup-btn-active"))
+                videoCCBtn.getStyleClass().add("video-popup-btn-active");
+
+            System.out.println("[CC] Live transcription enabled");
+        } else {
+            transcriptionManager.flush();
+            transcriptionManager.stop();
+
+            // Hide subtitles
+            if (subtitleBox != null) {
+                subtitleBox.setVisible(false);
+                subtitleBox.setManaged(false);
+            }
+
+            // Update button appearance
+            ccLabel.setText("Captions");
+            if (videoCCBtn != null)
+                videoCCBtn.getStyleClass().remove("video-popup-btn-active");
+
+            System.out.println("[CC] Live transcription disabled");
         }
     }
 
@@ -2562,6 +3144,14 @@ public class ChatController implements Stoppable {
     private void cleanupActiveCall() {
         SoundManager.getInstance().stopLoop();
         SoundManager.getInstance().play(SoundManager.CALL_ENDED);
+
+        // Stop live transcription
+        if (transcriptionEnabled) {
+            transcriptionManager.flush();
+            transcriptionManager.stop();
+            transcriptionEnabled = false;
+        }
+
         audioCallService.stop();
         screenShareService.disconnect();
         closeVideoCallPopup();

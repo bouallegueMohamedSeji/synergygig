@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fx:controller="controllers.DarkModeSchedulerController"
+            xmlns:fx="http://javafx.com/fxml" fitToWidth="true"
+            styleClass="content-scroll" hbarPolicy="NEVER">
+    <VBox spacing="24" styleClass="page-container" alignment="TOP_CENTER">
+        <padding><Insets top="32" right="40" bottom="40" left="40"/></padding>
+
+        <VBox spacing="6">
+            <Label text="🌙 Dark Mode Scheduler" styleClass="page-title"
+                   style="-fx-font-size: 26; -fx-font-weight: bold;"/>
+            <Label text="Automatically switch between dark and light themes based on time of day"
+                   styleClass="page-subtitle" style="-fx-font-size: 13; -fx-opacity: 0.7;"/>
+        </VBox>
+
+        <!-- Current status -->
+        <VBox styleClass="card" spacing="10" alignment="CENTER">
+            <padding><Insets top="24" right="28" bottom="24" left="28"/></padding>
+            <Label fx:id="currentThemeIcon" text="🌙" style="-fx-font-size: 42;"/>
+            <Label fx:id="currentThemeLabel" text="Dark Mode" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
+            <Label fx:id="currentTimeLabel" text="" style="-fx-font-size: 12; -fx-opacity: 0.6;"/>
+        </VBox>
+
+        <!-- Schedule config -->
+        <VBox styleClass="card" spacing="14">
+            <padding><Insets top="20" right="24" bottom="20" left="24"/></padding>
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label text="⚙ Schedule Settings" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <CheckBox fx:id="enabledCheck" text="Enable Auto-Switch"/>
+            </HBox>
+            <Separator/>
+
+            <HBox spacing="20" alignment="CENTER_LEFT">
+                <VBox spacing="6">
+                    <Label text="☀ Switch to Light Mode at:" style="-fx-font-size: 13;"/>
+                    <ComboBox fx:id="lightTimeCombo" prefWidth="120"/>
+                </VBox>
+                <VBox spacing="6">
+                    <Label text="🌙 Switch to Dark Mode at:" style="-fx-font-size: 13;"/>
+                    <ComboBox fx:id="darkTimeCombo" prefWidth="120"/>
+                </VBox>
+            </HBox>
+
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Button text="💾 Save Schedule" onAction="#handleSave" styleClass="btn-primary"/>
+                <Button text="🌙 Dark Now" onAction="#switchDark" styleClass="btn-secondary"/>
+                <Button text="☀ Light Now" onAction="#switchLight" styleClass="btn-secondary"/>
+            </HBox>
+        </VBox>
+
+        <!-- Info -->
+        <VBox styleClass="card" spacing="8">
+            <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+            <Label text="ℹ How it works" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+            <Separator/>
+            <Label wrapText="true" style="-fx-font-size: 12; -fx-opacity: 0.7;"
+                   text="When enabled, the app will check the time every minute and automatically switch themes. For example, set Light Mode at 08:00 and Dark Mode at 20:00 to match daylight hours. Changes take effect on the next check (within 60 seconds)."/>
+        </VBox>
+    </VBox>
+</ScrollPane>

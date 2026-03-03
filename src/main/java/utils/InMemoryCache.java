@@ -45,9 +45,8 @@ public final class InMemoryCache {
             return (T) entry.value;
         }
         T value = loader.get();
-        if (value != null) {
-            cache.put(key, new CacheEntry<>(value, ttlSecs));
-        }
+        // Cache even null results to prevent repeated failing API calls
+        cache.put(key, new CacheEntry<>(value, ttlSecs));
         return value;
     }
 
@@ -63,9 +62,8 @@ public final class InMemoryCache {
             return (T) entry.value;
         }
         T value = loader.get();
-        if (value != null) {
-            cache.put(key, new CacheEntry<>(value, ttlSecs));
-        }
+        // Cache even null results to prevent repeated failing API calls
+        cache.put(key, new CacheEntry<>(value, ttlSecs));
         return value;
     }
 

@@ -65,15 +65,20 @@ public class ServicePost implements IService<Post> {
             body.put("author_id", post.getAuthorId());
             body.put("content", post.getContent());
             if (post.getImageBase64() != null) body.put("image_base64", post.getImageBase64());
+            body.put("visibility", post.getVisibility() != null ? post.getVisibility() : "PUBLIC");
+            if (post.getGroupId() != null) body.put("group_id", post.getGroupId());
             ApiClient.post("/posts", body);
             return;
         }
-        String sql = "INSERT INTO posts (author_id, content, image_base64) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO posts (author_id, content, image_base64, visibility, group_id) VALUES (?, ?, ?, ?, ?)";
         try (Connection conn = MyDatabase.getInstance().getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, post.getAuthorId());
             ps.setString(2, post.getContent());
             ps.setString(3, post.getImageBase64());
+            ps.setString(4, post.getVisibility() != null ? post.getVisibility() : "PUBLIC");
+            if (post.getGroupId() != null) ps.setInt(5, post.getGroupId());
+            else ps.setNull(5, Types.INTEGER);
             ps.executeUpdate();
         }
         InMemoryCache.evictByPrefix("posts:");
@@ -85,15 +90,17 @@ public class ServicePost implements IService<Post> {
             Map<String, Object> body = new HashMap<>();
             body.put("content", post.getContent());
             if (post.getImageBase64() != null) body.put("image_base64", post.getImageBase64());
+            body.put("visibility", post.getVisibility() != null ? post.getVisibility() : "PUBLIC");
             ApiClient.put("/posts/" + post.getId(), body);
             return;
         }
-        String sql = "UPDATE posts SET content = ?, image_base64 = ? WHERE id = ?";
+        String sql = "UPDATE posts SET content = ?, image_base64 = ?, visibility = ? WHERE id = ?";
         try (Connection conn = MyDatabase.getInstance().getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, post.getContent());
             ps.setString(2, post.getImageBase64());
-            ps.setInt(3, post.getId());
+            ps.setString(3, post.getVisibility() != null ? post.getVisibility() : "PUBLIC");
+            ps.setInt(4, post.getId());
             ps.executeUpdate();
         }
         InMemoryCache.evictByPrefix("posts:");
