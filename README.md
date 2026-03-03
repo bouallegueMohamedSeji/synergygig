@@ -313,9 +313,6 @@ SynergyGig/
 
 ---
 
-## Authors
-
-- **Mohamed Seji Bouallegue** — Full-stack development, architecture, deployment
 
 **ESPRIT** — École Supérieure Privée d'Ingénierie et de Technologies, Tunisia
 
