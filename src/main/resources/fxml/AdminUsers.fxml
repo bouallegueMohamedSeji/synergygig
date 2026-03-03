@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="controllers.AdminUsersController" spacing="20">
+    <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+
+    <VBox spacing="4">
+        <Label text="User Management" styleClass="content-title"/>
+        <Label text="Manage all platform users" styleClass="content-subtitle"/>
+    </VBox>
+
+    <!-- Action Bar -->
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <TextField fx:id="searchField" promptText="Search by name or email..." styleClass="input-field"
+                   HBox.hgrow="ALWAYS" onKeyReleased="#handleSearch"/>
+        <ComboBox fx:id="filterRoleCombo" promptText="Filter by role" styleClass="input-field"
+                  onAction="#handleFilter"/>
+        <Button text="Refresh" onAction="#refreshUsers" styleClass="btn-secondary"/>
+    </HBox>
+
+    <!-- User count -->
+    <Label fx:id="userCountLabel" text="0 users" styleClass="stat-label"/>
+
+    <!-- User Cards Grid -->
+    <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                style="-fx-background-color: transparent; -fx-border-color: transparent;">
+        <FlowPane fx:id="usersFlowPane" hgap="16" vgap="16" alignment="TOP_LEFT">
+            <padding><Insets top="4" right="4" bottom="16" left="4"/></padding>
+        </FlowPane>
+    </ScrollPane>
+</VBox>

@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.PieChart?>
+
+<ScrollPane fitToWidth="true" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="controllers.HRBacklogController" styleClass="settings-scroll">
+    <VBox spacing="24" styleClass="page-container">
+        <padding><Insets top="32" right="32" bottom="32" left="32"/></padding>
+
+        <Button text="← Back" styleClass="tool-back-btn" onAction="#handleBack"/>
+
+        <!-- ═══ Header ═══ -->
+        <HBox alignment="CENTER_LEFT" spacing="16">
+            <Label text="📋 HR &amp; Employee Backlog" styleClass="page-title"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="btnRefresh" text="🔄 Refresh" onAction="#handleRefresh"
+                    styleClass="btn-primary" prefHeight="36"/>
+        </HBox>
+        <Label fx:id="summaryLabel" text="Loading..." styleClass="stat-trend" wrapText="true"/>
+
+        <!-- ═══ Stat Cards Row ═══ -->
+        <HBox fx:id="statsRow" spacing="16" alignment="CENTER_LEFT">
+            <VBox styleClass="card" spacing="4" alignment="CENTER" prefWidth="180" prefHeight="90">
+                <Label fx:id="totalEmployeesLabel" text="0" style="-fx-font-size:28; -fx-font-weight:bold;"/>
+                <Label text="Employees" styleClass="stat-trend"/>
+            </VBox>
+            <VBox styleClass="card" spacing="4" alignment="CENTER" prefWidth="180" prefHeight="90">
+                <Label fx:id="pendingLeavesLabel" text="0" style="-fx-font-size:28; -fx-font-weight:bold; -fx-text-fill:#e67e22;"/>
+                <Label text="Pending Leaves" styleClass="stat-trend"/>
+            </VBox>
+            <VBox styleClass="card" spacing="4" alignment="CENTER" prefWidth="180" prefHeight="90">
+                <Label fx:id="presentTodayLabel" text="0" style="-fx-font-size:28; -fx-font-weight:bold; -fx-text-fill:#27ae60;"/>
+                <Label text="Present Today" styleClass="stat-trend"/>
+            </VBox>
+            <VBox styleClass="card" spacing="4" alignment="CENTER" prefWidth="180" prefHeight="90">
+                <Label fx:id="pendingPayrollLabel" text="0" style="-fx-font-size:28; -fx-font-weight:bold; -fx-text-fill:#e74c3c;"/>
+                <Label text="Unpaid Payrolls" styleClass="stat-trend"/>
+            </VBox>
+            <VBox styleClass="card" spacing="4" alignment="CENTER" prefWidth="180" prefHeight="90">
+                <Label fx:id="openTasksLabel" text="0" style="-fx-font-size:28; -fx-font-weight:bold; -fx-text-fill:#3498db;"/>
+                <Label text="Open Tasks" styleClass="stat-trend"/>
+            </VBox>
+        </HBox>
+
+        <!-- ═══ Two-column layout ═══ -->
+        <HBox spacing="20" VBox.vgrow="ALWAYS">
+
+            <!-- LEFT: Employee Table -->
+            <VBox styleClass="card" spacing="12" HBox.hgrow="ALWAYS" prefWidth="600">
+                <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <Label text="👥 Employee Directory" style="-fx-font-size:16; -fx-font-weight:bold;"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <TextField fx:id="searchField" promptText="Search employees..." prefWidth="200"
+                               styleClass="text-input"/>
+                </HBox>
+                <TableView fx:id="employeeTable" VBox.vgrow="ALWAYS" prefHeight="320"
+                           styleClass="table-view">
+                    <columns>
+                        <TableColumn fx:id="colName" text="Name" prefWidth="160"/>
+                        <TableColumn fx:id="colEmail" text="Email" prefWidth="180"/>
+                        <TableColumn fx:id="colRole" text="Role" prefWidth="110"/>
+                        <TableColumn fx:id="colDept" text="Department" prefWidth="120"/>
+                        <TableColumn fx:id="colStatus" text="Status" prefWidth="80"/>
+                    </columns>
+                    <placeholder><Label text="No employees found"/></placeholder>
+                </TableView>
+            </VBox>
+
+            <!-- RIGHT: Charts + Quick Stats -->
+            <VBox spacing="16" prefWidth="320" minWidth="280">
+
+                <!-- Dept distribution -->
+                <VBox styleClass="card" spacing="8" prefHeight="250">
+                    <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
+                    <Label text="📊 Department Distribution" style="-fx-font-size:14; -fx-font-weight:bold;"/>
+                    <PieChart fx:id="deptChart" prefHeight="200" legendVisible="false"/>
+                </VBox>
+
+                <!-- Leave type distribution -->
+                <VBox styleClass="card" spacing="8" prefHeight="250">
+                    <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
+                    <Label text="🌴 Leave Breakdown" style="-fx-font-size:14; -fx-font-weight:bold;"/>
+                    <PieChart fx:id="leaveChart" prefHeight="200" legendVisible="false"/>
+                </VBox>
+            </VBox>
+        </HBox>
+
+        <!-- ═══ Pending Leave Requests ═══ -->
+        <VBox styleClass="card" spacing="12">
+            <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+            <Label text="⏳ Pending Leave Requests" style="-fx-font-size:16; -fx-font-weight:bold;"/>
+            <TableView fx:id="leaveTable" prefHeight="200" styleClass="table-view">
+                <columns>
+                    <TableColumn fx:id="colLeaveEmployee" text="Employee" prefWidth="160"/>
+                    <TableColumn fx:id="colLeaveType" text="Type" prefWidth="100"/>
+                    <TableColumn fx:id="colLeaveStart" text="Start" prefWidth="110"/>
+                    <TableColumn fx:id="colLeaveEnd" text="End" prefWidth="110"/>
+                    <TableColumn fx:id="colLeaveReason" text="Reason" prefWidth="200"/>
+                    <TableColumn fx:id="colLeaveActions" text="Actions" prefWidth="160"/>
+                </columns>
+                <placeholder><Label text="No pending leave requests 🎉"/></placeholder>
+            </TableView>
+        </VBox>
+
+        <!-- ═══ Task Backlog ═══ -->
+        <VBox styleClass="card" spacing="12">
+            <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <Label text="📝 Task Backlog" style="-fx-font-size:16; -fx-font-weight:bold;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <ComboBox fx:id="taskFilterCombo" promptText="Filter by status" prefWidth="160"/>
+            </HBox>
+            <TableView fx:id="taskTable" prefHeight="250" styleClass="table-view">
+                <columns>
+                    <TableColumn fx:id="colTaskTitle" text="Task" prefWidth="220"/>
+                    <TableColumn fx:id="colTaskAssignee" text="Assignee" prefWidth="140"/>
+                    <TableColumn fx:id="colTaskStatus" text="Status" prefWidth="100"/>
+                    <TableColumn fx:id="colTaskPriority" text="Priority" prefWidth="90"/>
+                    <TableColumn fx:id="colTaskDue" text="Due Date" prefWidth="110"/>
+                </columns>
+                <placeholder><Label text="No tasks found"/></placeholder>
+            </TableView>
+        </VBox>
+
+        <!-- ═══ Attendance Today ═══ -->
+        <VBox styleClass="card" spacing="12">
+            <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+            <Label text="📅 Today's Attendance" style="-fx-font-size:16; -fx-font-weight:bold;"/>
+            <TableView fx:id="attendanceTable" prefHeight="200" styleClass="table-view">
+                <columns>
+                    <TableColumn fx:id="colAttEmployee" text="Employee" prefWidth="160"/>
+                    <TableColumn fx:id="colAttCheckIn" text="Check In" prefWidth="100"/>
+                    <TableColumn fx:id="colAttCheckOut" text="Check Out" prefWidth="100"/>
+                    <TableColumn fx:id="colAttStatus" text="Status" prefWidth="100"/>
+                </columns>
+                <placeholder><Label text="No attendance records for today"/></placeholder>
+            </TableView>
+        </VBox>
+
+    </VBox>
+</ScrollPane>

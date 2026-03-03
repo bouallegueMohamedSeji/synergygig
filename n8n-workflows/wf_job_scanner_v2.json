@@ -1,0 +1,86 @@
+{
+  "name": "🔍 Job Scanner (LinkedIn + Reddit + RSS)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "job-search",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-job-search",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "webhookId": "job-search-hook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst query = (body.query || 'software engineer').trim();\nconst source = (body.source || 'all').toLowerCase();\nconst jobType = (body.jobType || 'all').toLowerCase();\nconst datePosted = (body.datePosted || 'any').toLowerCase();\nconst location = (body.location || '').trim();\nconst encoded = encodeURIComponent(query);\n\nconst jtMap = { 'full-time': 'F', 'part-time': 'P', 'contract': 'C', 'internship': 'I', 'freelance': 'C', 'temporary': 'T', 'volunteer': 'V' };\nconst f_JT = jtMap[jobType] || '';\nconst dpMap = { 'past 24 hours': 'r86400', 'past week': 'r604800', 'past month': 'r2592000' };\nconst f_TPR = dpMap[datePosted] || '';\nconst locationEncoded = location ? encodeURIComponent(location) : '';\n\nconst UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';\nconst results = [];\nlet debug = '';\n\n// Helper: HTTP GET via n8n's helpers\nasync function httpGet(url, headers) {\n  return await this.helpers.httpRequest({\n    method: 'GET',\n    url,\n    headers,\n    timeout: 15000,\n    returnFullResponse: false,\n    encoding: 'utf-8',\n    json: false,\n  });\n}\n\n// --- LinkedIn ---\nif (source === 'linkedin' || source === 'all') {\n  try {\n    let liUrl = 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=' + encoded;\n    if (locationEncoded) liUrl += '&location=' + locationEncoded;\n    if (f_JT) liUrl += '&f_JT=' + f_JT;\n    if (f_TPR) liUrl += '&f_TPR=' + f_TPR;\n    liUrl += '&start=0&sortBy=DD';\n    const htmlStr = await httpGet.call(this, liUrl, { 'User-Agent': UA });\n    const liRegex = /<li[\\s\\S]*?<\\/li>/g;\n    const liMatches = (typeof htmlStr === 'string' ? htmlStr : JSON.stringify(htmlStr)).match(liRegex) || [];\n    for (const li of liMatches.slice(0, 15)) {\n      const t = li.match(/<span class=\"sr-only\">\\s*([^<]+?)\\s*<\\/span>/);\n      const c = li.match(/<h4[^>]*>[\\s\\S]*?<a[^>]*>\\s*([^<]+?)\\s*<\\/a>/);\n      const l = li.match(/<span[^>]*job-search-card__location[^>]*>\\s*([^<]+?)\\s*<\\/span>/);\n      const lnk = li.match(/<a[^>]*href=\"(https:\\/\\/[^\"]*linkedin[^\"]*jobs[^\"]*view[^\"]+)\"/);\n      const d = li.match(/<time[^>]*datetime=\"([^\"]+)\"/);\n      const jtMatch = li.match(/job-search-card__listingTag[^>]*>\\s*([^<]+?)\\s*</);\n      if (t && t[1]) {\n        results.push({ source: 'LinkedIn', title: t[1].trim(), company: c ? c[1].trim() : '', location: l ? l[1].trim() : 'Not specified', url: lnk ? lnk[1].split('?')[0] : '', postedAt: d ? d[1] : '', snippet: '', jobType: jtMatch ? jtMatch[1].trim() : '' });\n      }\n    }\n    debug += 'LI=' + liMatches.length + '; ';\n  } catch (e) { debug += 'LI err: ' + e.message + '; '; }\n}\n\n// --- Reddit ---\nif (source === 'reddit' || source === 'all') {\n  try {\n    const tMap = { 'past 24 hours': 'day', 'past week': 'week' };\n    const rTime = tMap[datePosted] || 'month';\n    let rUrl = 'https://www.reddit.com/r/forhire+jobs+remotejobs/search.json?q=' + encoded;\n    if (jobType !== 'all') rUrl += '+' + encodeURIComponent(jobType);\n    rUrl += '&sort=new&restrict_sr=1&limit=20&t=' + rTime;\n    const text = await httpGet.call(this, rUrl, { 'User-Agent': 'SynergyGig/1.0' });\n    let posts = [];\n    try {\n      const j = typeof text === 'string' ? JSON.parse(text) : text;\n      if (j.data && Array.isArray(j.data.children)) posts = j.data.children;\n    } catch(e2) { debug += 'Reddit parse fail; '; }\n    for (const p of posts.slice(0, 15)) {\n      const d = p.data; if (!d) continue;\n      const flair = (d.link_flair_text || '').toLowerCase();\n      const titleLower = (d.title || '').toLowerCase();\n      let dt = '';\n      if (flair.includes('hiring')) dt = 'Hiring';\n      else if (flair.includes('for hire')) dt = 'For Hire';\n      if (!dt && titleLower.includes('intern')) dt = 'Internship';\n      else if (!dt && (titleLower.includes('freelance') || titleLower.includes('contract'))) dt = 'Freelance';\n      else if (!dt && (titleLower.includes('part-time') || titleLower.includes('part time'))) dt = 'Part-time';\n      else if (!dt && (titleLower.includes('full-time') || titleLower.includes('full time'))) dt = 'Full-time';\n      const locMatch = (d.title || '').match(/\\[([^\\]]{2,40})\\]/);\n      const loc = locMatch ? locMatch[1] : (flair.includes('remote') ? 'Remote' : 'Not specified');\n      results.push({ source: 'Reddit', title: d.title || '', company: 'r/' + (d.subreddit || 'forhire'), location: loc, url: 'https://www.reddit.com' + (d.permalink || ''), postedAt: d.created_utc ? new Date(d.created_utc * 1000).toISOString().split('T')[0] : '', snippet: (d.selftext || '').substring(0, 200), jobType: dt || d.link_flair_text || '' });\n    }\n    debug += 'Reddit=' + posts.length + '; ';\n  } catch (e) { debug += 'Reddit err: ' + e.message + '; '; }\n}\n\n// --- RSS (Jobicy) ---\nif (source === 'rss' || source === 'all') {\n  try {\n    const rssUrl = 'https://jobicy.com/feed/newjobs?search=' + encoded;\n    const xmlStr = await httpGet.call(this, rssUrl, { 'User-Agent': UA, 'Accept': '*/*' });\n    const xml = typeof xmlStr === 'string' ? xmlStr : JSON.stringify(xmlStr);\n    debug += 'RSS len=' + xml.length + '; ';\n    const jobRegex = /<job[^>]*>([\\s\\S]*?)<\\/job>/g;\n    let match;\n    let rssCount = 0;\n    while ((match = jobRegex.exec(xml)) !== null && rssCount < 15) {\n      const item = match[1];\n      const getTag = (tag) => { const m = item.match(new RegExp('<' + tag + '>([\\\\s\\\\S]*?)</' + tag + '>', 's')); if (!m) return ''; return m[1].replace(/<!\\[CDATA\\[/g, '').replace(/\\]\\]>/g, '').trim(); };\n      const title = getTag('name');\n      const link = getTag('link');\n      const company = getTag('company');\n      const region = getTag('region');\n      const jobtype = getTag('jobtype');\n      const pubDate = getTag('pubdate');\n      const desc = getTag('description').replace(/<[^>]+>/g, '').substring(0, 200);\n      let isoDate = '';\n      if (pubDate) { const parts = pubDate.split('.'); if (parts.length === 3) isoDate = parts[2] + '-' + parts[1] + '-' + parts[0]; }\n      const jtDisplay = jobtype ? jobtype.charAt(0).toUpperCase() + jobtype.slice(1) : '';\n      if (title) {\n        results.push({ source: 'RSS', title, company: company || 'RSS Feed', location: region || 'Not specified', url: link, postedAt: isoDate, snippet: desc, jobType: jtDisplay });\n        rssCount++;\n      }\n    }\n    debug += 'RSS parsed=' + rssCount + '; ';\n  } catch (e) { debug += 'RSS err: ' + e.message + '; '; }\n}\n\nreturn [{ json: { query, source, count: results.length, results } }];\n"
+      },
+      "id": "code-fetch-all",
+      "name": "Fetch & Parse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-results",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        680,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Fetch & Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch & Parse": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
