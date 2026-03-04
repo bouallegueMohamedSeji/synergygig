@@ -1,38 +1,26 @@
 target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-
-### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
-*.iws
+dist/
+.idea/
 *.iml
-*.ipr
-
-### Eclipse ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
+*.class
+__pycache__/
+*.pyc
 .vscode/
+awesome-llm-apps/
+config.properties
 
-### Mac OS ###
-.DS_Store
+# Documentation / agent knowledge
+docs/
+AGENT_KNOWLEDGE.md
+
+# Patch scripts & SQL seeds (contain server credentials)
+*.py
+*.sql
+python/
+n8n_workflows/
+fix_notif_api.py
+hr_endpoints.py
+patch_*.py
+seed_*.sql
+hr_schema.sql
+patch_notif_schema.sql

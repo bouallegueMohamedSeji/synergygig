@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.web.WebView?>
+
+<BorderPane fx:id="rootPane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="controllers.OfferContractController" styleClass="oc-module-root">
+
+    <!-- Top: Tab navigation bar -->
+    <top>
+        <VBox spacing="0" styleClass="oc-top-bar">
+            <HBox alignment="CENTER_LEFT" spacing="12" styleClass="oc-header">
+                <Label text="📋" style="-fx-font-size: 22px;"/>
+                <Label fx:id="headerTitle" text="Offers &amp; Contracts" styleClass="oc-header-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="headerRole" styleClass="oc-header-role"/>
+            </HBox>
+            <HBox fx:id="tabBar" alignment="CENTER_LEFT" spacing="0" styleClass="oc-tab-bar">
+                <!-- Tabs added programmatically in controller -->
+            </HBox>
+        </VBox>
+    </top>
+
+    <!-- Center: StackPane for swapping tab content -->
+    <center>
+        <StackPane fx:id="contentArea" styleClass="oc-content-area">
+            <padding><Insets top="0" right="0" bottom="0" left="0"/></padding>
+
+            <!-- ═══════════════ TAB 1: MARKETPLACE ═══════════════ -->
+            <VBox fx:id="marketplaceView" spacing="12">
+                <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <Label text="Offer Marketplace" styleClass="oc-section-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <TextField fx:id="marketSearchField" promptText="Search offers..." styleClass="oc-search-field"
+                               prefWidth="220" onKeyReleased="#onMarketSearchChanged"/>
+                    <ComboBox fx:id="filterType" promptText="Type" styleClass="oc-combo" prefWidth="120"/>
+                    <ComboBox fx:id="filterCurrency" promptText="Currency" styleClass="oc-combo" prefWidth="100"/>
+                    <Label text="💱" style="-fx-font-size: 16;"/>
+                    <ComboBox fx:id="convertToCurrency" promptText="Convert to…" styleClass="oc-combo" prefWidth="130"/>
+                </HBox>
+
+                <HBox fx:id="marketFilterBar" spacing="8" alignment="CENTER_LEFT" styleClass="oc-filter-bar">
+                    <Button fx:id="filterMktAll" text="All" styleClass="oc-filter-chip,oc-filter-active" onAction="#filterMarketAll"/>
+                    <Button fx:id="filterMktFullTime" text="Full-Time" styleClass="oc-filter-chip" onAction="#filterMarketType"/>
+                    <Button fx:id="filterMktFreelance" text="Freelance" styleClass="oc-filter-chip" onAction="#filterMarketType"/>
+                    <Button fx:id="filterMktInternship" text="Internship" styleClass="oc-filter-chip" onAction="#filterMarketType"/>
+                    <Button fx:id="filterMktContract" text="Contract" styleClass="oc-filter-chip" onAction="#filterMarketType"/>
+                </HBox>
+
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                            style="-fx-background-color: transparent; -fx-border-color: transparent;">
+                    <VBox spacing="16">
+                        <FlowPane fx:id="offerGrid" hgap="16" vgap="16" styleClass="oc-offer-grid">
+                            <padding><Insets top="4" right="4" bottom="4" left="4"/></padding>
+                        </FlowPane>
+
+                        <!-- External Job Listings Section -->
+                        <HBox fx:id="externalJobsHeader" alignment="CENTER_LEFT" spacing="10"
+                              visible="false" managed="false" styleClass="oc-external-header">
+                            <padding><Insets top="8" right="4" bottom="0" left="4"/></padding>
+                            <Label text="🌐 External Job Listings" styleClass="oc-section-title"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="btnRefreshExternal" text="🔄 Refresh" styleClass="oc-btn-secondary"
+                                    onAction="#onRefreshExternalJobs"/>
+                        </HBox>
+                        <FlowPane fx:id="externalJobGrid" hgap="16" vgap="16" styleClass="oc-offer-grid"
+                                  visible="false" managed="false">
+                            <padding><Insets top="4" right="4" bottom="16" left="4"/></padding>
+                        </FlowPane>
+                    </VBox>
+                </ScrollPane>
+            </VBox>
+
+            <!-- ═══════════════ TAB 2: MY OFFERS ═══════════════ -->
+            <VBox fx:id="myOffersView" spacing="12" visible="false" managed="false">
+                <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <Label text="My Offers" styleClass="oc-section-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button fx:id="btnNewOffer" text="+ New Offer" styleClass="oc-btn-primary" onAction="#showNewOfferDialog"/>
+                </HBox>
+
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                            style="-fx-background-color: transparent; -fx-border-color: transparent;">
+                    <VBox fx:id="myOffersList" spacing="10" styleClass="oc-list">
+                        <padding><Insets top="4" right="4" bottom="16" left="4"/></padding>
+                    </VBox>
+                </ScrollPane>
+            </VBox>
+
+            <!-- ═══════════════ TAB 3: APPLICATIONS ═══════════════ -->
+            <VBox fx:id="applicationsView" spacing="12" visible="false" managed="false">
+                <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <Label text="Applications" styleClass="oc-section-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="🤖 Score All" styleClass="oc-btn-primary" onAction="#scoreAllApplications"/>
+                    <ComboBox fx:id="filterAppStatus" promptText="Status" styleClass="oc-combo" prefWidth="140"
+                              onAction="#onAppStatusFilterChanged"/>
+                </HBox>
+
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                            style="-fx-background-color: transparent; -fx-border-color: transparent;">
+                    <VBox fx:id="applicationsList" spacing="10" styleClass="oc-list">
+                        <padding><Insets top="4" right="4" bottom="16" left="4"/></padding>
+                    </VBox>
+                </ScrollPane>
+            </VBox>
+
+            <!-- ═══════════════ TAB 4: CONTRACTS ═══════════════ -->
+            <VBox fx:id="contractsView" spacing="12" visible="false" managed="false">
+                <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <Label text="Contracts" styleClass="oc-section-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <ComboBox fx:id="filterContractStatus" promptText="Status" styleClass="oc-combo" prefWidth="160"
+                              onAction="#onContractStatusFilterChanged"/>
+                </HBox>
+
+                <TableView fx:id="contractsTable" VBox.vgrow="ALWAYS" styleClass="oc-table">
+                    <columns>
+                        <TableColumn fx:id="colContractId" text="ID" prefWidth="50"/>
+                        <TableColumn fx:id="colContractOffer" text="Offer" prefWidth="180"/>
+                        <TableColumn fx:id="colContractParty" text="Contractor" prefWidth="140"/>
+                        <TableColumn fx:id="colContractAmount" text="Amount" prefWidth="100"/>
+                        <TableColumn fx:id="colContractStatus" text="Status" prefWidth="130"/>
+                        <TableColumn fx:id="colContractRisk" text="Risk" prefWidth="80"/>
+                        <TableColumn fx:id="colContractDates" text="Period" prefWidth="160"/>
+                        <TableColumn fx:id="colContractActions" text="Actions" prefWidth="200"/>
+                    </columns>
+                </TableView>
+            </VBox>
+
+            <!-- ═══════════════ TAB 5: AI ASSISTANT ═══════════════ -->
+            <VBox fx:id="aiAssistantView" spacing="12" visible="false" managed="false">
+                <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+
+                <Label text="AI Contract Assistant" styleClass="oc-section-title"/>
+                <Label text="Powered by Z.AI GLM-5" styleClass="oc-subtitle"/>
+
+                <HBox spacing="16" VBox.vgrow="ALWAYS">
+                    <!-- Left: AI tools panel -->
+                    <VBox spacing="12" prefWidth="280" styleClass="oc-ai-tools-panel">
+                        <Label text="Quick Actions" styleClass="oc-ai-tools-title"/>
+                        <Button fx:id="btnAiGenerate" text="📝 Generate Contract" styleClass="oc-ai-btn" maxWidth="Infinity" onAction="#aiGenerateContract"/>
+                        <Button fx:id="btnAiAnalyzeRisk" text="⚠ Analyze Risk" styleClass="oc-ai-btn" maxWidth="Infinity" onAction="#aiAnalyzeRisk"/>
+                        <Button fx:id="btnAiImprove" text="✨ Improve Terms" styleClass="oc-ai-btn" maxWidth="Infinity" onAction="#aiImproveTerms"/>
+                        <Button fx:id="btnAiSummarize" text="📋 Summarize Contract" styleClass="oc-ai-btn" maxWidth="Infinity" onAction="#aiSummarize"/>
+                        <Button fx:id="btnAiDraftEmail" text="✉ Draft Email" styleClass="oc-ai-btn" maxWidth="Infinity" onAction="#aiDraftEmail"/>
+                        <Button fx:id="btnAiScore" text="🎯 Score Applicant" styleClass="oc-ai-btn" maxWidth="Infinity" onAction="#aiScoreApplicant"/>
+                        <Button fx:id="btnAiStrategy" text="📊 Offer Strategy" styleClass="oc-ai-btn" maxWidth="Infinity" onAction="#aiOfferStrategy"/>
+                        <Button fx:id="btnAiEnhance" text="💡 Enhance Description" styleClass="oc-ai-btn" maxWidth="Infinity" onAction="#aiEnhanceDescription"/>
+                        <Region VBox.vgrow="ALWAYS"/>
+                        <Label fx:id="aiStatusLabel" text="" styleClass="oc-ai-status"/>
+                    </VBox>
+
+                    <!-- Right: Chat / output area -->
+                    <VBox spacing="8" HBox.hgrow="ALWAYS" styleClass="oc-ai-chat-panel">
+                        <ScrollPane fx:id="aiChatScroll" fitToWidth="true" VBox.vgrow="ALWAYS"
+                                    style="-fx-background-color: transparent;">
+                            <VBox fx:id="aiChatBox" spacing="8" styleClass="oc-ai-chat-box">
+                                <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                            </VBox>
+                        </ScrollPane>
+
+                        <HBox spacing="8" alignment="CENTER_LEFT" styleClass="oc-ai-input-bar">
+                            <TextField fx:id="aiInputField" promptText="Ask about a contract..." HBox.hgrow="ALWAYS"
+                                       styleClass="oc-ai-input" onAction="#aiSendMessage"/>
+                            <Button fx:id="btnAiSend" text="Send" styleClass="oc-btn-primary" onAction="#aiSendMessage"/>
+                        </HBox>
+                    </VBox>
+                </HBox>
+            </VBox>
+
+        </StackPane>
+    </center>
+
+</BorderPane>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane fx:id="rootPane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="controllers.HRModuleController" styleClass="hr-module-root">
+
+    <!-- Top: Tab navigation bar -->
+    <top>
+        <VBox spacing="0" styleClass="hr-top-bar">
+            <HBox alignment="CENTER_LEFT" spacing="12" styleClass="hr-header">
+                <Label text="👤" style="-fx-font-size: 22px;"/>
+                <Label fx:id="headerTitle" text="HR Management" styleClass="hr-header-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="headerRole" styleClass="hr-header-role"/>
+            </HBox>
+            <HBox fx:id="tabBar" alignment="CENTER_LEFT" spacing="0" styleClass="hr-tab-bar">
+                <!-- Tabs are added programmatically -->
+            </HBox>
+        </VBox>
+    </top>
+
+    <!-- Center: Content area for sub-views -->
+    <center>
+        <StackPane fx:id="contentArea" styleClass="hr-content-area">
+            <padding><Insets top="0" right="0" bottom="0" left="0"/></padding>
+        </StackPane>
+    </center>
+
+</BorderPane>

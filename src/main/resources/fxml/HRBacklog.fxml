@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.PieChart?>
+
+<ScrollPane fitToWidth="true" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="controllers.HRBacklogController" styleClass="hrb-scroll">
+    <VBox spacing="0" styleClass="hrb-root">
+        <padding><Insets top="0" right="0" bottom="32" left="0"/></padding>
+
+        <!-- ═══ Top Header Bar ═══ -->
+        <HBox alignment="CENTER_LEFT" spacing="14" styleClass="hrb-header-bar">
+            <padding><Insets top="20" right="28" bottom="16" left="28"/></padding>
+            <Button text="←" styleClass="hrb-back-btn" onAction="#handleBack"/>
+            <VBox spacing="2">
+                <Label text="HR Backlog" styleClass="hrb-page-title"/>
+                <Label fx:id="summaryLabel" text="Loading..." styleClass="hrb-page-subtitle" wrapText="true"/>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="btnRefresh" text="↻  Refresh" onAction="#handleRefresh"
+                    styleClass="hrb-btn-outline" prefHeight="34"/>
+        </HBox>
+
+        <VBox spacing="20" styleClass="hrb-content">
+            <padding><Insets top="20" right="28" bottom="0" left="28"/></padding>
+
+            <!-- ═══ Stat Cards Row ═══ -->
+            <HBox fx:id="statsRow" spacing="14" alignment="CENTER_LEFT">
+                <VBox styleClass="hrb-stat-card" spacing="2" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                    <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+                    <Label text="Total Employees" styleClass="hrb-stat-label"/>
+                    <Label fx:id="totalEmployeesLabel" text="0" styleClass="hrb-stat-value"/>
+                </VBox>
+                <VBox styleClass="hrb-stat-card, hrb-stat-amber" spacing="2" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                    <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+                    <Label text="Pending Leaves" styleClass="hrb-stat-label"/>
+                    <Label fx:id="pendingLeavesLabel" text="0" styleClass="hrb-stat-value, hrb-val-amber"/>
+                </VBox>
+                <VBox styleClass="hrb-stat-card, hrb-stat-green" spacing="2" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                    <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+                    <Label text="Present Today" styleClass="hrb-stat-label"/>
+                    <Label fx:id="presentTodayLabel" text="0" styleClass="hrb-stat-value, hrb-val-green"/>
+                </VBox>
+                <VBox styleClass="hrb-stat-card, hrb-stat-red" spacing="2" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                    <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+                    <Label text="Unpaid Payrolls" styleClass="hrb-stat-label"/>
+                    <Label fx:id="pendingPayrollLabel" text="0" styleClass="hrb-stat-value, hrb-val-red"/>
+                </VBox>
+                <VBox styleClass="hrb-stat-card, hrb-stat-blue" spacing="2" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                    <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+                    <Label text="Open Tasks" styleClass="hrb-stat-label"/>
+                    <Label fx:id="openTasksLabel" text="0" styleClass="hrb-stat-value, hrb-val-blue"/>
+                </VBox>
+            </HBox>
+
+            <!-- ═══ Two-column: Employee Directory + Charts ═══ -->
+            <HBox spacing="16" VBox.vgrow="ALWAYS">
+
+                <!-- LEFT: Employee Table -->
+                <VBox styleClass="hrb-card" spacing="0" HBox.hgrow="ALWAYS">
+                    <HBox alignment="CENTER_LEFT" spacing="12" styleClass="hrb-card-header">
+                        <padding><Insets top="14" right="18" bottom="14" left="18"/></padding>
+                        <Label text="Employee Directory" styleClass="hrb-card-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <TextField fx:id="searchField" promptText="Search employees..."
+                                   prefWidth="220" styleClass="hrb-search"/>
+                    </HBox>
+                    <TableView fx:id="employeeTable" VBox.vgrow="ALWAYS" prefHeight="320"
+                               styleClass="hrb-table">
+                        <columns>
+                            <TableColumn fx:id="colName" text="Name" prefWidth="160"/>
+                            <TableColumn fx:id="colEmail" text="Email" prefWidth="200"/>
+                            <TableColumn fx:id="colRole" text="Role" prefWidth="110"/>
+                            <TableColumn fx:id="colDept" text="Department" prefWidth="120"/>
+                            <TableColumn fx:id="colStatus" text="Status" prefWidth="100"/>
+                        </columns>
+                        <placeholder><Label text="No employees found" styleClass="hrb-empty"/></placeholder>
+                    </TableView>
+                </VBox>
+
+                <!-- RIGHT: Charts -->
+                <VBox spacing="16" prefWidth="300" minWidth="260">
+                    <VBox styleClass="hrb-card" spacing="0">
+                        <HBox styleClass="hrb-card-header">
+                            <padding><Insets top="14" right="18" bottom="14" left="18"/></padding>
+                            <Label text="Department Distribution" styleClass="hrb-card-title"/>
+                        </HBox>
+                        <VBox alignment="CENTER">
+                            <padding><Insets top="4" right="12" bottom="4" left="12"/></padding>
+                            <PieChart fx:id="deptChart" prefHeight="160" legendVisible="false"
+                                      labelsVisible="false" styleClass="hrb-chart"/>
+                        </VBox>
+                        <VBox fx:id="deptLegendBox" spacing="4" styleClass="hrb-legend-box">
+                            <padding><Insets top="0" right="16" bottom="12" left="16"/></padding>
+                        </VBox>
+                    </VBox>
+
+                    <VBox styleClass="hrb-card" spacing="0">
+                        <HBox styleClass="hrb-card-header">
+                            <padding><Insets top="14" right="18" bottom="14" left="18"/></padding>
+                            <Label text="Leave Type Breakdown" styleClass="hrb-card-title"/>
+                        </HBox>
+                        <VBox alignment="CENTER">
+                            <padding><Insets top="4" right="12" bottom="4" left="12"/></padding>
+                            <PieChart fx:id="leaveChart" prefHeight="160" legendVisible="false"
+                                      labelsVisible="false" styleClass="hrb-chart"/>
+                        </VBox>
+                        <VBox fx:id="leaveLegendBox" spacing="4" styleClass="hrb-legend-box">
+                            <padding><Insets top="0" right="16" bottom="12" left="16"/></padding>
+                        </VBox>
+                    </VBox>
+                </VBox>
+            </HBox>
+
+            <!-- ═══ Pending Leave Requests ═══ -->
+            <VBox styleClass="hrb-card" spacing="0">
+                <HBox alignment="CENTER_LEFT" styleClass="hrb-card-header">
+                    <padding><Insets top="14" right="18" bottom="14" left="18"/></padding>
+                    <Label text="Pending Leave Requests" styleClass="hrb-card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="Approve or reject" styleClass="hrb-card-desc"/>
+                </HBox>
+                <TableView fx:id="leaveTable" prefHeight="200" styleClass="hrb-table">
+                    <columns>
+                        <TableColumn fx:id="colLeaveEmployee" text="Employee" prefWidth="160"/>
+                        <TableColumn fx:id="colLeaveType" text="Type" prefWidth="100"/>
+                        <TableColumn fx:id="colLeaveStart" text="Start Date" prefWidth="110"/>
+                        <TableColumn fx:id="colLeaveEnd" text="End Date" prefWidth="110"/>
+                        <TableColumn fx:id="colLeaveReason" text="Reason" prefWidth="200"/>
+                        <TableColumn fx:id="colLeaveActions" text="Actions" prefWidth="180"/>
+                    </columns>
+                    <placeholder><Label text="No pending leave requests" styleClass="hrb-empty"/></placeholder>
+                </TableView>
+            </VBox>
+
+            <!-- ═══ Task Backlog ═══ -->
+            <VBox styleClass="hrb-card" spacing="0">
+                <HBox alignment="CENTER_LEFT" spacing="12" styleClass="hrb-card-header">
+                    <padding><Insets top="14" right="18" bottom="14" left="18"/></padding>
+                    <Label text="Task Backlog" styleClass="hrb-card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <ComboBox fx:id="taskFilterCombo" promptText="Filter status" prefWidth="150"
+                              styleClass="hrb-filter-combo"/>
+                </HBox>
+                <TableView fx:id="taskTable" prefHeight="250" styleClass="hrb-table">
+                    <columns>
+                        <TableColumn fx:id="colTaskTitle" text="Task" prefWidth="240"/>
+                        <TableColumn fx:id="colTaskAssignee" text="Assignee" prefWidth="150"/>
+                        <TableColumn fx:id="colTaskStatus" text="Status" prefWidth="110"/>
+                        <TableColumn fx:id="colTaskPriority" text="Priority" prefWidth="90"/>
+                        <TableColumn fx:id="colTaskDue" text="Due Date" prefWidth="110"/>
+                    </columns>
+                    <placeholder><Label text="No tasks found" styleClass="hrb-empty"/></placeholder>
+                </TableView>
+            </VBox>
+
+            <!-- ═══ Attendance Today ═══ -->
+            <VBox styleClass="hrb-card" spacing="0">
+                <HBox alignment="CENTER_LEFT" styleClass="hrb-card-header">
+                    <padding><Insets top="14" right="18" bottom="14" left="18"/></padding>
+                    <Label text="Today's Attendance" styleClass="hrb-card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="Live tracking" styleClass="hrb-card-desc"/>
+                </HBox>
+                <TableView fx:id="attendanceTable" prefHeight="200" styleClass="hrb-table">
+                    <columns>
+                        <TableColumn fx:id="colAttEmployee" text="Employee" prefWidth="180"/>
+                        <TableColumn fx:id="colAttCheckIn" text="Check In" prefWidth="120"/>
+                        <TableColumn fx:id="colAttCheckOut" text="Check Out" prefWidth="120"/>
+                        <TableColumn fx:id="colAttStatus" text="Status" prefWidth="100"/>
+                    </columns>
+                    <placeholder><Label text="No attendance records for today" styleClass="hrb-empty"/></placeholder>
+                </TableView>
+            </VBox>
+        </VBox>
+
+    </VBox>
+</ScrollPane>
