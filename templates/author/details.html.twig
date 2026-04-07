@@ -1,0 +1,10 @@
+<h2>Détails de l'auteur</h2>
+
+<ul>
+  <li><strong>Nom :</strong> {{ author.username }}</li>
+  <li><strong>Email :</strong> {{ author.email }}</li>
+  <li><strong>Nombre de livres :</strong> {{ author.nb_books }}</li>
+  <li><img src="{{ author.picture }}" alt="image non dispo" width="120"></li>
+</ul>
+
+<a href="{{ path('author_list') }}">⬅ Retour à la liste</a>

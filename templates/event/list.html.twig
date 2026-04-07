@@ -1,0 +1,32 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Event List{% endblock %}
+
+{% block body %}
+<div class="container mt-4">
+    <h1>Event List</h1>
+
+    {% if events is empty %}
+        <p>No active events found.</p>
+    {% else %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Event Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                    <tr>
+                        <td>{{ event.id }}</td>
+                        <td>{{ event.name }}</td>
+                        <td>{{ event.eventType }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+{% endblock %}

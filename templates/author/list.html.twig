@@ -1,0 +1,33 @@
+<h2>Le tableau comporte {{ authors|length }} auteurs</h2>
+
+{% if authors is not defined or authors is empty %}
+    <h2>Vérifier votre tableau</h2>
+{% else %}
+    <table border="1">
+        <tr>
+            <th>id</th>
+            <th>picture</th>
+            <th>username</th>
+            <th>email</th>
+            <th>nb_books</th>
+            <th>actions</th>
+        </tr>
+
+        {% set total = 0 %}
+        {% for elt in authors %}
+            <tr>
+                <td>{{ elt.id }}</td>
+                <td><img src="{{ elt.picture }}" alt="image non dispo" width="60"/></td>
+                <td>{{ elt.username|upper }}</td>
+                <td>{{ elt.email }}</td>
+                <td>{{ elt.nb_books }}</td>
+                <td>
+                    <a href="{{ path('author_details', {'id': elt.id}) }}">Détails</a>
+                </td>
+            </tr>
+            {% set total = total + elt.nb_books %}
+        {% endfor %}
+    </table>
+
+    <h3>Total de tous les livres : {{ total }}</h3>
+{% endif %}
