@@ -1,0 +1,91 @@
+{
+  "name": "\ud83d\udd0d Job Scanner (LinkedIn + Reddit)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "job-search",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wh-job-search",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "job-search-hook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst query = (body.query || 'software engineer').trim();\nconst source = (body.source || 'both').toLowerCase();\nconst encoded = encodeURIComponent(query);\n\nreturn [{ json: { query, source, encoded } }];"
+      },
+      "id": "code-parse-input",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={{ $json.encoded }}&start=0&sortBy=DD",
+        "options": {
+          "response": { "response": { "neverError": true } },
+          "timeout": 15000
+        }
+      },
+      "id": "http-linkedin",
+      "name": "LinkedIn Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 180]
+    },
+    {
+      "parameters": {
+        "url": "=https://www.reddit.com/r/forhire/search.json?q={{ $('Parse Input').first().json.encoded }}&sort=new&restrict_sr=1&limit=20&t=month",
+        "options": {
+          "response": { "response": { "neverError": true } },
+          "timeout": 15000
+        }
+      },
+      "id": "http-reddit",
+      "name": "Reddit Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Parse Input').first().json.source;\nconst query = $('Parse Input').first().json.query;\nconst results = [];\n\n// ─── Parse LinkedIn HTML ───\nif (source === 'linkedin' || source === 'both') {\n  try {\n    const html = $('LinkedIn Search').first().json.data || $('LinkedIn Search').first().json || '';\n    const htmlStr = typeof html === 'string' ? html : JSON.stringify(html);\n    // Each job card is a <li> with base-card\n    const cardRegex = /<div[^>]*base-search-card[^>]*>[\\s\\S]*?<\\/div>\\s*<\\/div>\\s*<\\/div>/g;\n    const titleRegex = /<span class=\"sr-only\">([^<]+)<\\/span>/;\n    const companyRegex = /<h4[^>]*>[\\s\\S]*?<a[^>]*>([^<]+)<\\/a>/;\n    const locationRegex = /<span class=\"job-search-card__location\">([^<]+)<\\/span>/;\n    const linkRegex = /<a[^>]*href=\"(https:\\/\\/www\\.linkedin\\.com\\/jobs\\/view\\/[^\"]+)\"/;\n    const dateRegex = /<time[^>]*datetime=\"([^\"]+)\"[^>]*>/;\n    \n    // Simpler approach: find all job links and titles\n    const liRegex = /<li[\\s\\S]*?<\\/li>/g;\n    let match;\n    let liMatches = htmlStr.match(liRegex) || [];\n    \n    for (const li of liMatches.slice(0, 15)) {\n      const t = li.match(/<span class=\"sr-only\">\\s*([^<]+?)\\s*<\\/span>/);\n      const c = li.match(/<h4[^>]*>[\\s\\S]*?<a[^>]*>\\s*([^<]+?)\\s*<\\/a>/);\n      const l = li.match(/<span[^>]*job-search-card__location[^>]*>\\s*([^<]+?)\\s*<\\/span>/);\n      const lnk = li.match(/<a[^>]*href=\"(https:\\/\\/[^\"]*linkedin[^\"]*jobs[^\"]*view[^\"]+)\"/);\n      const d = li.match(/<time[^>]*datetime=\"([^\"]+)\"/);\n      \n      if (t && t[1]) {\n        results.push({\n          source: 'LinkedIn',\n          title: t[1].trim(),\n          company: c ? c[1].trim() : '',\n          location: l ? l[1].trim() : '',\n          url: lnk ? lnk[1].split('?')[0] : '',\n          postedAt: d ? d[1] : '',\n          snippet: ''\n        });\n      }\n    }\n  } catch (e) {\n    // LinkedIn parsing failed silently\n  }\n}\n\n// ─── Parse Reddit JSON ───\nif (source === 'reddit' || source === 'both') {\n  try {\n    const reddit = $('Reddit Search').first().json;\n    const posts = reddit?.data?.children || [];\n    \n    for (const p of posts.slice(0, 15)) {\n      const d = p.data;\n      if (!d) continue;\n      const flair = (d.link_flair_text || '').toLowerCase();\n      results.push({\n        source: 'Reddit',\n        title: d.title || '',\n        company: 'r/' + (d.subreddit || 'forhire'),\n        location: flair.includes('hiring') ? 'Hiring' : flair.includes('for hire') ? 'For Hire' : d.link_flair_text || '',\n        url: 'https://www.reddit.com' + (d.permalink || ''),\n        postedAt: d.created_utc ? new Date(d.created_utc * 1000).toISOString().split('T')[0] : '',\n        snippet: (d.selftext || '').substring(0, 200)\n      });\n    }\n  } catch (e) {\n    // Reddit parsing failed silently\n  }\n}\n\nreturn [{ json: { query, source, count: results.length, results } }];"
+      },
+      "id": "code-merge-results",
+      "name": "Merge & Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [{ "name": "Access-Control-Allow-Origin", "value": "*" }]
+          }
+        }
+      },
+      "id": "respond-results",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1140, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Parse Input", "type": "main", "index": 0 }]] },
+    "Parse Input": { "main": [[{ "node": "LinkedIn Search", "type": "main", "index": 0 }, { "node": "Reddit Search", "type": "main", "index": 0 }]] },
+    "LinkedIn Search": { "main": [[{ "node": "Merge & Format", "type": "main", "index": 0 }]] },
+    "Reddit Search": { "main": [[{ "node": "Merge & Format", "type": "main", "index": 0 }]] },
+    "Merge & Format": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

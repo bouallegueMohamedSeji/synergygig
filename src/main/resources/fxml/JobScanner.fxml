@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane fx:id="rootPane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="controllers.JobScannerController" styleClass="js-module-root">
+
+    <!-- Top: Header + Search bar -->
+    <top>
+        <VBox spacing="0" styleClass="js-top-bar">
+            <HBox alignment="CENTER_LEFT" spacing="12" styleClass="js-header">
+                <Label text="🔍" style="-fx-font-size: 22px;"/>
+                <Label text="Job Scanner" styleClass="js-header-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="headerStatus" text="" styleClass="js-header-status"/>
+            </HBox>
+
+            <!-- Search bar -->
+            <HBox alignment="CENTER_LEFT" spacing="12" styleClass="js-search-bar">
+                <TextField fx:id="searchField" promptText="Enter job title (e.g. Software Engineer, Data Analyst...)"
+                           styleClass="js-search-field" HBox.hgrow="ALWAYS" onAction="#handleSearch"/>
+                <ComboBox fx:id="sourceCombo" styleClass="js-source-combo" prefWidth="140"/>
+                <Button fx:id="btnSearch" text="🔎  Search" styleClass="js-search-btn" onAction="#handleSearch"/>
+            </HBox>
+
+            <!-- Filter bar -->
+            <HBox alignment="CENTER_LEFT" spacing="12" styleClass="js-filter-bar">
+                <Label text="Filters:" styleClass="js-filter-label"/>
+                <ComboBox fx:id="jobTypeCombo" styleClass="js-filter-combo" prefWidth="135" promptText="Job Type"/>
+                <ComboBox fx:id="datePostedCombo" styleClass="js-filter-combo" prefWidth="135" promptText="Date Posted"/>
+                <TextField fx:id="locationField" promptText="📍 Location (optional)"
+                           styleClass="js-filter-field" prefWidth="200"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="btnReset" text="Reset" styleClass="js-reset-btn" onAction="#handleReset"/>
+            </HBox>
+        </VBox>
+    </top>
+
+    <!-- Center: Results area -->
+    <center>
+        <StackPane fx:id="contentArea" styleClass="js-content-area">
+            <padding><Insets top="0" right="0" bottom="0" left="0"/></padding>
+
+            <!-- Default empty state -->
+            <VBox fx:id="emptyState" alignment="CENTER" spacing="12">
+                <Label text="🌐" style="-fx-font-size: 48px; -fx-opacity: 0.5;"/>
+                <Label text="Search for jobs on LinkedIn" styleClass="js-empty-title"/>
+                <Label text="Type a job title above and click Search to find the latest postings"
+                       styleClass="js-empty-subtitle"/>
+            </VBox>
+
+            <!-- Radar loading animation -->
+            <VBox fx:id="loadingState" alignment="CENTER" spacing="16" visible="false" managed="false">
+                <StackPane fx:id="radarContainer" prefWidth="150" prefHeight="150" maxWidth="150" maxHeight="150"/>
+                <Label fx:id="loadingLabel" text="Searching LinkedIn..." styleClass="js-loading-text"/>
+            </VBox>
+
+            <!-- Results scroll -->
+            <ScrollPane fx:id="resultsScroll" fitToWidth="true" visible="false" managed="false"
+                        styleClass="js-results-scroll">
+                <VBox fx:id="resultsContainer" spacing="8" styleClass="js-results-container">
+                    <padding><Insets top="16" right="24" bottom="16" left="24"/></padding>
+                </VBox>
+            </ScrollPane>
+        </StackPane>
+    </center>
+
+</BorderPane>

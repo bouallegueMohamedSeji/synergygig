@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fx:controller="controllers.DocumentOCRController"
+            xmlns:fx="http://javafx.com/fxml" fitToWidth="true"
+            styleClass="content-scroll" hbarPolicy="NEVER">
+    <VBox spacing="24" styleClass="page-container" alignment="TOP_CENTER">
+        <padding><Insets top="32" right="40" bottom="40" left="40"/></padding>
+
+        <Button text="← Back" styleClass="tool-back-btn" onAction="#handleBack"/>
+
+        <VBox spacing="6">
+            <Label text="📂 Document Scanner &amp; Auto-Filing" styleClass="page-title"
+                   style="-fx-font-size: 26; -fx-font-weight: bold;"/>
+            <Label text="Upload documents — AI will extract text, analyze content, and suggest filing category"
+                   styleClass="page-subtitle" style="-fx-font-size: 13; -fx-opacity: 0.7;"/>
+        </VBox>
+
+        <!-- Upload -->
+        <VBox fx:id="dropZone" alignment="CENTER" spacing="14" styleClass="card"
+              style="-fx-min-height: 160; -fx-cursor: hand;" onMouseClicked="#handleUpload">
+            <padding><Insets top="28" right="28" bottom="28" left="28"/></padding>
+            <Label text="📁" style="-fx-font-size: 40;"/>
+            <Label text="Click to upload a document" style="-fx-font-size: 15; -fx-font-weight: bold;"/>
+            <Label text="Supported: PDF, DOCX, XLSX, XLS" style="-fx-font-size: 11; -fx-opacity: 0.5;"/>
+            <Button text="Choose File" onAction="#handleUpload" styleClass="btn-primary"/>
+        </VBox>
+
+        <HBox fx:id="statusBar" spacing="10" alignment="CENTER" visible="false" managed="false">
+            <ProgressIndicator prefWidth="20" prefHeight="20"/>
+            <Label fx:id="statusLabel" text="" style="-fx-font-size: 13;"/>
+        </HBox>
+
+        <!-- Result -->
+        <VBox fx:id="resultSection" spacing="18" visible="false" managed="false">
+            <!-- File info + category -->
+            <HBox spacing="18">
+                <VBox styleClass="card" spacing="8" HBox.hgrow="ALWAYS">
+                    <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+                    <Label text="📄 File Info" style="-fx-font-size: 15; -fx-font-weight: bold;"/>
+                    <Separator/>
+                    <Label fx:id="fileNameLabel" wrapText="true" style="-fx-font-size: 13;"/>
+                    <Label fx:id="fileSizeLabel" style="-fx-font-size: 12; -fx-opacity: 0.7;"/>
+                </VBox>
+                <VBox styleClass="card" spacing="8" HBox.hgrow="ALWAYS">
+                    <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+                    <Label text="🏷 Suggested Category" style="-fx-font-size: 15; -fx-font-weight: bold;"/>
+                    <Separator/>
+                    <Label fx:id="categoryLabel" wrapText="true" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+                    <Label fx:id="categoryDesc" wrapText="true" style="-fx-font-size: 12; -fx-opacity: 0.7;"/>
+                </VBox>
+            </HBox>
+
+            <!-- AI Analysis -->
+            <VBox styleClass="card" spacing="8">
+                <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+                <Label text="🤖 AI Analysis" style="-fx-font-size: 15; -fx-font-weight: bold;"/>
+                <Separator/>
+                <Label fx:id="analysisContent" wrapText="true" style="-fx-font-size: 13;"/>
+            </VBox>
+
+            <!-- Extracted text preview -->
+            <VBox styleClass="card" spacing="8">
+                <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="📝 Extracted Text" style="-fx-font-size: 15; -fx-font-weight: bold;"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="📋 Copy Text" onAction="#handleCopyText" styleClass="btn-secondary" style="-fx-font-size: 11;"/>
+                </HBox>
+                <Separator/>
+                <TextArea fx:id="extractedText" prefRowCount="10" wrapText="true" editable="false"
+                          styleClass="tool-textarea" style="-fx-font-size: 12; -fx-font-family: monospace;"/>
+            </VBox>
+
+            <HBox spacing="12" alignment="CENTER">
+                <Button text="📂 Scan Another" onAction="#handleReset" styleClass="btn-primary"/>
+            </HBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

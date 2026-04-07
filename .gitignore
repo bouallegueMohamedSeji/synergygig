@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 ###> symfony/framework-bundle ###
 /.env.local
@@ -8,3 +9,31 @@
 /var/
 /vendor/
 ###< symfony/framework-bundle ###
+=======
+target/
+dist/
+.idea/
+*.iml
+*.class
+__pycache__/
+*.pyc
+.vscode/
+awesome-llm-apps/
+config.properties
+
+# Documentation / agent knowledge
+docs/
+AGENT_KNOWLEDGE.md
+
+# Patch scripts & SQL seeds (contain server credentials)
+*.py
+*.sql
+python/
+n8n_workflows/
+fix_notif_api.py
+hr_endpoints.py
+patch_*.py
+seed_*.sql
+hr_schema.sql
+patch_notif_schema.sql
+>>>>>>> 145a549d288a207245b6fd1ca51dc059e2d921b7

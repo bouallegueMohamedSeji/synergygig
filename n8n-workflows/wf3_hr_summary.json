@@ -1,0 +1,85 @@
+{
+  "name": "\ud83d\udcca Daily HR Summary",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 24 }]
+        }
+      },
+      "id": "cron-hr-summary",
+      "name": "Every Day 8 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://172.21.0.3:8000/api/attendance",
+        "options": {}
+      },
+      "id": "http-attendance",
+      "name": "Fetch Attendance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://172.21.0.3:8000/api/leaves",
+        "options": {}
+      },
+      "id": "http-leaves",
+      "name": "Fetch Leaves",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://172.21.0.3:8000/api/payroll",
+        "options": {}
+      },
+      "id": "http-payroll",
+      "name": "Fetch Payroll",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const attendance = $('Fetch Attendance').first().json;\nconst leaves = $('Fetch Leaves').first().json;\nconst payroll = $('Fetch Payroll').first().json;\n\nconst attArr = Array.isArray(attendance) ? attendance : [];\nconst leaveArr = Array.isArray(leaves) ? leaves : [];\nconst payArr = Array.isArray(payroll) ? payroll : [];\n\nconst today = new Date().toISOString().split('T')[0];\nconst presentToday = attArr.filter(a => a.date === today && a.status === 'PRESENT').length;\nconst lateToday = attArr.filter(a => a.date === today && a.status === 'LATE').length;\nconst absentToday = attArr.filter(a => a.date === today && a.status === 'ABSENT').length;\nconst pendingLeaves = leaveArr.filter(l => l.status === 'PENDING').length;\nconst approvedLeaves = leaveArr.filter(l => l.status === 'APPROVED').length;\nconst pendingPayroll = payArr.filter(p => p.status === 'PENDING').length;\nconst paidPayroll = payArr.filter(p => p.status === 'PAID').length;\n\nconst content = '📊 **Daily HR Summary** — ' + today + '\\n\\n' +\n  '📝 **Attendance Today**\\n' +\n  '  ✅ Present: ' + presentToday + '\\n' +\n  '  ⏰ Late: ' + lateToday + '\\n' +\n  '  ❌ Absent: ' + absentToday + '\\n\\n' +\n  '🏖️ **Leave Requests**\\n' +\n  '  ⏳ Pending: ' + pendingLeaves + '\\n' +\n  '  ✅ Approved (all-time): ' + approvedLeaves + '\\n\\n' +\n  '💰 **Payroll**\\n' +\n  '  ⏳ Pending: ' + pendingPayroll + '\\n' +\n  '  ✅ Paid: ' + paidPayroll + '\\n\\n' +\n  '🤖 _Generated automatically by SynergyGig n8n_';\n\nreturn [{ json: { content } }];"
+      },
+      "id": "code-hr-summary",
+      "name": "Build Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.21.0.3:8000/api/posts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ author_id: 1, content: $json.content }) }}"
+      },
+      "id": "http-post-summary",
+      "name": "Post HR Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 300]
+    }
+  ],
+  "connections": {
+    "Every Day 8 AM": { "main": [[{ "node": "Fetch Attendance", "type": "main", "index": 0 }]] },
+    "Fetch Attendance": { "main": [[{ "node": "Fetch Leaves", "type": "main", "index": 0 }]] },
+    "Fetch Leaves": { "main": [[{ "node": "Fetch Payroll", "type": "main", "index": 0 }]] },
+    "Fetch Payroll": { "main": [[{ "node": "Build Summary", "type": "main", "index": 0 }]] },
+    "Build Summary": { "main": [[{ "node": "Post HR Summary", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

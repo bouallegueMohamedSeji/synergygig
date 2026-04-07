@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fx:controller="controllers.AutoSchedulerController"
+            xmlns:fx="http://javafx.com/fxml" fitToWidth="true"
+            styleClass="content-scroll" hbarPolicy="NEVER">
+    <VBox spacing="24" styleClass="page-container" alignment="TOP_CENTER">
+        <padding><Insets top="32" right="40" bottom="40" left="40"/></padding>
+
+        <Button text="← Back" styleClass="tool-back-btn" onAction="#handleBack"/>
+
+        <VBox spacing="6">
+            <Label text="📅 Auto-Scheduling Agent" styleClass="page-title"
+                   style="-fx-font-size: 26; -fx-font-weight: bold;"/>
+            <Label text="Describe your tasks and constraints — AI will generate an optimized schedule"
+                   styleClass="page-subtitle" style="-fx-font-size: 13; -fx-opacity: 0.7;"/>
+        </VBox>
+
+        <!-- Input -->
+        <VBox spacing="12">
+            <Label text="What do you need to schedule?" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+            <TextArea fx:id="tasksArea" promptText="Example: I have a 1-hour team standup, a 2-hour sprint planning, a 30-min 1:1 with my manager, and need 3 hours of focused coding time. I'm available 9am-5pm and prefer meetings in the morning."
+                      prefRowCount="6" wrapText="true" styleClass="tool-textarea" style="-fx-font-size: 13;"/>
+
+            <HBox spacing="14" alignment="CENTER_LEFT">
+                <Label text="Working hours:" style="-fx-font-size: 13;"/>
+                <ComboBox fx:id="startHour" prefWidth="90"/>
+                <Label text="to" style="-fx-font-size: 13;"/>
+                <ComboBox fx:id="endHour" prefWidth="90"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label text="Date:" style="-fx-font-size: 13;"/>
+                <DatePicker fx:id="datePicker" prefWidth="150"/>
+            </HBox>
+
+            <HBox spacing="12">
+                <Button fx:id="scheduleBtn" text="✨ Generate Schedule" onAction="#handleSchedule"
+                        styleClass="btn-primary" style="-fx-font-size: 14;"/>
+            </HBox>
+        </VBox>
+
+        <HBox fx:id="statusBar" spacing="10" alignment="CENTER" visible="false" managed="false">
+            <ProgressIndicator prefWidth="20" prefHeight="20"/>
+            <Label fx:id="statusLabel" text="" style="-fx-font-size: 13;"/>
+        </HBox>
+
+        <VBox fx:id="resultSection" spacing="14" visible="false" managed="false">
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Label text="📊 Suggested Schedule" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="📋 Copy" onAction="#handleCopy" styleClass="btn-secondary" style="-fx-font-size: 12;"/>
+                <Button text="🔄 New" onAction="#handleNew" styleClass="btn-primary" style="-fx-font-size: 12;"/>
+            </HBox>
+            <VBox styleClass="card">
+                <padding><Insets top="20" right="24" bottom="20" left="24"/></padding>
+                <Label fx:id="scheduleContent" wrapText="true" style="-fx-font-size: 13;"/>
+            </VBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

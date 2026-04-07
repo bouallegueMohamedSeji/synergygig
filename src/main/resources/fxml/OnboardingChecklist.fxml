@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<ScrollPane fx:controller="controllers.OnboardingChecklistController"
+            xmlns:fx="http://javafx.com/fxml" fitToWidth="true"
+            styleClass="content-scroll" hbarPolicy="NEVER">
+    <VBox spacing="24" styleClass="page-container" alignment="TOP_CENTER">
+        <padding><Insets top="32" right="40" bottom="40" left="40"/></padding>
+
+        <Button text="← Back" styleClass="tool-back-btn" onAction="#handleBack"/>
+
+        <VBox spacing="6">
+            <Label text="🚀 Onboarding Checklist" styleClass="page-title"
+                   style="-fx-font-size: 26; -fx-font-weight: bold;"/>
+            <Label text="Track your onboarding progress — complete all steps to get started"
+                   styleClass="page-subtitle" style="-fx-font-size: 13; -fx-opacity: 0.7;"/>
+        </VBox>
+
+        <!-- Progress bar -->
+        <VBox styleClass="card" spacing="8">
+            <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Overall Progress" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="progressLabel" text="0%" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+            </HBox>
+            <ProgressBar fx:id="progressBar" progress="0" maxWidth="Infinity" prefHeight="10"
+                         style="-fx-accent: #2C666E;"/>
+        </VBox>
+
+        <!-- Checklist sections -->
+        <VBox fx:id="checklistContainer" spacing="18"/>
+
+        <!-- AI assistant -->
+        <VBox styleClass="card" spacing="10">
+            <padding><Insets top="16" right="20" bottom="16" left="20"/></padding>
+            <Label text="🤖 Need help with onboarding?" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <TextField fx:id="helpInput" promptText="Ask anything about onboarding..."
+                           HBox.hgrow="ALWAYS" styleClass="text-input" onAction="#handleAskHelp"/>
+                <Button text="Ask" onAction="#handleAskHelp" styleClass="btn-primary"/>
+            </HBox>
+            <Label fx:id="helpAnswer" wrapText="true" style="-fx-font-size: 12;" visible="false" managed="false"/>
+        </VBox>
+    </VBox>
+</ScrollPane>
