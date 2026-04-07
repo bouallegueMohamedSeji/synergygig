@@ -1,0 +1,83 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Quiz: {{ quiz.title }}{% endblock %}
+
+{% block body %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ path('quiz_index') }}">Quizzes</a></li>
+                <li class="breadcrumb-item active">{{ quiz.title }}</li>
+            </ol>
+        </nav>
+        <h1 class="h3"><i class="bi bi- Mortarboard"></i> {{ quiz.title }}</h1>
+        <p class="text-muted mb-0">Course: <strong>{{ quiz.course.title }}</strong> | Questions: <strong>{{ quiz.questions|length }}</strong></p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ path('question_new', {'id': quiz.id}) }}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Add Question
+        </a>
+        <a href="{{ path('quiz_edit', {'id': quiz.id}) }}" class="btn btn-outline-primary ms-2">
+            <i class="bi bi-pencil"></i> Edit Quiz
+        </a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3">
+        <h5 class="mb-0"><i class="bi bi-list-ol"></i> Questions</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">#</th>
+                        <th>Question</th>
+                        <th>Options</th>
+                        <th>Answer</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for question in quiz.questions %}
+                        <tr>
+                            <td class="ps-4 text-muted">{{ loop.index }}</td>
+                            <td class="fw-medium">{{ question.questionText }}</td>
+                            <td>
+                                <div class="small">
+                                    <strong>A:</strong> {{ question.optionA }}<br>
+                                    <strong>B:</strong> {{ question.optionB }}<br>
+                                    <strong>C:</strong> {{ question.optionC }}
+                                </div>
+                            </td>
+                            <td><span class="badge bg-success">Option{{ question.correctOption }}</span></td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ path('question_edit', {'id': quiz.id, 'qid': question.id}) }}" class="btn btn-outline-primary" title="Edit Question">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form method="post" action="{{ path('question_delete', {'id': quiz.id, 'qid': question.id}) }}" style="display:inline-block" onsubmit="return confirm('Silently delete this question?');">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_question' ~ question.id) }}">
+                                        <button class="btn btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="bi bi-patch-question fs-2 d-block mb-2"></i>
+                                This quiz doesn't have any questions yet.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

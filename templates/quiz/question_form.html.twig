@@ -1,0 +1,77 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}
+    {{ mode == 'new' ? 'Add New Question' : 'Edit Question' }}
+{% endblock %}
+
+{% block body %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ path('quiz_index') }}">Quizzes</a></li>
+                <li class="breadcrumb-item"><a href="{{ path('quiz_show', {'id': quiz.id}) }}">{{ quiz.title }}</a></li>
+                <li class="breadcrumb-item active">{{ mode == 'new' ? 'New Question' : 'Edit Question' }}</li>
+            </ol>
+        </nav>
+
+        <h1 class="h3 mb-4"><i class="bi bi-question-circle"></i> {{ mode == 'new' ? 'Add New Question' : 'Edit Question' }}</h1>
+
+        {% if errors %}
+            <div class="alert alert-danger shadow-sm">
+                <ul class="mb-0">
+                    {% for error in errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h6 class="mb-0">Question for: <strong>{{ quiz.title }}</strong></h6>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="mb-4">
+                        <label for="question_text" class="form-label">Question Text</label>
+                        <textarea id="question_text" name="question_text" class="form-control" rows="3" required placeholder="Type your question here...">{{ question is defined ? question.questionText : app.request.request.get('question_text') }}</textarea>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label for="option_a" class="form-label">Option A</label>
+                            <input type="text" id="option_a" name="option_a" class="form-control" required value="{{ question is defined ? question.optionA : app.request.request.get('option_a') }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="option_b" class="form-label">Option B</label>
+                            <input type="text" id="option_b" name="option_b" class="form-control" required value="{{ question is defined ? question.optionB : app.request.request.get('option_b') }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="option_c" class="form-label">Option C</label>
+                            <input type="text" id="option_c" name="option_c" class="form-control" required value="{{ question is defined ? question.optionC : app.request.request.get('option_c') }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="correct_option" class="form-label">Correct Option</label>
+                        <select id="correct_option" name="correct_option" class="form-select" required>
+                            <option value="">Select the correct answer...</option>
+                            <option value="A" {{ (question is defined and question.correctOption == 'A') or app.request.request.get('correct_option') == 'A' ? 'selected' : '' }}>Option A</option>
+                            <option value="B" {{ (question is defined and question.correctOption == 'B') or app.request.request.get('correct_option') == 'B' ? 'selected' : '' }}>Option B</option>
+                            <option value="C" {{ (question is defined and question.correctOption == 'C') or app.request.request.get('correct_option') == 'C' ? 'selected' : '' }}>Option C</option>
+                        </select>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success d-flex align-items-center justify-content-center">
+                            <i class="bi bi-check-lg me-2"></i> {{ mode == 'new' ? 'Add Question' : 'Update Question' }}
+                        </button>
+                        <a href="{{ path('quiz_show', {'id': quiz.id}) }}" class="btn btn-light">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
