@@ -1,83 +1,158 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Quiz: {{ quiz.title }}{% endblock %}
+{% block title %}Quiz: {{ quiz.title }} | SynergyGig{% endblock %}
 
 {% block body %}
-<div class="row align-items-center mb-4">
-    <div class="col-md-8">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ path('quiz_index') }}">Quizzes</a></li>
-                <li class="breadcrumb-item active">{{ quiz.title }}</li>
-            </ol>
-        </nav>
-        <h1 class="h3"><i class="bi bi- Mortarboard"></i> {{ quiz.title }}</h1>
-        <p class="text-muted mb-0">Course: <strong>{{ quiz.course.title }}</strong> | Questions: <strong>{{ quiz.questions|length }}</strong></p>
+<div class="row g-4 mb-5">
+    <div class="col-lg-8">
+        <div class="card h-100 border-0 shadow-sm p-4 card-glass">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <span class="badge bg-soft-primary px-3 py-2 rounded-pill mb-2">
+                        {{ quiz.course ? quiz.course.title : 'Uncategorized' }}
+                    </span>
+                    <h1 class="h3 fw-bold mb-0">{{ quiz.title }}</h1>
+                </div>
+                {% if app.session.get('role') == 'ROLE_ADMIN' %}
+                <div class="d-flex gap-2">
+                    <a href="{{ path('quiz_edit', {'id': quiz.id}) }}" class="btn btn-outline-secondary btn-sm rounded-pill shadow-sm">
+                        <i class="bi bi-pencil me-1"></i> Edit Quiz
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            
+            <p class="text-muted">Explore the questions below to prepare for your assessment.</p>
+            
+            <div class="d-flex gap-4 mt-4 text-center">
+                <div class="bg-light px-4 py-3 rounded-4 border">
+                    <div class="h4 fw-bold mb-0">{{ quiz.questions|length }}</div>
+                    <small class="text-muted">Questions</small>
+                </div>
+                <div class="bg-light px-4 py-3 rounded-4 border">
+                    <div class="h4 fw-bold mb-0">15m</div>
+                    <small class="text-muted">Estimate</small>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="col-md-4 text-end">
-        <a href="{{ path('question_new', {'id': quiz.id}) }}" class="btn btn-success">
-            <i class="bi bi-plus-circle"></i> Add Question
-        </a>
-        <a href="{{ path('quiz_edit', {'id': quiz.id}) }}" class="btn btn-outline-primary ms-2">
-            <i class="bi bi-pencil"></i> Edit Quiz
-        </a>
+    
+    <div class="col-lg-4">
+        {% if app.session.get('role') == 'ROLE_ADMIN' %}
+            <div class="card h-100 text-center border-0 shadow-sm card-glass overflow-hidden position-relative">
+                <div class="p-4 d-flex flex-column justify-content-center h-100">
+                    <div class="mb-4">
+                        <i class="bi bi-plus-circle text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">Add Questions</h4>
+                    <p class="text-muted mb-4 small">Build your quiz by adding more multiple-choice questions.</p>
+                    <a href="{{ path('question_new', {'id': quiz.id}) }}" class="btn btn-primary rounded-pill w-100 py-2 shadow-sm">
+                        <i class="bi bi-plus-lg me-1"></i> Add Question
+                    </a>
+                </div>
+            </div>
+        {% else %}
+            <div class="card h-100 text-center border-0 shadow-sm card-glass">
+                <div class="p-4 d-flex flex-column justify-content-center h-100">
+                    <div class="mb-4">
+                        <i class="bi bi-mortarboard text-accent" style="font-size: 3rem;"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">Study Mode</h4>
+                    <p class="text-muted small">You are viewing this quiz as a regular user. Study the questions to master the course material.</p>
+                </div>
+            </div>
+        {% endif %}
     </div>
 </div>
 
-<div class="card border-0 shadow-sm">
-    <div class="card-header bg-white py-3">
-        <h5 class="mb-0"><i class="bi bi-list-ol"></i> Questions</h5>
+<div class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4 fw-bold mb-0"><i class="bi bi-list-task me-2 text-primary"></i> Question List</h2>
     </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th class="ps-4">#</th>
-                        <th>Question</th>
-                        <th>Options</th>
-                        <th>Answer</th>
-                        <th class="text-end pe-4">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for question in quiz.questions %}
-                        <tr>
-                            <td class="ps-4 text-muted">{{ loop.index }}</td>
-                            <td class="fw-medium">{{ question.questionText }}</td>
-                            <td>
-                                <div class="small">
-                                    <strong>A:</strong> {{ question.optionA }}<br>
-                                    <strong>B:</strong> {{ question.optionB }}<br>
-                                    <strong>C:</strong> {{ question.optionC }}
+
+    <div class="row g-4">
+        {% for question in quiz.questions %}
+            <div class="col-12">
+                <div class="card border-0 shadow-sm question-item-card position-relative overflow-hidden">
+                    <div class="p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-4">
+                            <div class="flex-grow-1">
+                                <span class="badge bg-light text-muted border px-3 py-1 rounded-pill mb-2">Question #{{ loop.index }}</span>
+                                <h4 class="h5 fw-bold text-dark-emphasis mb-0 lh-base">{{ question.questionText }}</h4>
+                            </div>
+                            {% if app.session.get('role') == 'ROLE_ADMIN' %}
+                                <div class="dropdown">
+                                    <button class="btn btn-link link-secondary no-caret p-0" data-bs-toggle="dropdown">
+                                        <i class="bi bi-three-dots-vertical fs-5"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg">
+                                        <li><a class="dropdown-item" href="{{ path('question_edit', {'id': quiz.id, 'qid': question.id}) }}"><i class="bi bi-pencil me-2"></i> Edit Question</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <form method="post" action="{{ path('question_delete', {'id': quiz.id, 'qid': question.id}) }}" onsubmit="return confirm('Remove question #{{ loop.index }}?');">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('delete_question' ~ question.id) }}">
+                                                <button type="submit" class="dropdown-item text-danger border-0 bg-transparent">
+                                                    <i class="bi bi-trash me-2"></i> Delete Question
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
                                 </div>
-                            </td>
-                            <td><span class="badge bg-success">Option{{ question.correctOption }}</span></td>
-                            <td class="text-end pe-4">
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{{ path('question_edit', {'id': quiz.id, 'qid': question.id}) }}" class="btn btn-outline-primary" title="Edit Question">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <form method="post" action="{{ path('question_delete', {'id': quiz.id, 'qid': question.id}) }}" style="display:inline-block" onsubmit="return confirm('Silently delete this question?');">
-                                        <input type="hidden" name="_token" value="{{ csrf_token('delete_question' ~ question.id) }}">
-                                        <button class="btn btn-outline-danger">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
+                            {% endif %}
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="p-3 border rounded-3 h-100 option-box {{ question.correctOption == 'A' ? 'option-correct' : 'bg-light' }}">
+                                    <span class="small text-muted d-block mb-1">Option A</span>
+                                    <div class="fw-medium">{{ question.optionA }}</div>
+                                    {% if question.correctOption == 'A' %}
+                                        <i class="bi bi-check-circle-fill correct-check"></i>
+                                    {% endif %}
                                 </div>
-                            </td>
-                        </tr>
-                    {% else %}
-                        <tr>
-                            <td colspan="5" class="text-center py-5 text-muted">
-                                <i class="bi bi-patch-question fs-2 d-block mb-2"></i>
-                                This quiz doesn't have any questions yet.
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 border rounded-3 h-100 option-box {{ question.correctOption == 'B' ? 'option-correct' : 'bg-light' }}">
+                                    <span class="small text-muted d-block mb-1">Option B</span>
+                                    <div class="fw-medium">{{ question.optionB }}</div>
+                                    {% if question.correctOption == 'B' %}
+                                        <i class="bi bi-check-circle-fill correct-check"></i>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 border rounded-3 h-100 option-box {{ question.correctOption == 'C' ? 'option-correct' : 'bg-light' }}">
+                                    <span class="small text-muted d-block mb-1">Option C</span>
+                                    <div class="fw-medium">{{ question.optionC }}</div>
+                                    {% if question.correctOption == 'C' %}
+                                        <i class="bi bi-check-circle-fill correct-check"></i>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="col-12 py-5 text-center bg-white rounded-4 shadow-sm">
+                <p class="text-muted">This quiz doesn't have any questions yet.</p>
+            </div>
+        {% endfor %}
     </div>
 </div>
+
+<style>
+    .card-glass { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); }
+    .bg-soft-primary { background: #e0e7ff; color: #4338ca; }
+    .question-item-card { 
+        border-radius: 18px; 
+        transition: transform 0.2s;
+        border-left: 4px solid transparent;
+    }
+    .question-item-card:hover { transform: scale(1.005); border-left-color: var(--primary); }
+    .option-box { position: relative; transition: all 0.3s; }
+    .option-correct { background: #f0fdf4 !important; border-color: #86efac !important; color: #166534; }
+    .correct-check { position: absolute; top: 10px; right: 10px; color: #10b981; font-size: 1.2rem; }
+    .no-caret::after { display: none; }
+</style>
 {% endblock %}

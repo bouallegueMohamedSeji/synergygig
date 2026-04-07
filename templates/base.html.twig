@@ -2,21 +2,111 @@
 <html>
     <head>
         <meta charset="UTF-8">
-        <title>{% block title %}SynergyGig - Quizzes{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>🎓</text></svg>">
-        <!-- Bootstrap 5 CDN -->
+        <title>{% block title %}SynergyGig | Premium Quiz Platform{% endblock %}</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚡</text></svg>">
+        
+        <!-- Fonts & Icons -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
         {% block stylesheets %}
         <style>
-            body { background-color: #f8f9fa; font-family: 'Inter', sans-serif; }
-            .navbar { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-            .navbar-brand, .nav-link { color: white !important; font-weight: 500; }
-            .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-            .btn-primary { background: #764ba2; border: none; }
-            .btn-primary:hover { background: #667eea; }
-            .badge-course { background-color: #e9ecef; color: #495057; border: 1px solid #dee2e6; }
+            :root {
+                --primary: #6366f1;
+                --primary-dark: #4f46e5;
+                --secondary: #ec4899;
+                --accent: #8b5cf6;
+                --bg-body: #f8fafc;
+                --glass: rgba(255, 255, 255, 0.7);
+                --glass-border: rgba(255, 255, 255, 0.3);
+            }
+
+            body { 
+                background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+                font-family: 'Outfit', sans-serif;
+                color: #1e293b;
+                min-height: 100vh;
+            }
+
+            /* Glassmorphism Navbar */
+            .navbar {
+                background: var(--glass) !important;
+                backdrop-filter: blur(12px);
+                border-bottom: 1px solid var(--glass-border);
+                box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+                padding: 1rem 0;
+            }
+
+            .navbar-brand {
+                font-weight: 700;
+                font-size: 1.5rem;
+                background: linear-gradient(to right, var(--primary), var(--accent));
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }
+
+            .nav-link {
+                color: #475569 !important;
+                font-weight: 500;
+                transition: transform 0.2s;
+            }
+
+            .nav-link:hover {
+                color: var(--primary) !important;
+                transform: translateY(-1px);
+            }
+
+            /* Premium Buttons */
+            .btn {
+                border-radius: 10px;
+                padding: 0.6rem 1.2rem;
+                font-weight: 500;
+                transition: all 0.3s ease;
+            }
+
+            .btn-primary {
+                background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+                border: none;
+                box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            }
+
+            .btn-primary:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 15px rgba(99, 102, 241, 0.4);
+                background: linear-gradient(135deg, var(--accent) 0%, var(--primary) 100%);
+            }
+
+            /* Animations */
+            .fade-in {
+                animation: fadeIn 0.5s ease-out;
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
+            .alert {
+                border: none;
+                border-radius: 12px;
+                backdrop-filter: blur(8px);
+                background: rgba(255, 255, 255, 0.8);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            }
+
+            .role-badge {
+                padding: 0.4em 0.8em;
+                border-radius: 20px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .badge-admin { background: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; }
+            .badge-user { background: #dcfce7; color: #10b981; border: 1px solid #86efac; }
         </style>
         {% endblock %}
 
@@ -24,36 +114,68 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
         {% endblock %}
     </head>
-    <body>
-        <nav class="navbar navbar-expand-lg mb-4">
+    <body class="fade-in">
+        <nav class="navbar navbar-expand-lg sticky-top mb-5">
             <div class="container">
                 <a class="navbar-brand" href="{{ path('quiz_index') }}">
-                    <i class="bi bi-mortarboard-fill"></i> SynergyGig
+                    <i class="bi bi-lightning-charge-fill"></i> SynergyGig
                 </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#authNav">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="collapse navbar-collapse" id="navbarNav">
+
+                <div class="collapse navbar-collapse" id="authNav">
                     <ul class="navbar-nav me-auto">
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ path('quiz_index') }}">Quizz Management</a>
+                            <a class="nav-link" href="{{ path('quiz_index') }}">
+                                <i class="bi bi-grid-fill me-1"></i> Quizzes
+                            </a>
                         </li>
                     </ul>
+
+                    <div class="d-flex align-items-center gap-2">
+                        {% if app.session.get('role') %}
+                            <div class="me-3">
+                                <span class="text-muted small me-1">Logged as:</span>
+                                <span class="role-badge {{ app.session.get('role') == 'ROLE_ADMIN' ? 'badge-admin' : 'badge-user' }}">
+                                    {{ app.session.get('role') == 'ROLE_ADMIN' ? 'Admin' : 'User' }}
+                                </span>
+                            </div>
+                            <a href="{{ path('app_logout') }}" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-box-arrow-right"></i> Logout
+                            </a>
+                        {% else %}
+                            <a href="{{ path('login_user') }}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-person-fill"></i> Login as User
+                            </a>
+                            <a href="{{ path('login_admin') }}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-shield-lock-fill"></i> Login as Admin
+                            </a>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </nav>
 
-        <div class="container">
+        <div class="container pb-5">
             {% for label, messages in app.flashes %}
                 {% for message in messages %}
-                    <div class="alert alert-{{ label == 'success' ? 'success' : 'danger' }} alert-dismissible fade show" role="alert">
+                    <div class="alert alert-{{ label == 'success' ? 'success' : (label == 'error' ? 'danger' : 'info') }} alert-dismissible fade show" role="alert">
+                        <i class="bi {{ label == 'success' ? 'bi-check-circle-fill' : 'bi-info-circle-fill' }} me-2"></i>
                         {{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
             {% endfor %}
 
-            {% block body %}{% endblock %}
+            <main>
+                {% block body %}{% endblock %}
+            </main>
         </div>
+
+        <footer class="mt-auto py-4 text-center text-muted border-top bg-white">
+            <small>&copy; {{ "now"|date("Y") }} SynergyGig Platform. Crafted with ❤️ for your learning.</small>
+        </footer>
     </body>
 </html>

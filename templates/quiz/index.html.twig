@@ -1,99 +1,110 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Quiz Management{% endblock %}
+{% block title %}Explore Quizzes | SynergyGig{% endblock %}
 
 {% block body %}
-<div class="row mb-4 align-items-center">
-    <div class="col-md-6">
-        <h1 class="h3"><i class="bi bi-list-check"></i> List of Quizzes</h1>
+<div class="row align-items-center mb-5">
+    <div class="col-lg-6">
+        <h1 class="display-5 fw-bold mb-2">Elevate Your Knowledge</h1>
+        <p class="text-muted">Browse our collection of curated quizzes or create your own if you're an admin.</p>
     </div>
-    <div class="col-md-6 text-end">
-        <a href="{{ path('quiz_new') }}" class="btn btn-primary">
-            <i class="bi bi-plus-circle"></i> Create New Quiz
-        </a>
+    <div class="col-lg-6 text-lg-end">
+        {% if app.session.get('role') == 'ROLE_ADMIN' %}
+            <a href="{{ path('quiz_new') }}" class="btn btn-primary btn-lg shadow-sm">
+                <i class="bi bi-plus-circle me-1"></i> Create New Quiz
+            </a>
+        {% endif %}
     </div>
 </div>
 
-<div class="card mb-4">
-    <div class="card-body">
-        <form method="get" class="row g-3">
-            <div class="col-md-5">
-                <div class="input-group">
-                    <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                    <input type="text" name="search" class="form-control" placeholder="Search by title..." value="{{ search }}">
+<!-- Search & Filter Bar -->
+<div class="card p-4 mb-5 border-0 shadow-sm" style="background: rgba(255,255,255,0.6); backdrop-filter: blur(10px);">
+    <form method="get" class="row g-3">
+        <div class="col-md-5">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Search by quiz title..." value="{{ search }}">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <select name="course" class="form-select border-0 shadow-none bg-white">
+                <option value="">All Courses</option>
+                {% for course in courses %}
+                    <option value="{{ course.id }}" {{ currentCourse == course.id ? 'selected' : '' }}>{{ course.title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+        </div>
+    </form>
+</div>
+
+<!-- Quiz Grid -->
+<div class="row g-4">
+    {% for quiz in quizzes %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm quiz-card overflow-hidden">
+                <div class="p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <span class="badge bg-soft-primary text-primary px-3 py-2 rounded-pill small">
+                            {{ quiz.course ? quiz.course.title : 'Uncategorized' }}
+                        </span>
+                        <div class="text-muted small">
+                            <i class="bi bi-question-circle me-1"></i> {{ quiz.questions|length }} Qs
+                        </div>
+                    </div>
+                    
+                    <h3 class="h5 fw-bold mb-3">{{ quiz.title }}</h3>
+                    
+                    <div class="d-flex gap-2 mt-4">
+                        <a href="{{ path('quiz_show', {'id': quiz.id}) }}" class="btn btn-light flex-grow-1 border">
+                            View Details
+                        </a>
+                        
+                        {% if app.session.get('role') == 'ROLE_ADMIN' %}
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle no-caret" type="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-three-dots-vertical"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                    <li><a class="dropdown-item" href="{{ path('quiz_edit', {'id': quiz.id}) }}"><i class="bi bi-pencil me-2"></i> Edit</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form method="post" action="{{ path('quiz_delete', {'id': quiz.id}) }}" onsubmit="return confirm('Permanently delete this quiz?');">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ quiz.id) }}">
+                                            <button type="submit" class="dropdown-item text-danger border-0 bg-transparent">
+                                                <i class="bi bi-trash me-2"></i> Delete
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
-            <div class="col-md-5">
-                <select name="course" class="form-select">
-                    <option value="">All Courses</option>
-                    {% for course in courses %}
-                        <option value="{{ course.id }}" {{ currentCourse == course.id ? 'selected' : '' }}>{{ course.title }}</option>
-                    {% endfor %}
-                </select>
+        </div>
+    {% else %}
+        <div class="col-12 text-center py-5">
+            <div class="mb-3">
+                <i class="bi bi-inbox text-muted opacity-25" style="font-size: 5rem;"></i>
             </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-secondary w-100">Filter</button>
-            </div>
-        </form>
-    </div>
+            <h4 class="text-muted">No quizzes found.</h4>
+            <p class="text-muted small">Try refining your search or filter.</p>
+        </div>
+    {% endfor %}
 </div>
 
-<div class="card">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th class="ps-4">ID</th>
-                        <th>Title</th>
-                        <th>Course</th>
-                        <th>Questions</th>
-                        <th class="text-end pe-4">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for quiz in quizzes %}
-                        <tr>
-                            <td class="ps-4">#{{ quiz.id }}</td>
-                            <td class="fw-bold">{{ quiz.title }}</td>
-                            <td>
-                                <span class="badge badge-course text-dark">
-                                    <i class="bi bi-book"></i> {{ quiz.course.title }}
-                                </span>
-                            </td>
-                            <td>
-                                <span class="badge bg-info text-dark rounded-pill">
-                                    {{ quiz.questions|length }} questions
-                                </span>
-                            </td>
-                            <td class="text-end pe-4">
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{{ path('quiz_show', {'id': quiz.id}) }}" class="btn btn-outline-dark" title="View Details">
-                                        <i class="bi bi-eye"></i>
-                                    </a>
-                                    <a href="{{ path('quiz_edit', {'id': quiz.id}) }}" class="btn btn-outline-primary" title="Edit">
-                                        <i class="bi bi-pencil"></i>
-                                    </a>
-                                    <form method="post" action="{{ path('quiz_delete', {'id': quiz.id}) }}" style="display:inline-block" onsubmit="return confirm('Are you sure you want to delete this quiz?');">
-                                        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ quiz.id) }}">
-                                        <button class="btn btn-outline-danger" title="Delete">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    {% else %}
-                        <tr>
-                            <td colspan="5" class="text-center py-5 text-muted">
-                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                                No quizzes found.
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+<style>
+    .bg-soft-primary { background: #e0e7ff; color: #4338ca; }
+    .quiz-card {
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .quiz-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08) !important;
+    }
+    .no-caret::after { display: none; }
+</style>
 {% endblock %}

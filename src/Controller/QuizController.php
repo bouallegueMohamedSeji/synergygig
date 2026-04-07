@@ -39,6 +39,11 @@ class QuizController extends AbstractController
         $courses = $courseRepository->findAllOrderedByTitle();
         $errors = [];
 
+        if ($request->getSession()->get('role') !== 'ROLE_ADMIN') {
+            $this->addFlash('error', 'Access Denied: You must be an Admin to create quizzes.');
+            return $this->redirectToRoute('quiz_index');
+        }
+
         if ($request->isMethod('POST')) {
             $title = $request->request->get('title');
             $courseId = $request->request->get('course');
@@ -86,6 +91,11 @@ class QuizController extends AbstractController
         $courses = $courseRepository->findAllOrderedByTitle();
         $errors = [];
 
+        if ($request->getSession()->get('role') !== 'ROLE_ADMIN') {
+            $this->addFlash('error', 'Access Denied: Only Admins can edit quizzes.');
+            return $this->redirectToRoute('quiz_index');
+        }
+
         if ($request->isMethod('POST')) {
             $title = $request->request->get('title');
             $courseId = $request->request->get('course');
@@ -119,6 +129,11 @@ class QuizController extends AbstractController
     #[Route('/{id}/delete', name: 'quiz_delete', methods: ['POST'])]
     public function delete(Request $request, Quiz $quiz, EntityManagerInterface $entityManager): Response
     {
+        if ($request->getSession()->get('role') !== 'ROLE_ADMIN') {
+            $this->addFlash('error', 'Access Denied.');
+            return $this->redirectToRoute('quiz_index');
+        }
+
         if ($this->isCsrfTokenValid('delete'.$quiz->getId(), $request->request->get('_token'))) {
             $entityManager->remove($quiz);
             $entityManager->flush();
@@ -134,6 +149,11 @@ class QuizController extends AbstractController
     public function questionNew(Request $request, Quiz $quiz, EntityManagerInterface $entityManager): Response
     {
         $errors = [];
+
+        if ($request->getSession()->get('role') !== 'ROLE_ADMIN') {
+            $this->addFlash('error', 'Access Denied.');
+            return $this->redirectToRoute('quiz_index');
+        }
 
         if ($request->isMethod('POST')) {
             $text = $request->request->get('question_text');
@@ -178,6 +198,11 @@ class QuizController extends AbstractController
 
         $errors = [];
 
+        if ($request->getSession()->get('role') !== 'ROLE_ADMIN') {
+            $this->addFlash('error', 'Access Denied.');
+            return $this->redirectToRoute('quiz_index');
+        }
+
         if ($request->isMethod('POST')) {
             $text = $request->request->get('question_text');
             $optA = $request->request->get('option_a');
@@ -213,6 +238,11 @@ class QuizController extends AbstractController
     #[Route('/{id}/question/{qid}/delete', name: 'question_delete', methods: ['POST'])]
     public function questionDelete(Request $request, Quiz $quiz, int $qid, QuestionRepository $questionRepository, EntityManagerInterface $entityManager): Response
     {
+        if ($request->getSession()->get('role') !== 'ROLE_ADMIN') {
+            $this->addFlash('error', 'Access Denied.');
+            return $this->redirectToRoute('quiz_index');
+        }
+
         $question = $questionRepository->find($qid);
         if ($question && $this->isCsrfTokenValid('delete_question'.$question->getId(), $request->request->get('_token'))) {
             $entityManager->remove($question);
