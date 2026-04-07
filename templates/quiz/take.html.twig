@@ -1,0 +1,133 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Exam: {{ quiz.title }} | SynergyGig{% endblock %}
+
+{% block body %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <!-- Progress Header -->
+        <div class="card border-0 shadow-sm mb-5 sticky-top glass-card p-3" style="top: 80px; z-index: 1000;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-bold text-primary">Exam Progress</span>
+                <span id="progress-text" class="small text-muted">0 / {{ quiz.questions|length }} answered</span>
+            </div>
+            <div class="progress" style="height: 10px; border-radius: 5px;">
+                <div id="progress-bar" class="progress-bar bg-primary" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+
+        <form method="post" action="{{ path('quiz_submit', {'id': quiz.id}) }}" id="quiz-form">
+            <h1 class="h2 fw-bold mb-4 text-center">{{ quiz.title }}</h1>
+            <p class="text-center text-muted mb-5">Please read each question carefully and select the best answer. Good luck!</p>
+
+            <div class="row g-5">
+                {% for question in quiz.questions %}
+                    <div class="col-12 fade-in shadow-sm">
+                        <div class="card border-0 p-4 rounded-4 shadow-sm question-card" data-question-id="{{ question.id }}">
+                            <div class="mb-3">
+                                <span class="badge bg-soft-primary px-3 py-1 rounded-pill small mb-3">#{{ loop.index }}</span>
+                                <h4 class="h5 fw-bold text-dark-emphasis mb-0 lh-base">{{ question.questionText }}</h4>
+                            </div>
+
+                            <div class="options-group d-grid gap-3 mt-4">
+                                {% for label, text in {'A': question.optionA, 'B': question.optionB, 'C': question.optionC} %}
+                                    <div class="option-item">
+                                        <input type="radio" class="btn-check" name="answers[{{ question.id }}]" 
+                                               id="q{{ question.id }}-{{ label }}" value="{{ label }}" 
+                                               data-question-id="{{ question.id }}">
+                                        <label class="btn btn-outline-light text-dark text-start w-100 p-3 rounded-3 border-2 d-flex align-items-center" for="q{{ question.id }}-{{ label }}">
+                                            <span class="option-label me-3">{{ label }}</span>
+                                            <span class="option-text fw-medium">{{ text }}</span>
+                                        </label>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="text-center mt-5 mb-5 pt-4">
+                <button type="submit" class="btn btn-primary btn-lg px-5 py-3 fw-bold rounded-pill shadow">
+                    <i class="bi bi-send-check me-2"></i> Submit My Answers
+                </button>
+                <div class="mt-3">
+                    <a href="{{ path('quiz_show', {'id': quiz.id}) }}" class="text-muted small text-decoration-none">
+                        <i class="bi bi-x-circle me-1"></i> Cancel and return
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .glass-card { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.4); border-radius: 20px; }
+    .question-card { transition: all 0.3s ease; border: 2px solid transparent; }
+    .question-card:hover { transform: scale(1.01); }
+    .question-card.answered { border-color: rgba(99, 102, 241, 0.2); background-color: #f8fafc; }
+    
+    .btn-outline-light { background: #f8fafc; border-color: #e2e8f0; }
+    .btn-outline-light:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    
+    .btn-check:checked + .btn-outline-light { 
+        background: #eef2ff; 
+        border-color: var(--primary) !important; 
+        color: var(--primary) !important;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+    }
+    
+    .option-label {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+    
+    .btn-check:checked + .btn-outline-light .option-label {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .bg-soft-primary { background: #e0e7ff; color: #4338ca; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('quiz-form');
+    const radios = form.querySelectorAll('.btn-check');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const totalQuestions = {{ quiz.questions|length }};
+    
+    function updateProgress() {
+        const answeredQuestions = new Set();
+        radios.forEach(radio => {
+            if (radio.checked) {
+                answeredQuestions.add(radio.dataset.questionId);
+                // Highlight the card
+                radio.closest('.question-card').classList.add('answered');
+            }
+        });
+        
+        const count = answeredQuestions.size;
+        const percent = (count / totalQuestions) * 100;
+        
+        progressBar.style.width = percent + '%';
+        progressBar.setAttribute('aria-valuenow', percent);
+        progressText.innerText = count + ' / ' + totalQuestions + ' answered';
+    }
+    
+    radios.forEach(radio => {
+        radio.addEventListener('change', updateProgress);
+    });
+});
+</script>
+{% endblock %}

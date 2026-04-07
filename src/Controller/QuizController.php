@@ -78,10 +78,12 @@ class QuizController extends AbstractController
     }
 
     #[Route('/{id}', name: 'quiz_show', methods: ['GET'])]
-    public function show(Quiz $quiz): Response
+    public function show(Quiz $quiz, Request $request): Response
     {
+        $isAdmin = $request->getSession()->get('role') === 'ROLE_ADMIN';
         return $this->render('quiz/show.html.twig', [
             'quiz' => $quiz,
+            'isAdmin' => $isAdmin
         ]);
     }
 
@@ -251,5 +253,86 @@ class QuizController extends AbstractController
         }
 
         return $this->redirectToRoute('quiz_show', ['id' => $quiz->getId()]);
+    }
+
+    // --- Quiz Taking & Certification ---
+
+    #[Route('/{id}/take', name: 'quiz_take', methods: ['GET'])]
+    public function take(Quiz $quiz, Request $request): Response
+    {
+        if (!$request->getSession()->get('role')) {
+            $this->addFlash('error', 'Please login to take the quiz.');
+            return $this->redirectToRoute('quiz_index');
+        }
+
+        return $this->render('quiz/take.html.twig', [
+            'quiz' => $quiz,
+        ]);
+    }
+
+    #[Route('/{id}/submit', name: 'quiz_submit', methods: ['POST'])]
+    public function submit(Request $request, Quiz $quiz, EntityManagerInterface $entityManager): Response
+    {
+        $userId = $request->getSession()->get('user_id');
+        if (!$userId) {
+            $this->addFlash('error', 'Authentication error.');
+            return $this->redirectToRoute('quiz_index');
+        }
+
+        $answers = $request->request->all('answers');
+        $questions = $quiz->getQuestions();
+        $total = count($questions);
+        $correctCount = 0;
+
+        if ($total === 0) {
+            $this->addFlash('error', 'This quiz has no questions.');
+            return $this->redirectToRoute('quiz_show', ['id' => $quiz->getId()]);
+        }
+
+        foreach ($questions as $q) {
+            $submitted = $answers[$q->getId()] ?? null;
+            if ($submitted === $q->getCorrectOption()) {
+                $correctCount++;
+            }
+        }
+
+        $score = round(($correctCount / $total) * 100);
+        $passed = $score >= 70;
+
+        // Save Attempt (Raw SQL for simplicity)
+        $conn = $entityManager->getConnection();
+        $conn->executeStatement(
+            'INSERT INTO quiz_attempts (quiz_id, user_id, score, attempt_at) VALUES (?, ?, ?, NOW())',
+            [$quiz->getId(), $userId, $score]
+        );
+
+        // Award Skill if Passed
+        if ($passed && $quiz->getCourse() && $quiz->getCourse()->getSkillId()) {
+            $skillId = $quiz->getCourse()->getSkillId();
+            $level = $quiz->getCourse()->getSkillLevel() ?: 'Beginner';
+            
+            // Check if skill already exists
+            $existing = $conn->fetchOne('SELECT 1 FROM user_skills WHERE user_id = ? AND skill_id = ?', [$userId, $skillId]);
+            
+            if ($existing) {
+                $conn->executeStatement(
+                    'UPDATE user_skills SET skill_level = ? WHERE user_id = ? AND skill_id = ?',
+                    [$level, $userId, $skillId]
+                );
+            } else {
+                $conn->executeStatement(
+                    'INSERT INTO user_skills (user_id, skill_id, skill_level) VALUES (?, ?, ?)',
+                    [$userId, $skillId, $level]
+                );
+            }
+        }
+
+        return $this->render('quiz/result.html.twig', [
+            'quiz' => $quiz,
+            'score' => $score,
+            'passed' => $passed,
+            'correct' => $correctCount,
+            'total' => $total
+        ]);
     }
 }

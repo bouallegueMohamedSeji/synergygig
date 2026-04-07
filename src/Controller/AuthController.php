@@ -14,6 +14,7 @@ class AuthController extends AbstractController
     {
         $session = $request->getSession();
         $session->set('role', 'ROLE_ADMIN');
+        $session->set('user_id', 1);
         $session->set('username', 'Master Admin');
         
         $this->addFlash('success', 'Logged in as Admin (Full Control)');
@@ -25,6 +26,7 @@ class AuthController extends AbstractController
     {
         $session = $request->getSession();
         $session->set('role', 'ROLE_USER');
+        $session->set('user_id', 4); // "gig@gmail.com" in your DB
         $session->set('username', 'Standard User');
         
         $this->addFlash('success', 'Logged in as User (Read Only)');
@@ -36,6 +38,7 @@ class AuthController extends AbstractController
     {
         $session = $request->getSession();
         $session->remove('role');
+        $session->remove('user_id');
         $session->remove('username');
         
         $this->addFlash('info', 'Logged out successfully.');
