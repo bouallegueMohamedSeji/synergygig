@@ -1,0 +1,9 @@
+parameters:
+    level: 5
+    paths:
+        - src
+    excludePaths:
+        - src/Kernel.php
+    ignoreErrors:
+        # Suppress Symfony magic that PHPStan can't infer
+        - '#Call to an undefined method Symfony\\Component\\Security\\Core\\User\\UserInterface::#'

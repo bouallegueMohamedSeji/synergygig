@@ -1,0 +1,59 @@
+# Symfony .gitignore
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# PHP
+vendor/
+composer.lock
+php_errors.log
+
+# Symfony
+var/cache/
+var/log/
+var/sessions/
+public/uploads/
+
+# Build artifacts
+npm_modules/
+node_modules/
+dist/
+build/
+
+# Test coverage
+coverage/
+.phpunit.result.cache
+code-coverage-report/
+
+# Docker
+docker-compose.override.yml
+.docker-sync/
+
+# Node modules
+package-lock.json
+yarn.lock
+
+# Misc
+.env.test
+.env.test.local
+.phpcs.xml
+.phpstan.neon.dist
+
+# Uploads
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Generated files
+*.log
+*.tmp
+temp/

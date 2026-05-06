@@ -1,0 +1,16 @@
+#!/usr/bin/env php
+<?php
+
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Component\Console\Input\ArgvInput;
+
+if (!is_file(dirname(__DIR__).'/vendor/autoload_runtime.php')) {
+    throw new RuntimeException('Symfony Runtime is not installed. Run "composer install".');
+}
+
+require dirname(__DIR__).'/vendor/autoload_runtime.php';
+
+return function (array $context) {
+    $kernel = new \App\Kernel($context['APP_ENV'], (bool) $context['APP_DEBUG']);
+    return new Application($kernel);
+};

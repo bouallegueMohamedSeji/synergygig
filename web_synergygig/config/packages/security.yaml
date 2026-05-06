@@ -1,0 +1,65 @@
+security:
+    password_hashers:
+        App\Entity\User:
+            algorithm: bcrypt
+            cost: 12
+
+    role_hierarchy:
+        ROLE_ADMIN: [ROLE_HR, ROLE_PROJECT_OWNER, ROLE_EMPLOYEE, ROLE_GIG_WORKER, ROLE_USER]
+        ROLE_HR: [ROLE_EMPLOYEE, ROLE_USER]
+        ROLE_PROJECT_OWNER: [ROLE_USER]
+        ROLE_EMPLOYEE: [ROLE_USER]
+        ROLE_GIG_WORKER: [ROLE_USER]
+
+    providers:
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
+
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+
+        api:
+            pattern: ^/api
+            stateless: true
+            jwt: ~
+
+        main:
+            lazy: true
+            provider: app_user_provider
+            user_checker: App\Security\UserChecker
+            entry_point: form_login
+            custom_authenticators:
+                - App\Security\GoogleAuthenticator
+                - App\Security\GithubAuthenticator
+            form_login:
+                login_path: app_login
+                check_path: app_login
+                default_target_path: app_dashboard
+                enable_csrf: true
+            logout:
+                path: app_logout
+                target: app_landing
+
+    access_control:
+        - { path: ^/admin, roles: ROLE_ADMIN }
+        - { path: ^/login, roles: PUBLIC_ACCESS }
+        - { path: ^/signup, roles: PUBLIC_ACCESS }
+        - { path: ^/connect, roles: PUBLIC_ACCESS }
+        - { path: ^/check-email, roles: PUBLIC_ACCESS }
+        - { path: ^/verify-email, roles: PUBLIC_ACCESS }
+        - { path: ^/resend-verification, roles: PUBLIC_ACCESS }
+        - { path: ^/forgot-password, roles: PUBLIC_ACCESS }
+        - { path: ^/verify-otp, roles: PUBLIC_ACCESS }
+        - { path: ^/reset-password, roles: PUBLIC_ACCESS }
+        - { path: ^/$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth, roles: PUBLIC_ACCESS }
+        - { path: ^/api/password, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/health, roles: PUBLIC_ACCESS }
+        - { path: ^/contracts/verify, roles: PUBLIC_ACCESS }
+        - { path: ^/face, roles: IS_AUTHENTICATED_FULLY }
+        - { path: ^/, roles: IS_AUTHENTICATED_FULLY }

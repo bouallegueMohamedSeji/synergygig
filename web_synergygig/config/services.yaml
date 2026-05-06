@@ -1,0 +1,47 @@
+parameters:
+    n8n_base_url: '%env(default:n8n_default:N8N_BASE_URL)%'
+    n8n_default: 'http://localhost:5678'
+    n8n_webhook_secret_default: 'synergygig-webhook-secret'
+    exchange_rate_api_key_default: ''
+    hunter_api_key_default: ''
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    App\Service\N8nWebhookService:
+        arguments:
+            $n8nBaseUrl: '%n8n_base_url%'
+            $webhookSecret: '%env(default:n8n_webhook_secret_default:N8N_WEBHOOK_SECRET)%'
+
+    App\Service\AIService:
+        arguments:
+            $zaiApiKey: '%env(default::ZAI_API_KEY)%'
+            $zaiApiKeyBackup: '%env(default::ZAI_API_KEY_BACKUP)%'
+            $groqApiKey: '%env(default::GROQ_API_KEY)%'
+            $openrouterApiKey: '%env(default::OPENROUTER_API_KEY)%'
+            $opencodeApiKey: '%env(default::OPENCODE_API_KEY)%'
+
+    App\EventListener\LastSeenListener:
+        tags:
+            - { name: kernel.event_listener, event: kernel.request, priority: -10 }
+
+    App\Service\ExchangeRateService:
+        arguments:
+            $exchangeRateApiKey: '%env(default:exchange_rate_api_key_default:EXCHANGE_RATE_API_KEY)%'
+
+    App\Service\HunterService:
+        arguments:
+            $hunterApiKey: '%env(default:hunter_api_key_default:HUNTER_API_KEY)%'
+
+    App\Service\GitHubService:
+        arguments:
+            $token: '%env(default::GITHUB_TOKEN)%'
