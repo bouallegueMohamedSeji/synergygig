@@ -1,0 +1,33 @@
+<?php
+
+namespace App\Repository;
+
+use App\Entity\Message;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\Persistence\ManagerRegistry;
+
+class MessageRepository extends ServiceEntityRepository {
+    public function __construct(ManagerRegistry $registry) {
+        parent::__construct($registry, Message::class);
+    }
+
+    public function save(Message $entity, bool $flush = false): void {
+        $this->getEntityManager()->persist($entity);
+
+        if ($flush) {
+            $this->getEntityManager()->flush();
+        }
+    }
+
+    public function findByChatRoom(int $chatRoomId, int $limit = 50, int $offset = 0): array {
+        return $this->createQueryBuilder('m')
+            ->where('m.chatRoom = :id')
+            ->andWhere('m.isDeleted = false')
+            ->setParameter('id', $chatRoomId)
+            ->orderBy('m.createdAt', 'DESC')
+            ->setMaxResults($limit)
+            ->setFirstResult($offset)
+            ->getQuery()
+            ->getResult();
+    }
+}
