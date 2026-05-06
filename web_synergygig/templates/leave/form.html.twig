@@ -1,0 +1,60 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}{{ is_edit ? 'Edit Leave' : 'New Leave Request' }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:640px">
+    <div class="card-header"><h3>{{ is_edit ? 'Edit Request' : 'Submit Leave Request' }}</h3></div>
+    <div class="card-body">
+        {{ form_start(form, {'attr': {'novalidate': 'novalidate', 'enctype': 'multipart/form-data'}}) }}
+            <div class="form-group">
+                {{ form_label(form.user) }}
+                {{ form_widget(form.user) }}
+                {{ form_errors(form.user) }}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.type) }}
+                {{ form_widget(form.type) }}
+                {{ form_errors(form.type) }}
+            </div>
+            <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                <div class="form-group">
+                    {{ form_label(form.start_date) }}
+                    {{ form_widget(form.start_date) }}
+                    {{ form_errors(form.start_date) }}
+                </div>
+                <div class="form-group">
+                    {{ form_label(form.end_date) }}
+                    {{ form_widget(form.end_date) }}
+                    {{ form_errors(form.end_date) }}
+                </div>
+            </div>
+            <div class="form-group">
+                {{ form_label(form.reason) }}
+                {{ form_widget(form.reason) }}
+                {{ form_errors(form.reason) }}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.attachmentFile) }}
+                {{ form_widget(form.attachmentFile) }}
+                {{ form_errors(form.attachmentFile) }}
+                <div class="text-muted" style="font-size:.75rem;margin-top:.25rem">Optional: attach a doctor's note, certificate, or supporting document (PDF, JPG, PNG — max 5 MB).</div>
+                {% if is_edit and leave is defined and leave.attachment %}
+                <div style="margin-top:.5rem;font-size:.8rem">
+                    Current: <a href="/uploads/leaves/{{ leave.attachment }}" target="_blank" style="color:var(--accent-primary)">📎 View existing attachment</a>
+                </div>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.status) }}
+                {{ form_widget(form.status) }}
+                {{ form_errors(form.status) }}
+            </div>
+            <div class="form-actions" style="display:flex;gap:0.75rem;margin-top:1.5rem">
+                <a href="{{ path('app_leave_index') }}" class="btn btn-ghost">Cancel</a>
+                <button type="submit" class="btn btn-primary">{{ is_edit ? 'Update' : 'Submit' }}</button>
+            </div>
+        {{ form_end(form) }}
+    </div>
+</div>
+{% endblock %}

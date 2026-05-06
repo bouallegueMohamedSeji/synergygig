@@ -1,0 +1,72 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}{{ payroll is defined and payroll.id ? 'Edit Payroll' : 'Generate Payroll' }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:800px">
+    <div class="card__header">
+        <h3>{{ payroll is defined and payroll.id ? 'Edit Payroll' : 'Generate Payroll' }}</h3>
+    </div>
+    <div class="card__body">
+        {{ form_start(form, {'attr': {'class': 'form', 'novalidate': 'novalidate'}}) }}
+
+        <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="form-group" style="grid-column:1/-1">
+                {{ form_label(form.user) }}
+                {{ form_widget(form.user, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.user) }}
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.month) }}
+                {{ form_widget(form.month, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.month) }}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.year) }}
+                {{ form_widget(form.year, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.year) }}
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.base_salary) }}
+                {{ form_widget(form.base_salary, {'attr': {'class': 'form-control', 'step': '0.01'}}) }}
+                {{ form_errors(form.base_salary) }}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.bonus) }}
+                {{ form_widget(form.bonus, {'attr': {'class': 'form-control', 'step': '0.01'}}) }}
+                {{ form_errors(form.bonus) }}
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.deductions) }}
+                {{ form_widget(form.deductions, {'attr': {'class': 'form-control', 'step': '0.01'}}) }}
+                {{ form_errors(form.deductions) }}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.net_salary) }}
+                {{ form_widget(form.net_salary, {'attr': {'class': 'form-control', 'step': '0.01'}}) }}
+                {{ form_errors(form.net_salary) }}
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.total_hours_worked) }}
+                {{ form_widget(form.total_hours_worked, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.total_hours_worked) }}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.status) }}
+                {{ form_widget(form.status, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.status) }}
+            </div>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;margin-top:1.5rem">
+            <button type="submit" class="btn btn-primary">Save Payroll</button>
+            <a href="{{ path('app_payroll_index') }}" class="btn btn-ghost">Cancel</a>
+        </div>
+        {{ form_end(form) }}
+    </div>
+</div>
+{% endblock %}

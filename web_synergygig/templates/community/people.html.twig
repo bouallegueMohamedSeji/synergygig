@@ -1,0 +1,90 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}People{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/community.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="community-layout">
+    {% include 'community/_sidebar.html.twig' %}
+
+    <main class="community-main">
+        {# ── Flash Messages ── #}
+        {% for type, messages in app.flashes %}
+            {% for msg in messages %}
+                <div class="flash-toast" data-type="{{ type }}">{{ msg }}</div>
+            {% endfor %}
+        {% endfor %}
+
+        {# ── Search Bar (server-side form) ── #}
+        <form action="{{ path('app_community_people') }}" method="get" class="people-search-wrap">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E8E99" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" name="q" class="people-search" placeholder="Search people..." value="{{ q|default('') }}" autocomplete="off">
+        </form>
+
+        {# ── People Grid ── #}
+        <div class="people-grid">
+            {% for user in users %}
+            {% if app.user is null or user.id != app.user.id %}
+            {% set rel = relationships[user.id]|default({}) %}
+            <div class="person-card">
+                <div class="person-avatar">{{ user.firstName|first|upper }}</div>
+                <div class="person-info">
+                    <strong class="person-name">{{ user.firstName }} {{ user.lastName }}</strong>
+                    <span class="person-role">{{ user.role|default('Employee') }}</span>
+                </div>
+                <div class="person-actions">
+                    {# Friend Button #}
+                    {% if rel.friend is defined and rel.friend == 'friends' %}
+                        <span class="btn-friend friends">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            Friends
+                        </span>
+                    {% elseif rel.friend is defined and rel.friend == 'pending_sent' %}
+                        <span class="btn-friend pending">Pending</span>
+                    {% elseif rel.friend is defined and rel.friend == 'pending_received' %}
+                        <div style="display:flex;gap:.35rem">
+                            <form action="{{ path('app_community_accept_friend', {id: user.id}) }}" method="post">
+                                <button type="submit" class="btn-friend">Accept</button>
+                            </form>
+                            <form action="{{ path('app_community_decline_friend', {id: user.id}) }}" method="post">
+                                <button type="submit" class="btn-friend pending">Decline</button>
+                            </form>
+                        </div>
+                    {% else %}
+                        <form action="{{ path('app_community_add_friend', {id: user.id}) }}" method="post">
+                            <button type="submit" class="btn-friend">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                                Add Friend
+                            </button>
+                        </form>
+                    {% endif %}
+
+                    {# Follow Button #}
+                    <form action="{{ path('app_community_follow', {id: user.id}) }}" method="post">
+                        {% if rel.follow is defined and rel.follow %}
+                            <button type="submit" class="btn-follow following">Following</button>
+                        {% else %}
+                            <button type="submit" class="btn-follow">+ Follow</button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+            {% else %}
+                <div class="empty-state" style="grid-column:1/-1">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    <h3>No users found</h3>
+                </div>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+
+{# ── Create Group Modal ── #}
+{% endblock %}
+
+

@@ -1,0 +1,671 @@
+{% extends 'base.html.twig' %}
+
+{% block html_class %}admin-shell{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="/css/layout.css?v=9">
+{% endblock %}
+
+{% block body %}
+    {# Ambient glow background #}
+    <div class="ambient ambient--1"></div>
+    <div class="ambient ambient--2"></div>
+
+    {# ── Sidebar (outside .layout to avoid iOS Safari position:fixed clip bug) ── #}
+    <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="{{ path('app_dashboard') }}" class="brand">SynergyGig.</a>
+                <button type="button" class="sidebar-close-btn" id="sidebarCloseBtn" title="Close menu" aria-label="Close navigation">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+
+            <nav class="sidebar-nav" id="sidebarNav">
+                {# ── Spotlight overlay (follows mouse) ── #}
+                <div class="sidebar-spotlight" id="sidebarSpotlight"></div>
+
+                {# ── Overview ── #}
+                <div class="nav-section" style="--section-i:0">
+                    <div class="nav-section-title">Overview</div>
+                    <a href="{{ path('app_dashboard') }}" class="nav-item {{ app.request.attributes.get('_route') == 'app_dashboard' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                        Dashboard
+                    </a>
+                </div>
+
+                {# ── Admin (ADMIN only) ── #}
+                {% if is_granted('ROLE_ADMIN') %}
+                <div class="nav-section" style="--section-i:1">
+                    <div class="nav-section-title">
+                        <span class="nav-section-dot" style="background:var(--accent-red,#ef4444)"></span>
+                        Admin
+                    </div>
+                    <a href="{{ path('app_user_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_user' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        Users
+                    </a>
+                    <a href="{{ path('app_department_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_department' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>
+                        Departments
+                    </a>
+                </div>
+                {% endif %}
+
+                {# ── People & HR ── #}
+                <div class="nav-section" style="--section-i:2">
+                    <div class="nav-section-title">
+                        <span class="nav-section-dot" style="background:var(--accent-blue,#58a6ff)"></span>
+                        People
+                    </div>
+                    {% if is_granted('ROLE_HR') %}
+                    <a href="{{ path('app_hr_dashboard') }}" class="nav-item {{ app.request.attributes.get('_route') == 'app_hr_dashboard' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                        HR Dashboard
+                    </a>
+                    <a href="{{ path('app_hr_backlog') }}" class="nav-item {{ app.request.attributes.get('_route') == 'app_hr_backlog' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H2v7l6.29 6.29c.94.94 2.48.94 3.42 0l4.58-4.58c.94-.94.94-2.48 0-3.42L9 5Z"/><path d="M6 9.01V9"/></svg>
+                        HR Backlog
+                    </a>
+                    {% endif %}
+                    {% if is_granted('ROLE_EMPLOYEE') %}
+                    <a href="{{ path('app_attendance_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_attendance' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        Attendance
+                    </a>
+                    <a href="{{ path('app_leave_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_leave' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Leaves
+                    </a>
+                    {% endif %}
+                    {% if is_granted('ROLE_HR') %}
+                    <a href="{{ path('app_payroll_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_payroll' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        Payroll
+                    </a>
+                    {% endif %}
+                    {% if is_granted('ROLE_EMPLOYEE') %}
+                    <a href="{{ path('app_training_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_training' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                        Training
+                    </a>
+                    {% endif %}
+                    {% if is_granted('ROLE_HR') %}
+                    <a href="{{ path('app_employee_of_month') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_employee_of_month' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+                        Employee of Month
+                    </a>
+                    <a href="{{ path('app_onboarding') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_onboarding' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        Onboarding
+                    </a>
+                    {% endif %}
+                </div>
+
+                {# ── Recruitment (HR, GIG_WORKER, PROJECT_OWNER, ADMIN) ── #}
+                {% if is_granted('ROLE_HR') or is_granted('ROLE_GIG_WORKER') or is_granted('ROLE_PROJECT_OWNER') or is_granted('ROLE_ADMIN') %}
+                <div class="nav-section" style="--section-i:3">
+                    <div class="nav-section-title">
+                        <span class="nav-section-dot" style="background:var(--accent-green,#10b981)"></span>
+                        Recruitment
+                    </div>
+                    {% if is_granted('ROLE_HR') %}
+                    <a href="{{ path('app_interview_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_interview' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        Interviews
+                    </a>
+                    {% endif %}
+                    <a href="{{ path('app_offer_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_offer' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                        Offers & Contracts
+                    </a>
+                    {% if is_granted('ROLE_HR') %}
+                    <a href="{{ path('app_hr_offers') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_hr_offer' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 14l2 2 4-4"/></svg>
+                        Review Offers
+                    </a>
+                    <a href="{{ path('app_application_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_application' and app.request.attributes.get('_route') != 'app_my_applications' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        Applications
+                    </a>
+                    {% endif %}
+
+                </div>
+                {% endif %}
+
+                {# ── Project Owner (PROJECT_OWNER only) ── #}
+                {% if is_granted('ROLE_PROJECT_OWNER') %}
+                <div class="nav-section" style="--section-i:3.5">
+                    <div class="nav-section-title">
+                        <span class="nav-section-dot" style="background:var(--accent-emerald,#34d399)"></span>
+                        Project Owner
+                    </div>
+                    <a href="{{ path('app_project_owner_offers') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_project_owner' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+                        My Offers
+                    </a>
+                </div>
+                {% endif %}
+
+                {# ── Work ── #}
+                <div class="nav-section" style="--section-i:4">
+                    <div class="nav-section-title">
+                        <span class="nav-section-dot" style="background:var(--accent-purple,#a78bfa)"></span>
+                        Work
+                    </div>
+                    <a href="{{ path('app_project_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_project' and not (app.request.attributes.get('_route') starts with 'app_project_owner') ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        Projects
+                    </a>
+                    <a href="{{ path('app_task_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_task' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                        Tasks
+                    </a>
+                    {% if is_granted('ROLE_HR') or is_granted('ROLE_PROJECT_OWNER') %}
+                    <a href="{{ path('app_contract_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_contract' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        Contracts
+                    </a>
+                    {% endif %}
+                </div>
+
+                {# ── Communication ── #}
+                <div class="nav-section" style="--section-i:5">
+                    <div class="nav-section-title">
+                        <span class="nav-section-dot" style="background:var(--accent-yellow,#f59e0b)"></span>
+                        Communication
+                    </div>
+                    <a href="{{ path('app_chat_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_chat' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        Messages
+                    </a>
+                    <a href="{{ path('app_call_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_call' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        Calls
+                    </a>
+                    <a href="{{ path('app_community_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_community' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        Community
+                    </a>
+                </div>
+
+                {# ── Intelligence ── #}
+                <div class="nav-section" style="--section-i:6">
+                    <div class="nav-section-title">
+                        <span class="nav-section-dot" style="background:var(--accent-cyan,#06b6d4)"></span>
+                        Intelligence
+                    </div>
+                    <a href="{{ path('app_ai_index') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_ai' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        AI Tools
+                    </a>
+                    {% if is_granted('ROLE_GIG_WORKER') or is_granted('ROLE_PROJECT_OWNER') %}
+                    <a href="{{ path('app_job_scanner') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_job_scanner' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        Job Scanner
+                    </a>
+                    {% endif %}
+                    {% if is_granted('ROLE_GIG_WORKER') %}
+                    <a href="{{ path('app_external_jobs') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_external_jobs' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        External Jobs
+                    </a>
+                    {% endif %}
+                    {% if is_granted('ROLE_HR') %}
+                    <a href="{{ path('app_hr_chatbot') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_hr_chatbot' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg>
+                        HR Chatbot
+                    </a>
+                    {% endif %}
+                    {% if is_granted('ROLE_HR') %}
+                    <a href="{{ path('app_export_payroll_csv') }}" class="nav-item {{ app.request.attributes.get('_route') starts with 'app_export' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Exports
+                    </a>
+                    {% endif %}
+                </div>
+
+                {# ── Account ── #}
+                <div class="nav-section nav-section--account" style="--section-i:7">
+                    <div class="nav-section-divider"></div>
+                    <a href="{{ path('app_profile') }}" class="nav-item {{ app.request.attributes.get('_route') == 'app_profile' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        Profile
+                    </a>
+                    <a href="{{ path('app_settings') }}" class="nav-item {{ app.request.attributes.get('_route') == 'app_settings' ? 'active' }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        Settings
+                    </a>
+                    <a href="{{ path('app_logout') }}" class="nav-item nav-item--logout">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        Logout
+                    </a>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-card">
+                    <div class="avatar">{% if app.user %}{{ app.user.firstName|first }}{{ app.user.lastName|first }}{% else %}SG{% endif %}</div>
+                    <div class="user-info">
+                        <div class="user-name">{% if app.user %}{{ app.user.firstName }} {{ app.user.lastName }}{% else %}Guest{% endif %}</div>
+                        <div class="user-role">{% if app.user %}{{ app.user.role }}{% endif %}</div>
+                    </div>
+                </div>
+            </div>
+    </aside>
+
+    {# Mobile overlay backdrop #}
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="layout">
+        {# ── Main Area ── #}
+        <div class="main">
+            <header class="header">
+                <div class="header-left">
+                    {# Mobile hamburger #}
+                    <button type="button" class="mobile-menu-btn" id="mobileMenuBtn" title="Menu">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </button>
+                    {% block breadcrumb %}
+                    <nav class="breadcrumb">
+                        <a href="{{ path('app_dashboard') }}">Home</a>
+                        <span class="sep">/</span>
+                        <span>{% block page_title %}Dashboard{% endblock %}</span>
+                    </nav>
+                    {% endblock %}
+                </div>
+                <div class="header-actions">
+                    {# Theme toggle #}
+                    <button type="button" class="theme-toggle-btn" id="themeToggleBtn" title="Toggle theme">
+                        <svg class="theme-icon theme-icon--dark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                        <svg class="theme-icon theme-icon--light" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    </button>
+                    {# Notification Bell + Popup Panel #}
+                    <div class="notif-wrapper" style="position:relative">
+                        <button type="button" class="header-bell" id="notifBellBtn" title="Notifications">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                            <span class="header-bell-badge" id="notifBadge" style="{% if notif_unread_count is not defined or notif_unread_count == 0 %}display:none{% endif %}">{{ notif_unread_count is defined and notif_unread_count > 9 ? '9+' : (notif_unread_count ?? 0) }}</span>
+                        </button>
+
+                        {# Dropdown panel #}
+                        <div class="notif-panel" id="notifPanel" style="display:none;position:absolute;right:0;top:calc(100% + 8px);width:380px;max-height:480px;overflow-y:auto;background:var(--bg-secondary);border:1px solid var(--glass-border);border-radius:var(--radius-lg);box-shadow:0 12px 40px rgba(0,0,0,.4);z-index:1000">
+                            <div style="padding:.75rem 1rem;border-bottom:1px solid var(--glass-border);display:flex;justify-content:space-between;align-items:center">
+                                <strong style="color:var(--text-primary)">Notifications</strong>
+                                <div style="display:flex;gap:.5rem;align-items:center">
+                                    <button type="button" id="notifMarkAll" class="btn btn-ghost btn-sm" style="font-size:.75rem;padding:2px 8px">Mark all read</button>
+                                    <a href="{{ path('app_notification_index') }}" class="btn btn-ghost btn-sm" style="font-size:.75rem;padding:2px 8px">View all</a>
+                                </div>
+                            </div>
+                            <div id="notifList" style="padding:.5rem">
+                                <div style="text-align:center;padding:2rem;color:var(--text-muted)">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:.5rem;opacity:.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                                    <div style="font-size:.85rem">All caught up!</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% block header_actions %}{% endblock %}
+                </div>
+            </header>
+
+            <div class="content">
+                <div class="content-inner">
+                    {# Toast container for flash messages #}
+                    <div id="toastContainer" style="position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;pointer-events:none"></div>
+
+                    {% for type, messages in app.flashes %}
+                        {% for message in messages %}
+                            <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                showToast('{{ message|e('js') }}', '{{ type == 'error' ? 'danger' : type }}');
+                            });
+                            </script>
+                        {% endfor %}
+                    {% endfor %}
+
+                    {% block content %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ─── Incoming Call Notification (Messenger-style) ─── #}
+    <div class="incoming-call-overlay" id="incomingCallOverlay" style="display:none">
+        <div class="incoming-call-card">
+            <div class="incoming-call-card__pulse"></div>
+            <div class="incoming-call-card__avatar" id="incCallAvatar">?</div>
+            <div class="incoming-call-card__name" id="incCallName">Unknown</div>
+            <div class="incoming-call-card__type" id="incCallType">Audio Call</div>
+            <div class="incoming-call-card__actions">
+                <button class="incoming-call-btn incoming-call-btn--reject" id="incRejectBtn" title="Decline">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+                <button class="incoming-call-btn incoming-call-btn--accept" id="incAcceptBtn" title="Accept">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+    <audio id="incomingRingtone" src="/sounds/ringtone.mp3" loop preload="auto"></audio>
+
+    {# ── Reusable Confirm Modal ── #}
+    <div id="confirmModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+        <div style="background:var(--bg-secondary,#1a1a2e);border:1px solid var(--glass-border,#333);border-radius:16px;padding:2rem;max-width:420px;width:90%;box-shadow:0 24px 60px rgba(0,0,0,.5);text-align:center">
+            <div id="confirmIcon" style="width:48px;height:48px;border-radius:12px;margin:0 auto .75rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem"></div>
+            <h3 id="confirmTitle" style="margin:0 0 .5rem;font-size:1.1rem;color:var(--text-primary,#fff)"></h3>
+            <p id="confirmMessage" style="margin:0 0 1.5rem;font-size:.875rem;color:var(--text-secondary,#999)"></p>
+            <div style="display:flex;gap:.75rem;justify-content:center">
+                <button id="confirmCancel" class="btn btn-secondary btn-sm" style="min-width:100px;padding:.5rem 1rem">Cancel</button>
+                <button id="confirmOk" class="btn btn-sm" style="min-width:100px;padding:.5rem 1rem"></button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+(function(){
+    // ===== Toast Notification System =====
+    window.showToast = function(message, type) {
+        type = type || 'info';
+        var container = document.getElementById('toastContainer');
+        if (!container) return;
+        var toast = document.createElement('div');
+        var colors = {success:'#10b981',danger:'#ef4444',warning:'#f59e0b',info:'#6366f1'};
+        var icons = {success:'✓',danger:'✕',warning:'⚠',info:'ℹ'};
+        toast.style.cssText = 'pointer-events:auto;display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;border-radius:12px;background:rgba(30,30,50,.95);border:1px solid '+(colors[type]||colors.info)+'40;color:#fff;font-size:.875rem;min-width:280px;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.4);backdrop-filter:blur(12px);transform:translateX(120%);transition:transform .35s cubic-bezier(.4,0,.2,1),opacity .35s';
+        toast.innerHTML = '<span style="width:28px;height:28px;border-radius:8px;background:'+(colors[type]||colors.info)+'20;color:'+(colors[type]||colors.info)+';display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">'+(icons[type]||icons.info)+'</span><span style="flex:1">'+message+'</span><button onclick="this.parentElement.style.transform=\'translateX(120%)\';setTimeout(function(){toast.remove()},350)" style="background:none;border:none;color:#888;cursor:pointer;font-size:1.1rem;padding:0 2px">&times;</button>';
+        container.appendChild(toast);
+        requestAnimationFrame(function(){ requestAnimationFrame(function(){ toast.style.transform='translateX(0)'; }); });
+        setTimeout(function(){ toast.style.transform='translateX(120%)'; toast.style.opacity='0'; setTimeout(function(){ toast.remove(); },400); },5000);
+    };
+
+    // ===== Notification Panel Logic =====
+    var bellBtn = document.getElementById('notifBellBtn');
+    var panel = document.getElementById('notifPanel');
+    var badge = document.getElementById('notifBadge');
+    var list = document.getElementById('notifList');
+    var markAllBtn = document.getElementById('notifMarkAll');
+    var panelOpen = false;
+
+    if (bellBtn && panel) {
+        bellBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            panelOpen = !panelOpen;
+            panel.style.display = panelOpen ? 'block' : 'none';
+            if (panelOpen) fetchNotifications();
+        });
+
+        document.addEventListener('click', function(e) {
+            if (panelOpen && !panel.contains(e.target) && e.target !== bellBtn) {
+                panelOpen = false;
+                panel.style.display = 'none';
+            }
+        });
+    }
+
+    if (markAllBtn) {
+        markAllBtn.addEventListener('click', function() {
+            fetch('{{ path("app_notification_read_all") }}', {method:'POST',headers:{'X-Requested-With':'XMLHttpRequest'}})
+            .then(function(){ updateBadge(0); fetchNotifications(); })
+            .catch(function(){});
+        });
+    }
+
+    function fetchNotifications() {
+        fetch('{{ path("app_notification_recent") }}')
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            updateBadge(data.unread_count || 0);
+            var items = data.notifications || [];
+            if (items.length === 0) {
+                list.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text-muted)"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:.5rem;opacity:.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><div style="font-size:.85rem">All caught up!</div></div>';
+                return;
+            }
+            var html = '';
+            var typeIcons = {MESSAGE:'💬',TASK:'📋',INTERVIEW:'🗓',CONTRACT:'📄',SUCCESS:'✅',WARNING:'⚠️',ERROR:'❌',INFO:'ℹ️',VOICE_CALL:'📞',VIDEO_CALL:'📹',MISSED_CALL:'📵'};
+            items.forEach(function(n){
+                var icon = typeIcons[n.type] || '🔔';
+                html += '<a href="{{ path("app_notification_index") }}" style="display:block;padding:.625rem .75rem;border-radius:8px;text-decoration:none;transition:background .15s;'+(n.is_read?'':'background:rgba(99,102,241,.06);border-left:3px solid var(--accent);')+'" onmouseover="this.style.background=\'rgba(99,102,241,.1)\'" onmouseout="this.style.background=\''+(n.is_read?'transparent':'rgba(99,102,241,.06)')+'\'">';
+                html += '<div style="display:flex;gap:.5rem;align-items:flex-start">';
+                html += '<span style="font-size:1rem;flex-shrink:0;margin-top:1px">'+icon+'</span>';
+                html += '<div style="flex:1;min-width:0">';
+                html += '<div style="font-size:.825rem;font-weight:'+(n.is_read?'400':'600')+';color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+n.title+'</div>';
+                if (n.body) html += '<div style="font-size:.75rem;color:var(--text-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+n.body+'</div>';
+                if (n.created_at) html += '<div style="font-size:.7rem;color:var(--text-muted);margin-top:2px;opacity:.7">'+n.created_at+'</div>';
+                html += '</div></div></a>';
+            });
+            list.innerHTML = html;
+        })
+        .catch(function(){});
+    }
+
+    function updateBadge(count) {
+        if (badge) {
+            badge.textContent = count > 9 ? '9+' : count;
+            badge.style.display = count > 0 ? 'flex' : 'none';
+        }
+    }
+
+    // ===== Polling for new notifications every 15s =====
+    var lastCount = {{ notif_unread_count is defined ? notif_unread_count : 0 }};
+    setInterval(function(){
+        fetch('{{ path("app_notification_unread_count") }}')
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            var count = data.count || 0;
+            updateBadge(count);
+            if (count > lastCount) {
+                showToast('You have ' + (count - lastCount) + ' new notification' + ((count-lastCount)>1?'s':''), 'info');
+            }
+            lastCount = count;
+        })
+        .catch(function(){});
+    }, 15000);
+
+    // ===== Sidebar Spotlight (Vengence UI inspired) =====
+    var sidebarNav = document.getElementById('sidebarNav');
+    var spotlight  = document.getElementById('sidebarSpotlight');
+    if (sidebarNav && spotlight) {
+        sidebarNav.addEventListener('mousemove', function(e) {
+            var rect = sidebarNav.getBoundingClientRect();
+            var x = e.clientX - rect.left;
+            var y = e.clientY - rect.top;
+            sidebarNav.style.setProperty('--spot-x', x + 'px');
+            sidebarNav.style.setProperty('--spot-y', y + 'px');
+        });
+        // Per-item glow follows mouse X position
+        var navItems = sidebarNav.querySelectorAll('.nav-item');
+        navItems.forEach(function(item) {
+            item.addEventListener('mousemove', function(e) {
+                var r = item.getBoundingClientRect();
+                var px = ((e.clientX - r.left) / r.width * 100).toFixed(1);
+                item.style.setProperty('--item-x', px + '%');
+            });
+        });
+    }
+
+    // ===== Theme Toggle (Light / Dark) =====
+    var themeBtn = document.getElementById('themeToggleBtn');
+    function getStoredTheme() {
+        try { return localStorage.getItem('sg_theme') || 'dark'; } catch(e) { return 'dark'; }
+    }
+    function setTheme(mode) {
+        document.documentElement.setAttribute('data-theme', mode);
+        try { localStorage.setItem('sg_theme', mode); } catch(e) {}
+        if (themeBtn) {
+            themeBtn.classList.toggle('theme-toggle-btn--light', mode === 'light');
+        }
+    }
+    // Apply persisted theme immediately
+    setTheme(getStoredTheme());
+    if (themeBtn) {
+        themeBtn.addEventListener('click', function() {
+            var current = getStoredTheme();
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        });
+    }
+
+    // ===== Incoming Call Poller =====
+    var incOverlay   = document.getElementById('incomingCallOverlay');
+    var incRingtone  = document.getElementById('incomingRingtone');
+    var incCallId    = null;
+    var incShowing   = false;
+
+    function pollIncomingCalls() {
+        fetch('/call/status')
+            .then(function(r){ return r.json(); })
+            .then(function(data){
+                if (data.incoming && data.incoming.length > 0 && !incShowing) {
+                    var c = data.incoming[0];
+                    incCallId = c.id;
+                    document.getElementById('incCallName').textContent = c.callerName || 'Unknown';
+                    document.getElementById('incCallType').textContent = (c.type === 'VIDEO' ? 'Video' : 'Audio') + ' Call';
+                    var initials = (c.callerName || '??').split(' ').map(function(w){return w.charAt(0)}).join('').substring(0,2);
+                    document.getElementById('incCallAvatar').textContent = initials;
+                    incOverlay.style.display = 'flex';
+                    incShowing = true;
+                    try { incRingtone.currentTime = 0; incRingtone.play(); } catch(e){}
+                } else if ((!data.incoming || data.incoming.length === 0) && incShowing) {
+                    hideIncoming();
+                }
+            })
+            .catch(function(){});
+    }
+
+    function hideIncoming() {
+        incOverlay.style.display = 'none';
+        incShowing = false;
+        incCallId = null;
+        try { incRingtone.pause(); incRingtone.currentTime = 0; } catch(e){}
+    }
+
+    document.getElementById('incAcceptBtn').addEventListener('click', function() {
+        if (!incCallId) return;
+        var cid = incCallId;
+        hideIncoming();
+        fetch('/call/' + cid + '/accept-ajax', { method: 'POST' })
+            .then(function(){ openCallPopup(cid); })
+            .catch(function(){ openCallPopup(cid); });
+    });
+
+    document.getElementById('incRejectBtn').addEventListener('click', function() {
+        if (!incCallId) return;
+        fetch('/call/' + incCallId + '/reject-ajax', { method: 'POST' });
+        hideIncoming();
+    });
+
+    function openCallPopup(callId) {
+        var w = 480, h = 640;
+        var left = (screen.width - w) / 2;
+        var top  = (screen.height - h) / 2;
+        window.open(
+            '/call/popup/' + callId,
+            'synergy_call_' + callId,
+            'width='+w+',height='+h+',left='+left+',top='+top+',resizable=yes,scrollbars=no,toolbar=no,menubar=no,status=no'
+        );
+    }
+
+    // Poll every 4 seconds
+    setInterval(pollIncomingCalls, 4000);
+    // Initial check after 2s
+    setTimeout(pollIncomingCalls, 2000);
+
+    // ===== Confirm Modal =====
+    var modal      = document.getElementById('confirmModal');
+    var modalIcon  = document.getElementById('confirmIcon');
+    var modalTitle = document.getElementById('confirmTitle');
+    var modalMsg   = document.getElementById('confirmMessage');
+    var modalOk    = document.getElementById('confirmOk');
+    var modalCancel= document.getElementById('confirmCancel');
+    var pendingForm = null;
+
+    window.showConfirm = function(form, opts) {
+        pendingForm = form;
+        var type = opts.type || 'info';
+        var colors = {success:'#10b981',danger:'#ef4444',warning:'#f59e0b',info:'#6366f1'};
+        var icons  = {success:'✓',danger:'✕',warning:'⚠',info:'?'};
+        modalIcon.style.background = (colors[type]||colors.info) + '20';
+        modalIcon.style.color = colors[type]||colors.info;
+        modalIcon.textContent = icons[type]||icons.info;
+        modalTitle.textContent = opts.title || 'Confirm';
+        modalMsg.textContent = opts.message || 'Are you sure?';
+        modalOk.textContent = opts.okText || 'Confirm';
+        modalOk.style.background = colors[type]||colors.info;
+        modalOk.style.color = '#fff';
+        modal.style.display = 'flex';
+    };
+
+    if (modalCancel) modalCancel.addEventListener('click', function() {
+        modal.style.display = 'none';
+        pendingForm = null;
+    });
+    if (modalOk) modalOk.addEventListener('click', function() {
+        modal.style.display = 'none';
+        if (pendingForm) pendingForm.submit();
+        pendingForm = null;
+    });
+    if (modal) modal.addEventListener('click', function(e) {
+        if (e.target === modal) { modal.style.display = 'none'; pendingForm = null; }
+    });
+
+})();
+</script>
+
+{# ── Auto Attendance: Heartbeat (updates check_out every 3 min while user is active) ── #}
+<script>
+// ===== Mobile Sidebar Toggle (standalone — isolated from main IIFE) =====
+(function() {
+    function init() {
+        var btn     = document.getElementById('mobileMenuBtn');
+        var closeBtn = document.getElementById('sidebarCloseBtn');
+        var sidebar = document.querySelector('aside.sidebar');
+        var overlay = document.getElementById('sidebarOverlay');
+        if (!btn || !sidebar) return;
+
+        function openSidebar() {
+            sidebar.classList.add('sidebar--open');
+            sidebar.style.webkitTransform = 'translateX(0)';
+            sidebar.style.transform = 'translateX(0)';
+            if (overlay) overlay.classList.add('sidebar-overlay--visible');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeSidebar() {
+            sidebar.classList.remove('sidebar--open');
+            sidebar.style.webkitTransform = '';
+            sidebar.style.transform = '';
+            if (overlay) overlay.classList.remove('sidebar-overlay--visible');
+            document.body.style.overflow = '';
+        }
+
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            sidebar.classList.contains('sidebar--open') ? closeSidebar() : openSidebar();
+        });
+        if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+        if (overlay)  overlay.addEventListener('click', closeSidebar);
+        sidebar.querySelectorAll('.nav-item').forEach(function(item) {
+            item.addEventListener('click', function() {
+                if (window.innerWidth <= 1024) closeSidebar();
+            });
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
+
+{% if app.user %}
+<script>
+(function() {
+    var hbUrl = '{{ path("app_attendance_heartbeat") }}';
+    function beat() { fetch(hbUrl, { method: 'POST', credentials: 'same-origin' }).catch(function(){}); }
+    beat();
+    setInterval(beat, 3 * 60 * 1000);
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,209 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Quiz: {{ course.title }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_training_show', {id: course.id}) }}" class="btn btn-ghost btn-sm">Cancel</a>
+{% endblock %}
+
+{% block content %}
+<div id="quizApp" data-timer="{{ timer }}" data-total="{{ questions|length }}" data-course-id="{{ course.id }}">
+
+    {# ── Top bar ── #}
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;background:var(--bg-secondary);padding:1rem 1.5rem;border-radius:var(--radius-lg)">
+        <div style="flex:1">
+            <div style="height:8px;background:var(--glass-border);border-radius:4px;overflow:hidden">
+                <div id="progressBar" style="height:100%;background:var(--accent-blue);border-radius:4px;transition:width 0.3s;width:0%"></div>
+            </div>
+        </div>
+        <span id="questionCounter" style="font-weight:700;color:var(--text-primary)">1/{{ questions|length }}</span>
+        <span id="streakDisplay" style="color:#FBBF24;font-weight:700">🔥 0</span>
+        <span id="scoreDisplay" style="color:var(--color-success);font-weight:700">⭐ 0</span>
+    </div>
+
+    {# ── Timer ring (SVG circular arc) ── #}
+    <div style="text-align:center;margin-bottom:1.5rem">
+        <div id="timerRing" style="display:inline-block;position:relative;width:72px;height:72px">
+            <svg width="72" height="72" style="transform:rotate(-90deg)">
+                <circle cx="36" cy="36" r="30" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="5"/>
+                <circle id="timerArc" cx="36" cy="36" r="30" fill="none" stroke="#4ADE80" stroke-width="5"
+                        stroke-dasharray="188.5" stroke-dashoffset="0" stroke-linecap="round"
+                        style="transition:stroke-dashoffset 0.9s linear,stroke 0.4s"/>
+            </svg>
+            <span id="timerText" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.3rem;font-weight:700;color:#4ADE80;transition:color 0.4s">{{ timer }}</span>
+        </div>
+    </div>
+
+    {# ── Question area ── #}
+    <div id="questionArea" style="text-align:center;margin-bottom:2rem">
+        <div id="categoryBadge" class="badge badge--blue" style="margin-bottom:0.75rem"></div>
+        <h3 id="questionText" style="color:var(--text-primary);font-size:1.25rem;line-height:1.6;margin-bottom:1.5rem"></h3>
+
+        <div id="optionsGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;max-width:640px;margin:0 auto">
+        </div>
+    </div>
+
+    {# ── Feedback ── #}
+    <div id="feedbackArea" style="text-align:center;display:none;margin-bottom:1.5rem">
+        <div id="feedbackText" style="font-size:1.25rem;font-weight:700;padding:0.75rem 1.5rem;border-radius:var(--radius-md);display:inline-block"></div>
+    </div>
+
+    {# ── Hidden form for submitting all answers ── #}
+    <form id="quizForm" method="post" action="{{ path('app_training_quiz_submit', {id: course.id}) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('quiz' ~ course.id) }}">
+        {% for q in questions %}
+            <input type="hidden" name="answers[{{ q.index }}]" id="answer_{{ q.index }}" value="-1">
+        {% endfor %}
+    </form>
+
+    {# ── Bottom info ── #}
+    <div style="display:flex;justify-content:center;gap:2rem;color:var(--text-muted);font-size:0.8rem;margin-top:1rem">
+        <span>⏱ {{ timer }}s per question</span>
+        <span>🎯 Pass: 70%</span>
+        <span>📚 {{ course.title }}</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+(function(){
+    var questions = {{ questions|json_encode|raw }};
+    var timerSec = {{ timer }};
+    var total = questions.length;
+    var currentIdx = 0;
+    var score = 0;
+    var streak = 0;
+    var timerInterval = null;
+    var timeLeft = 0;
+    var answered = false;
+
+    var optColors = ['#E14B4B', '#2D70AE', '#D89E00', '#298F47'];
+    var optIcons = ['◆', '●', '▲', '■'];
+
+    var ARC_TOTAL = 2 * Math.PI * 30; // circumference for r=30
+
+    function updateArc(fraction) {
+        var arc  = document.getElementById('timerArc');
+        var text = document.getElementById('timerText');
+        var offset = ARC_TOTAL * (1 - Math.max(0, fraction));
+        arc.style.strokeDashoffset = offset;
+        var color = fraction > 0.5 ? '#4ADE80' : (fraction > 0.25 ? '#FBBF24' : '#F87171');
+        arc.style.stroke = color;
+        text.style.color = color;
+    }
+
+    function showQuestion(idx) {
+        answered = false;
+        var q = questions[idx];
+
+        document.getElementById('questionCounter').textContent = (idx + 1) + '/' + total;
+        document.getElementById('progressBar').style.width = ((idx / total) * 100) + '%';
+        document.getElementById('categoryBadge').textContent = q.category;
+        document.getElementById('questionText').textContent = q.question;
+        document.getElementById('feedbackArea').style.display = 'none';
+
+        var grid = document.getElementById('optionsGrid');
+        grid.innerHTML = '';
+
+        q.options.forEach(function(opt, i) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'quiz-option-btn';
+            btn.style.cssText = 'background:' + optColors[i] + ';color:#fff;border:none;padding:1rem;border-radius:var(--radius-md);font-size:1rem;font-weight:600;cursor:pointer;min-height:70px;transition:all 0.2s;text-align:center;word-wrap:break-word';
+            btn.textContent = optIcons[i] + ' ' + opt;
+            btn.dataset.optionIndex = i;
+            btn.addEventListener('click', function() { selectAnswer(idx, i); });
+            grid.appendChild(btn);
+        });
+
+        // Start timer
+        timeLeft = timerSec;
+        document.getElementById('timerText').textContent = timeLeft;
+        updateArc(1);
+        clearInterval(timerInterval);
+        timerInterval = setInterval(function() {
+            timeLeft--;
+            document.getElementById('timerText').textContent = timeLeft;
+            updateArc(timeLeft / timerSec);
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                if (!answered) {
+                    timeUp(idx);
+                }
+            }
+        }, 1000);
+    }
+
+    function selectAnswer(qIdx, optIdx) {
+        if (answered) return;
+        answered = true;
+        clearInterval(timerInterval);
+
+        // Store answer in hidden form
+        document.getElementById('answer_' + questions[qIdx].index).value = optIdx;
+
+        // Visual feedback
+        var btns = document.getElementById('optionsGrid').children;
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].style.cursor = 'default';
+            btns[i].style.opacity = '0.6';
+        }
+        btns[optIdx].style.opacity = '1';
+        btns[optIdx].style.boxShadow = '0 0 0 3px #fff';
+
+        // We don't know the correct answer on client (it's server-side only)
+        // Just show "Answer recorded" and move on
+        score++;
+        streak++;
+        document.getElementById('scoreDisplay').textContent = '⭐ ' + (currentIdx + 1);
+        document.getElementById('streakDisplay').textContent = '🔥 ' + streak;
+
+        var fb = document.getElementById('feedbackArea');
+        var fbText = document.getElementById('feedbackText');
+        fb.style.display = 'block';
+        fbText.textContent = '✓ Answer recorded';
+        fbText.style.background = 'rgba(59,130,246,0.15)';
+        fbText.style.color = 'var(--accent-blue)';
+
+        setTimeout(function() { nextQuestion(); }, 800);
+    }
+
+    function timeUp(qIdx) {
+        answered = true;
+        streak = 0;
+        document.getElementById('streakDisplay').textContent = '🔥 0';
+        updateArc(0);
+
+        // Mark as unanswered (-1)
+        document.getElementById('answer_' + questions[qIdx].index).value = -1;
+
+        var fb = document.getElementById('feedbackArea');
+        var fbText = document.getElementById('feedbackText');
+        fb.style.display = 'block';
+        fbText.textContent = '⏰ Time\'s up!';
+        fbText.style.background = 'rgba(220,38,38,0.15)';
+        fbText.style.color = 'var(--color-danger)';
+
+        setTimeout(function() { nextQuestion(); }, 1200);
+    }
+
+    function nextQuestion() {
+        currentIdx++;
+        if (currentIdx < total) {
+            showQuestion(currentIdx);
+        } else {
+            // All done — submit form
+            document.getElementById('progressBar').style.width = '100%';
+            document.getElementById('quizForm').submit();
+        }
+    }
+
+    // Start
+    if (questions.length > 0) {
+        showQuestion(0);
+    }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ call.callType == 'VIDEO' ? 'Video' : 'Audio' }} Call — {{ peerName }}</title>
+<style>
+/* ─── Reset ─── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0f;color:#fff;overflow:hidden;height:100vh;width:100vw}
+
+/* ─── Main Container ─── */
+.call-popup{display:flex;flex-direction:column;height:100vh;position:relative;background:linear-gradient(135deg,#0a0a14 0%,#0d1117 50%,#0a0f14 100%)}
+
+/* ─── Header ─── */
+.call-header{position:absolute;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:linear-gradient(180deg,rgba(0,0,0,.7) 0%,transparent 100%)}
+.call-header__info{display:flex;align-items:center;gap:12px}
+.call-header__name{font-size:15px;font-weight:600;color:rgba(255,255,255,.95)}
+.call-header__meta{font-size:12px;color:rgba(255,255,255,.5)}
+.call-header__pip-toggle{background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;padding:6px;border-radius:8px;transition:all .2s}
+.call-header__pip-toggle:hover{color:#fff;background:rgba(255,255,255,.1)}
+
+/* ─── Video Area ─── */
+.call-video-area{flex:1;position:relative;display:flex;align-items:center;justify-content:center}
+
+/* Remote video - full screen */
+.call-remote{position:absolute;inset:0;z-index:1}
+.call-remote video{width:100%;height:100%;object-fit:cover}
+.call-remote--hidden video{display:none}
+
+/* Placeholder (shown during audio calls or when video off) */
+.call-placeholder{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center}
+.call-avatar{width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#1a3a4a 0%,#2C666E 100%);display:flex;align-items:center;justify-content:center;font-size:2.5rem;font-weight:700;letter-spacing:2px;color:#fff;box-shadow:0 0 60px rgba(44,102,110,.3);animation:pulse-glow 2s ease-in-out infinite}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 40px rgba(44,102,110,.2)}50%{box-shadow:0 0 80px rgba(44,102,110,.5)}}
+.call-status-text{font-size:16px;color:rgba(255,255,255,.7);letter-spacing:.5px}
+.call-timer{font-size:24px;font-weight:300;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:2px;display:none}
+.call-timer.active{display:block}
+
+/* Ringing animation */
+.call-ringing .call-avatar{animation:ring-bounce 1.5s ease-in-out infinite}
+@keyframes ring-bounce{0%,100%{transform:scale(1)}15%{transform:scale(1.08) rotate(-3deg)}30%{transform:scale(1.08) rotate(3deg)}45%{transform:scale(1)}60%{transform:scale(1.05) rotate(-2deg)}75%{transform:scale(1.05) rotate(2deg)}}
+
+/* ─── Local PiP ─── */
+.call-local{position:absolute;bottom:100px;right:20px;width:160px;height:120px;border-radius:12px;overflow:hidden;border:2px solid rgba(255,255,255,.15);box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:15;transition:all .3s ease;cursor:grab}
+.call-local:hover{border-color:rgba(255,255,255,.3);box-shadow:0 8px 40px rgba(0,0,0,.7)}
+.call-local video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+.call-local--audio{display:none}
+.call-local--dragging{cursor:grabbing;transition:none}
+
+/* ─── Screen Share Indicator ─── */
+.screen-share-badge{position:absolute;top:70px;left:50%;transform:translateX(-50%);z-index:25;background:rgba(44,102,110,.9);color:#fff;padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;display:none;align-items:center;gap:8px;backdrop-filter:blur(10px);animation:fade-in .3s ease}
+.screen-share-badge.active{display:flex}
+.screen-share-badge__dot{width:8px;height:8px;border-radius:50%;background:#ff5555;animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+@keyframes fade-in{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ─── Controls Bar ─── */
+.call-controls{position:absolute;bottom:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:center;gap:12px;padding:20px 24px 28px;background:linear-gradient(0deg,rgba(0,0,0,.8) 0%,transparent 100%)}
+
+.call-btn{width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s ease;position:relative}
+.call-btn svg{width:22px;height:22px}
+.call-btn:active{transform:scale(.92)}
+
+/* Default (dark glass) */
+.call-btn--default{background:rgba(255,255,255,.12);color:#fff;backdrop-filter:blur(10px)}
+.call-btn--default:hover{background:rgba(255,255,255,.2)}
+
+/* Muted / toggled state */
+.call-btn--toggled{background:rgba(255,255,255,.95);color:#1a1a2e}
+.call-btn--toggled:hover{background:#fff}
+
+/* End call */
+.call-btn--end{background:#e53e3e;color:#fff;width:60px;height:60px}
+.call-btn--end:hover{background:#c53030}
+.call-btn--end svg{width:26px;height:26px;transform:rotate(135deg)}
+
+/* Accept */
+.call-btn--accept{background:#38a169;color:#fff;width:60px;height:60px;animation:pulse-accept 1.5s ease-in-out infinite}
+.call-btn--accept:hover{background:#2f855a}
+@keyframes pulse-accept{0%,100%{box-shadow:0 0 0 0 rgba(56,161,105,.5)}50%{box-shadow:0 0 0 16px rgba(56,161,105,0)}}
+
+/* Screen share active */
+.call-btn--screen-active{background:rgba(44,102,110,.9);color:#fff}
+.call-btn--screen-active:hover{background:rgba(44,102,110,1)}
+
+/* ─── Incoming Actions (Accept/Reject overlay) ─── */
+.call-incoming-actions{display:flex;gap:24px;margin-top:8px}
+.call-incoming-actions .call-btn{width:64px;height:64px}
+.call-incoming-actions .call-btn svg{width:28px;height:28px}
+
+/* ─── Tooltip ─── */
+.call-btn[title]{position:relative}
+.call-btn::after{content:attr(data-label);position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.5);white-space:nowrap;pointer-events:none}
+
+/* ─── Ended Overlay ─── */
+.call-ended-overlay{position:absolute;inset:0;z-index:30;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(10,10,15,.95);backdrop-filter:blur(20px)}
+.call-ended-overlay.active{display:flex}
+.call-ended-overlay__icon{width:80px;height:80px;border-radius:50%;background:rgba(229,62,62,.15);display:flex;align-items:center;justify-content:center}
+.call-ended-overlay__icon svg{width:36px;height:36px;color:#e53e3e}
+.call-ended-overlay__text{font-size:18px;font-weight:500;color:rgba(255,255,255,.8)}
+.call-ended-overlay__duration{font-size:14px;color:rgba(255,255,255,.4)}
+
+/* ─── Live Transcription ─── */
+.call-subtitle{position:absolute;bottom:96px;left:0;right:0;z-index:18;text-align:center;padding:0 20px;pointer-events:none;display:none}
+.call-subtitle.active{display:block}
+@keyframes subtitle-in{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes subtitle-out{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-8px) scale(.97)}}
+.call-subtitle__text{display:inline-block;background:rgba(0,0,0,.72);backdrop-filter:blur(8px);color:#fff;font-size:14px;line-height:1.5;padding:6px 18px;border-radius:24px;max-width:82%;word-break:break-word;animation:subtitle-in .35s cubic-bezier(.2,.8,.3,1) both}
+.call-subtitle__text.fading{animation:subtitle-out .65s ease forwards}
+.call-subtitle__interim{opacity:.55;font-style:italic}
+.call-transcript-panel{position:absolute;bottom:96px;left:14px;right:14px;z-index:22;max-height:190px;overflow-y:auto;background:rgba(8,8,18,.88);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 14px 8px;display:none;flex-direction:column;gap:2px;scroll-behavior:smooth}
+.call-transcript-panel.active{display:flex}
+.call-transcript-entry{font-size:12px;line-height:1.5;color:rgba(255,255,255,.82)}
+.call-transcript-entry--me{color:#90DDF0}
+.call-transcript-entry--translated{color:rgba(255,215,80,.75);font-size:11px;margin-top:1px}
+.call-transcript-label{font-size:10px;color:rgba(255,255,255,.38);margin-top:6px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.call-transcript-label:first-child{margin-top:0}
+.call-btn--cc-active{background:rgba(144,221,240,.2) !important;color:#90DDF0 !important;border:1px solid rgba(144,221,240,.45) !important}
+.call-btn--cc-active:hover{background:rgba(144,221,240,.32) !important}
+.call-cc-unsupported{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(220,38,38,.85);color:#fff;font-size:12px;padding:6px 14px;border-radius:20px;z-index:30;white-space:nowrap;animation:fade-in .3s ease}
+.call-lang-picker{position:absolute;bottom:96px;left:50%;transform:translateX(-50%);background:rgba(8,8,18,.94);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:10px 10px 8px;z-index:28;display:none;flex-wrap:wrap;gap:5px;max-width:290px;justify-content:center;box-shadow:0 8px 32px rgba(0,0,0,.6)}
+.call-lang-picker.active{display:flex}
+.call-lang-opt{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.78);border-radius:20px;padding:4px 13px;font-size:11px;cursor:pointer;transition:background .18s,color .18s;white-space:nowrap}
+.call-lang-opt:hover{background:rgba(255,255,255,.15)}
+.call-lang-opt--active{background:rgba(255,215,80,.18) !important;color:rgba(255,215,80,.9) !important;border-color:rgba(255,215,80,.4) !important}
+.call-subtitle__translated{display:block;font-size:12px;color:rgba(255,215,80,.85);font-style:italic;margin-top:2px}
+.call-ended-overlay__download{margin-top:14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#fff;border-radius:20px;padding:7px 20px;font-size:12px;cursor:pointer;transition:background .2s,border-color .2s;display:none}
+.call-ended-overlay__download.visible{display:inline-block}
+.call-ended-overlay__download:hover{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.38)}
+
+/* ─── Responsive ─── */
+@media(max-width:480px){
+    .call-local{width:100px;height:75px;bottom:90px;right:12px}
+    .call-btn{width:44px;height:44px}
+    .call-btn svg{width:18px;height:18px}
+    .call-btn--end,.call-btn--accept{width:52px;height:52px}
+    .call-btn--end svg,.call-btn--accept svg{width:22px;height:22px}
+    .call-avatar{width:90px;height:90px;font-size:2rem}
+}
+</style>
+</head>
+<body>
+<div class="call-popup" id="callPopup"
+     data-call-id="{{ call.id }}"
+     data-call-type="{{ call.callType }}"
+     data-call-status="{{ call.status }}"
+     data-is-caller="{{ isCaller ? '1' : '0' }}"
+     data-user-id="{{ app.user.id }}"
+     data-csrf="{{ csrfToken }}"
+     data-peer-name="{{ peerName|e('html_attr') }}">
+
+    <!-- Header -->
+    <div class="call-header">
+        <div class="call-header__info">
+            <div class="call-header__name">{{ peerName }}</div>
+            <div class="call-header__meta" id="headerMeta">
+                {{ call.callType == 'VIDEO' ? 'Video Call' : 'Audio Call' }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Area -->
+    <div class="call-video-area">
+        <!-- Remote Video -->
+        <div class="call-remote call-remote--hidden" id="remoteContainer">
+            <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+
+        <!-- Placeholder -->
+        <div class="call-placeholder {{ call.status == 'RINGING' ? 'call-ringing' : '' }}" id="placeholder">
+            <div class="call-avatar" id="peerAvatar">{{ peerInitials }}</div>
+            <div class="call-status-text" id="statusText">
+                {% if call.status == 'RINGING' %}
+                    {% if isCaller %}Calling...{% else %}Incoming {{ call.callType|lower }} call{% endif %}
+                {% elseif call.status == 'CONNECTED' %}
+                    Connected
+                {% else %}
+                    {{ call.status }}
+                {% endif %}
+            </div>
+            <div class="call-timer" id="callTimer">00:00</div>
+
+            {% if not isCaller and call.status == 'RINGING' %}
+            <div class="call-incoming-actions" id="incomingActions">
+                <button class="call-btn call-btn--end" id="btnReject" title="Decline">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+                <button class="call-btn call-btn--accept" id="btnAccept" title="Accept">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Screen Share Badge -->
+    <div class="screen-share-badge" id="screenShareBadge">
+        <span class="screen-share-badge__dot"></span>
+        <span id="screenShareLabel">You are sharing your screen</span>
+    </div>
+
+    <!-- Live Subtitle Bar -->
+    <div class="call-subtitle" id="callSubtitle">
+        <span class="call-subtitle__text"><span id="subtitleFinal"></span><span class="call-subtitle__interim" id="subtitleInterim"></span></span>
+    </div>
+
+    <!-- Transcript Panel (full history) -->
+    <div class="call-transcript-panel" id="transcriptPanel"></div>
+
+    <!-- Language Picker -->
+    <div class="call-lang-picker" id="langPicker">
+        <button class="call-lang-opt call-lang-opt--active" data-lang="off">Off</button>
+        <button class="call-lang-opt" data-lang="ar">Arabic</button>
+        <button class="call-lang-opt" data-lang="zh">Chinese</button>
+        <button class="call-lang-opt" data-lang="fr">French</button>
+        <button class="call-lang-opt" data-lang="de">German</button>
+        <button class="call-lang-opt" data-lang="es">Spanish</button>
+        <button class="call-lang-opt" data-lang="pt">Portuguese</button>
+        <button class="call-lang-opt" data-lang="ja">Japanese</button>
+        <button class="call-lang-opt" data-lang="ko">Korean</button>
+        <button class="call-lang-opt" data-lang="ru">Russian</button>
+        <button class="call-lang-opt" data-lang="it">Italian</button>
+        <button class="call-lang-opt" data-lang="hi">Hindi</button>
+        <button class="call-lang-opt" data-lang="tr">Turkish</button>
+    </div>
+
+    <!-- Local PiP -->
+    <div class="call-local {{ call.callType == 'AUDIO' ? 'call-local--audio' : '' }}" id="localContainer">
+        <video id="localVideo" autoplay playsinline muted></video>
+    </div>
+
+    <!-- Controls (shown when connected or caller ringing) -->
+    <div class="call-controls" id="callControls" style="{{ (not isCaller and call.status == 'RINGING') ? 'display:none' : '' }}">
+        <button class="call-btn call-btn--default" id="btnMute" data-label="Mute" title="Mute">
+            <svg id="icMicOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <svg id="icMicOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .58-.08 1.15-.22 1.69"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </button>
+
+        {% if call.callType == 'VIDEO' %}
+        <button class="call-btn call-btn--default" id="btnCamera" data-label="Camera" title="Camera">
+            <svg id="icCamOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            <svg id="icCamOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+        </button>
+        {% endif %}
+
+        <button class="call-btn call-btn--default" id="btnScreen" data-label="Share" title="Share Screen">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </button>
+
+        <button class="call-btn call-btn--default" id="btnCC" data-label="CC" title="Live Captions">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="5" width="22" height="14" rx="2" ry="2"/><path d="M7 9h3v2H8v2h2v2H7v-2H6v-2h1z"/><path d="M13 9h3v2h-2v2h2v2h-3v-2h-1v-2h1z"/></svg>
+        </button>
+
+        <button class="call-btn call-btn--default" id="btnTranslate" data-label="Translate" title="Auto Translate">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </button>
+
+        <button class="call-btn call-btn--end" id="btnEnd" data-label="End" title="End Call">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </button>
+    </div>
+
+    <!-- Ended Overlay -->
+    <div class="call-ended-overlay" id="endedOverlay">
+        <div class="call-ended-overlay__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        </div>
+        <div class="call-ended-overlay__text" id="endedText">Call ended</div>
+        <div class="call-ended-overlay__duration" id="endedDuration"></div>
+        <button class="call-ended-overlay__download" id="btnDownload">⬇ Download Transcript</button>
+    </div>
+</div>
+
+<!-- Preload sounds -->
+<audio id="sndRingtone" src="/sounds/ringtone.mp3" loop preload="auto"></audio>
+<audio id="sndOutgoing" src="/sounds/outgoing.mp3" loop preload="auto"></audio>
+<audio id="sndConnected" src="/sounds/connected.mp3" preload="auto"></audio>
+<audio id="sndHangup" src="/sounds/hangup.mp3" preload="auto"></audio>
+<audio id="sndScreenStart" src="/sounds/screenshare_start.mp3" preload="auto"></audio>
+<audio id="sndScreenEnd" src="/sounds/screenshare_end.mp3" preload="auto"></audio>
+
+<script>
+(function() {
+'use strict';
+
+/* ───────────────────────────────────────────
+   CONFIG & DOM REFS
+   ─────────────────────────────────────────── */
+const el = document.getElementById('callPopup');
+const CALL_ID     = parseInt(el.dataset.callId);
+const CALL_TYPE   = el.dataset.callType;          // VIDEO | AUDIO
+const IS_CALLER   = el.dataset.isCaller === '1';
+const USER_ID     = parseInt(el.dataset.userId);
+const PEER_NAME   = el.dataset.peerName || 'Unknown';
+const ICE_SERVERS = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' }
+];
+
+const localVideo      = document.getElementById('localVideo');
+const remoteVideo     = document.getElementById('remoteVideo');
+const remoteContainer = document.getElementById('remoteContainer');
+const localContainer  = document.getElementById('localContainer');
+const placeholder     = document.getElementById('placeholder');
+const statusText      = document.getElementById('statusText');
+const timerEl         = document.getElementById('callTimer');
+const headerMeta      = document.getElementById('headerMeta');
+const screenBadge     = document.getElementById('screenShareBadge');
+const endedOverlay    = document.getElementById('endedOverlay');
+const endedText       = document.getElementById('endedText');
+const endedDuration   = document.getElementById('endedDuration');
+const btnDownload     = document.getElementById('btnDownload');
+const controls        = document.getElementById('callControls');
+
+const btnMute   = document.getElementById('btnMute');
+const btnCamera = document.getElementById('btnCamera');
+const btnScreen = document.getElementById('btnScreen');
+const btnEnd    = document.getElementById('btnEnd');
+const btnAccept = document.getElementById('btnAccept');
+const btnReject = document.getElementById('btnReject');
+const btnCC     = document.getElementById('btnCC');
+
+/* ─── Transcription DOM refs ─── */
+const callSubtitle    = document.getElementById('callSubtitle');
+const subtitleFinal   = document.getElementById('subtitleFinal');
+const subtitleInterim = document.getElementById('subtitleInterim');
+const transcriptPanel = document.getElementById('transcriptPanel');
+const subtitleTextEl  = callSubtitle ? callSubtitle.querySelector('.call-subtitle__text') : null;
+let subtitleFadeTimer = null;
+let subtitleClearTimer = null;
+
+/* ─── Sound refs ─── */
+const snd = {
+    ringtone : document.getElementById('sndRingtone'),
+    outgoing : document.getElementById('sndOutgoing'),
+    connected: document.getElementById('sndConnected'),
+    hangup   : document.getElementById('sndHangup'),
+    ssStart  : document.getElementById('sndScreenStart'),
+    ssEnd    : document.getElementById('sndScreenEnd'),
+};
+
+/* ───────────────────────────────────────────
+   STATE
+   ─────────────────────────────────────────── */
+let localStream       = null;
+let screenStream      = null;
+let pc                = null;        // RTCPeerConnection
+let pollTimer         = null;
+let lastSignalId      = 0;
+let isMuted           = false;
+let isCameraOff       = false;
+let isScreenOn        = false;
+let callState         = el.dataset.callStatus;  // RINGING | CONNECTED | ENDED
+let timerInterval     = null;
+let seconds           = 0;
+let callEnded         = false;
+let isPolling         = false;
+let iceCandidateBuffer = [];
+
+/* ───────────────────────────────────────────
+   TRANSCRIPTION STATE & HELPERS
+   ─────────────────────────────────────────── */
+let recognizer        = null;
+let isCCOn            = false;
+let translateTo       = 'off';
+const transcriptLog   = [];   // {label, text}
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+function subtitleDuration(text) {
+    // ~250 wpm reading = 240ms/word; clamp 2s–6s
+    const words = text.trim().split(/\s+/).length;
+    return Math.max(2000, Math.min(6000, words * 280));
+}
+
+async function translateText(text) {
+    if (translateTo === 'off' || !text) return null;
+    try {
+        const res = await fetch(
+            'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text) + '&langpair=autodetect|' + translateTo
+        );
+        const data = await res.json();
+        if (data.responseStatus === 200) {
+            const t = data.responseData.translatedText;
+            return (t && t !== text) ? t : null;
+        }
+    } catch(e) {}
+    return null;
+}
+
+async function addTranscriptEntry(label, text) {
+    const entry = { label, text, time: new Date().toLocaleTimeString(), translated: null };
+    transcriptLog.push(entry);
+    const duration = subtitleDuration(text);
+    // Restart animation by removing, forcing reflow, re-adding element
+    clearTimeout(subtitleFadeTimer);
+    clearTimeout(subtitleClearTimer);
+    if (subtitleTextEl) {
+        subtitleTextEl.classList.remove('fading');
+        subtitleTextEl.style.animation = 'none';
+        void subtitleTextEl.offsetHeight; // reflow
+        subtitleTextEl.style.animation = '';
+    }
+    subtitleFinal.textContent = text;
+    subtitleTextEl && (subtitleTextEl.querySelector('.call-subtitle__translated') || null)?.remove();
+    // Schedule speed-based fade
+    subtitleFadeTimer = setTimeout(() => {
+        if (subtitleTextEl) subtitleTextEl.classList.add('fading');
+        subtitleClearTimer = setTimeout(() => {
+            subtitleFinal.textContent = '';
+            subtitleInterim.textContent = '';
+            const tl = subtitleTextEl?.querySelector('.call-subtitle__translated');
+            if (tl) tl.remove();
+            if (subtitleTextEl) subtitleTextEl.classList.remove('fading');
+        }, 650);
+    }, duration);
+    // Append original to history panel
+    const labelEl = document.createElement('div');
+    labelEl.className = 'call-transcript-label';
+    labelEl.textContent = label;
+    const textEl = document.createElement('div');
+    textEl.className = 'call-transcript-entry' + (label === 'Me' ? ' call-transcript-entry--me' : '');
+    textEl.textContent = text;
+    transcriptPanel.appendChild(labelEl);
+    transcriptPanel.appendChild(textEl);
+    transcriptPanel.scrollTop = transcriptPanel.scrollHeight;
+    // Translate async — update subtitle + append translation to panel
+    if (translateTo !== 'off') {
+        const translated = await translateText(text);
+        if (translated) {
+            entry.translated = translated;
+            // Update live subtitle with translation
+            subtitleFinal.textContent = translated;
+            let tlSubEl = subtitleTextEl?.querySelector('.call-subtitle__translated');
+            if (!tlSubEl && subtitleTextEl) {
+                tlSubEl = document.createElement('span');
+                tlSubEl.className = 'call-subtitle__translated';
+                subtitleTextEl.appendChild(tlSubEl);
+            }
+            // Append translation row to panel
+            const tlEl = document.createElement('div');
+            tlEl.className = 'call-transcript-entry call-transcript-entry--translated';
+            tlEl.textContent = '→ ' + translated;
+            transcriptPanel.appendChild(tlEl);
+            transcriptPanel.scrollTop = transcriptPanel.scrollHeight;
+        }
+    }
+}
+
+function downloadSummary() {
+    if (!transcriptLog.length) return;
+    const lines = [];
+    const dateStr = new Date().toLocaleString();
+    lines.push('╔══════════════════════════════════════╗');
+    lines.push('║      SynergyGig — Call Transcript    ║');
+    lines.push('╚══════════════════════════════════════╝');
+    lines.push('');
+    lines.push('Date       : ' + dateStr);
+    lines.push('Participant: ' + PEER_NAME);
+    lines.push('Duration   : ' + fmtTime(seconds));
+    lines.push('Type       : ' + CALL_TYPE);
+    if (translateTo !== 'off') lines.push('Translated : ' + translateTo.toUpperCase());
+    lines.push('');
+    lines.push('──────────────────────────────────────');
+    lines.push('');
+    transcriptLog.forEach(e => {
+        lines.push('[' + e.time + '] ' + e.label.toUpperCase());
+        lines.push(e.text);
+        if (e.translated) lines.push('  → ' + e.translated);
+        lines.push('');
+    });
+    lines.push('──────────────────────────────────────');
+    lines.push('Generated by SynergyGig on ' + dateStr);
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'transcript-' + PEER_NAME.replace(/\s+/g, '_') + '-' + Date.now() + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+if (btnDownload) {
+    btnDownload.addEventListener('click', downloadSummary);
+}
+
+function startTranscription() {
+    if (!SR) return;
+    recognizer = new SR();
+    recognizer.continuous = true;
+    recognizer.interimResults = true;
+    recognizer.lang = navigator.language || 'en-US';
+    recognizer.onresult = (e) => {
+        let interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+            if (e.results[i].isFinal) {
+                const txt = e.results[i][0].transcript.trim();
+                if (txt) addTranscriptEntry('Me', txt);
+                subtitleInterim.textContent = '';
+            } else {
+                interim += e.results[i][0].transcript;
+            }
+        }
+        subtitleInterim.textContent = interim;
+    };
+    recognizer.onerror = (e) => {
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+            isCCOn = false;
+            btnCC.classList.remove('call-btn--cc-active');
+            callSubtitle.classList.remove('active');
+            transcriptPanel.classList.remove('active');
+        }
+    };
+    recognizer.onend = () => { if (isCCOn && !callEnded) recognizer.start(); };
+    recognizer.start();
+}
+
+function stopTranscription() {
+    if (recognizer) {
+        recognizer.onend = null;
+        try { recognizer.stop(); } catch(e){}
+        recognizer = null;
+    }
+    clearTimeout(subtitleFadeTimer);
+    clearTimeout(subtitleClearTimer);
+    if (subtitleTextEl) subtitleTextEl.classList.remove('fading');
+    subtitleFinal.textContent = '';
+    subtitleInterim.textContent = '';
+}
+
+const btnTranslate = document.getElementById('btnTranslate');
+const langPicker   = document.getElementById('langPicker');
+
+if (btnTranslate && langPicker) {
+    btnTranslate.addEventListener('click', () => {
+        langPicker.classList.toggle('active');
+    });
+    langPicker.querySelectorAll('.call-lang-opt').forEach(btn => {
+        btn.addEventListener('click', () => {
+            translateTo = btn.dataset.lang;
+            langPicker.querySelectorAll('.call-lang-opt').forEach(b => b.classList.remove('call-lang-opt--active'));
+            btn.classList.add('call-lang-opt--active');
+            btnTranslate.classList.toggle('call-btn--cc-active', translateTo !== 'off');
+            langPicker.classList.remove('active');
+        });
+    });
+    // Close picker when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!langPicker.contains(e.target) && e.target !== btnTranslate) {
+            langPicker.classList.remove('active');
+        }
+    });
+}
+
+if (btnCC) {
+    btnCC.addEventListener('click', () => {
+        if (!SR) {
+            const msg = document.createElement('div');
+            msg.className = 'call-cc-unsupported';
+            msg.textContent = 'Live captions require Chrome or Edge';
+            document.querySelector('.call-popup').appendChild(msg);
+            setTimeout(() => msg.remove(), 3000);
+            return;
+        }
+        isCCOn = !isCCOn;
+        btnCC.classList.toggle('call-btn--cc-active', isCCOn);
+        callSubtitle.classList.toggle('active', isCCOn);
+        transcriptPanel.classList.toggle('active', isCCOn);
+        if (isCCOn) { startTranscription(); } else { stopTranscription(); }
+    });
+}
+
+/* ───────────────────────────────────────────
+   HELPERS
+   ─────────────────────────────────────────── */
+function playSound(audio) {
+    try { audio.currentTime = 0; audio.play().catch(()=>{}); } catch(e){}
+}
+function stopSound(audio) {
+    try { audio.pause(); audio.currentTime = 0; } catch(e){}
+}
+function stopAllSounds() {
+    Object.values(snd).forEach(a => stopSound(a));
+}
+
+async function apiPost(url, body) {
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+    });
+    return res.json();
+}
+async function apiGet(url) {
+    const res = await fetch(url);
+    return res.json();
+}
+
+function fmtTime(s) {
+    const m = String(Math.floor(s / 60)).padStart(2, '0');
+    const sec = String(s % 60).padStart(2, '0');
+    return m + ':' + sec;
+}
+
+/* ───────────────────────────────────────────
+   GET LOCAL MEDIA
+   ─────────────────────────────────────────── */
+async function getLocalMedia() {
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 48000 },
+            video: CALL_TYPE === 'VIDEO' ? {
+                width:     { ideal: 1280, max: 1920 },
+                height:    { ideal: 720,  max: 1080 },
+                frameRate: { ideal: 30,   max: 60   },
+                facingMode: 'user'
+            } : false
+        });
+        localVideo.srcObject = localStream;
+    } catch (err) {
+        console.error('getUserMedia error:', err);
+        statusText.textContent = 'Camera/mic access denied';
+    }
+}
+
+/* ───────────────────────────────────────────
+   WEBRTC PEER CONNECTION
+   ─────────────────────────────────────────── */
+function createPeerConnection() {
+    pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+    // Add local tracks
+    if (localStream) {
+        localStream.getTracks().forEach(track => {
+            pc.addTrack(track, localStream);
+        });
+    }
+
+    // ICE candidates → send to server
+    pc.onicecandidate = (ev) => {
+        if (ev.candidate) {
+            sendSignal('ice', ev.candidate.toJSON());
+        }
+    };
+
+    // Remote tracks → display
+    pc.ontrack = (ev) => {
+        if (ev.streams && ev.streams[0]) {
+            remoteVideo.srcObject = ev.streams[0];
+            // Show remote video if it's a video track
+            if (ev.track.kind === 'video') {
+                remoteContainer.classList.remove('call-remote--hidden');
+                if (CALL_TYPE === 'VIDEO') {
+                    placeholder.style.display = 'none';
+                }
+            }
+        }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+        if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+            endCall('Connection lost');
+        }
+    };
+}
+
+/* ───────────────────────────────────────────
+   SIGNALING
+   ─────────────────────────────────────────── */
+async function sendSignal(type, payload) {
+    try {
+        await apiPost('/call/signal/send', {
+            callId: CALL_ID,
+            type: type,
+            payload: payload
+        });
+    } catch(e) {
+        console.error('Signal send error:', e);
+    }
+}
+
+async function pollSignals() {
+    if (callEnded || isPolling) return;
+    isPolling = true;
+    try {
+        const data = await apiGet('/call/signal/poll/' + CALL_ID + '?after=' + lastSignalId);
+
+        // Check call status
+        if (data.callStatus === 'ENDED' || data.callStatus === 'REJECTED') {
+            endCall(data.callStatus === 'REJECTED' ? 'Call declined' : 'Call ended');
+            return;
+        }
+
+        // If we were RINGING and now CONNECTED (other side accepted)
+        if (callState === 'RINGING' && data.callStatus === 'CONNECTED') {
+            await onCallConnected();
+        }
+
+        // Process signals
+        for (const sig of data.signals) {
+            lastSignalId = Math.max(lastSignalId, sig.id);
+            await handleSignal(sig);
+        }
+    } catch(e) {
+        console.error('Poll error:', e);
+    } finally {
+        isPolling = false;
+    }
+}
+
+async function handleSignal(sig) {
+    if (!pc) return;
+    try {
+        if (sig.type === 'offer') {
+            await pc.setRemoteDescription(new RTCSessionDescription(sig.payload));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await sendSignal('answer', answer);
+            // Drain buffered ICE candidates now that remote description is set
+            for (const c of iceCandidateBuffer) {
+                try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(e){}
+            }
+            iceCandidateBuffer = [];
+        } else if (sig.type === 'answer') {
+            await pc.setRemoteDescription(new RTCSessionDescription(sig.payload));
+            // Drain buffered ICE candidates
+            for (const c of iceCandidateBuffer) {
+                try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(e){}
+            }
+            iceCandidateBuffer = [];
+        } else if (sig.type === 'ice') {
+            if (pc.remoteDescription) {
+                await pc.addIceCandidate(new RTCIceCandidate(sig.payload));
+            } else {
+                // Buffer until remote description is set
+                iceCandidateBuffer.push(sig.payload);
+            }
+        }
+    } catch(e) {
+        console.error('Handle signal error:', e);
+    }
+}
+
+/* ───────────────────────────────────────────
+   CALL FLOW
+   ─────────────────────────────────────────── */
+async function startCallerFlow() {
+    playSound(snd.outgoing);
+    await getLocalMedia();
+    // Do NOT create PC or offer yet — wait for callee to accept.
+    // The offer is sent in onCallConnected() once the callee accepts.
+    pollTimer = setInterval(pollSignals, 800);
+}
+
+async function startCalleeFlow() {
+    playSound(snd.ringtone);
+    // Don't get media or create PC until accept
+    // Start polling to detect if caller cancels
+    pollTimer = setInterval(pollSignals, 1000);
+}
+
+async function acceptCall() {
+    stopAllSounds();
+
+    // Accept on server (status → CONNECTED)
+    await apiPost('/call/' + CALL_ID + '/accept-ajax');
+
+    // Get media and create PC — caller will detect CONNECTED and send the offer
+    await getLocalMedia();
+    createPeerConnection();
+    callState = 'CONNECTED';
+    await onCallConnected();  // UI update only (IS_CALLER=false, so no offer sent)
+
+    // Hide accept/reject, show controls
+    const incomingActions = document.getElementById('incomingActions');
+    if (incomingActions) incomingActions.style.display = 'none';
+    controls.style.display = '';
+}
+
+async function onCallConnected() {
+    callState = 'CONNECTED';
+    stopAllSounds();
+    playSound(snd.connected);
+
+    // Update UI
+    statusText.textContent = 'Connected';
+    placeholder.classList.remove('call-ringing');
+    timerEl.classList.add('active');
+    headerMeta.textContent = CALL_TYPE === 'VIDEO' ? 'Video Call' : 'Audio Call';
+
+    // Start timer
+    timerInterval = setInterval(() => {
+        seconds++;
+        timerEl.textContent = fmtTime(seconds);
+    }, 1000);
+
+    // Caller creates the WebRTC offer now that callee has accepted
+    if (IS_CALLER && !pc) {
+        createPeerConnection();
+        try {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            await sendSignal('offer', offer);
+        } catch(e) {
+            console.error('Offer creation failed:', e);
+        }
+    }
+}
+
+async function endCall(reason) {
+    if (callEnded) return;
+    callEnded = true;
+
+    // Stop transcription
+    stopTranscription();
+    isCCOn = false;
+
+    stopAllSounds();
+    playSound(snd.hangup);
+
+    // Stop polling
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+
+    // End on server
+    try {
+        await apiPost('/call/' + CALL_ID + '/end-ajax');
+    } catch(e) {}
+
+    // Close media
+    if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+    if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
+    if (pc) { pc.close(); pc = null; }
+
+    // Show ended overlay
+    endedText.textContent = reason || 'Call ended';
+    if (seconds > 0) {
+        endedDuration.textContent = 'Duration: ' + fmtTime(seconds);
+    }
+    if (transcriptLog.length > 0 && btnDownload) {
+        btnDownload.classList.add('visible');
+    }
+    endedOverlay.classList.add('active');
+
+    // Close window after 3 seconds
+    setTimeout(() => {
+        try { window.close(); } catch(e) {}
+        // Fallback: if popup can't close
+        endedText.textContent = 'You can close this window';
+    }, 3000);
+}
+
+async function rejectCall() {
+    if (callEnded) return;
+    callEnded = true;
+    stopAllSounds();
+    playSound(snd.hangup);
+
+    try { await apiPost('/call/' + CALL_ID + '/reject-ajax'); } catch(e) {}
+
+    endedText.textContent = 'Call declined';
+    endedOverlay.classList.add('active');
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+
+    setTimeout(() => { try { window.close(); } catch(e) {} }, 2000);
+}
+
+/* ───────────────────────────────────────────
+   CONTROLS
+   ─────────────────────────────────────────── */
+if (btnMute) {
+    btnMute.addEventListener('click', () => {
+        if (!localStream) return;
+        isMuted = !isMuted;
+        localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+        document.getElementById('icMicOn').style.display = isMuted ? 'none' : '';
+        document.getElementById('icMicOff').style.display = isMuted ? '' : 'none';
+        btnMute.className = 'call-btn ' + (isMuted ? 'call-btn--toggled' : 'call-btn--default');
+    });
+}
+
+if (btnCamera) {
+    btnCamera.addEventListener('click', () => {
+        if (!localStream) return;
+        isCameraOff = !isCameraOff;
+        localStream.getVideoTracks().forEach(t => t.enabled = !isCameraOff);
+        document.getElementById('icCamOn').style.display = isCameraOff ? 'none' : '';
+        document.getElementById('icCamOff').style.display = isCameraOff ? '' : 'none';
+        btnCamera.className = 'call-btn ' + (isCameraOff ? 'call-btn--toggled' : 'call-btn--default');
+    });
+}
+
+if (btnScreen) {
+    btnScreen.addEventListener('click', async () => {
+        if (isScreenOn) {
+            // Stop screen share
+            if (screenStream) {
+                screenStream.getTracks().forEach(t => t.stop());
+                screenStream = null;
+            }
+            // Revert to camera
+            if (pc && localStream) {
+                const videoTrack = localStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (sender) sender.replaceTrack(videoTrack);
+                }
+            }
+            localVideo.srcObject = localStream;
+            isScreenOn = false;
+            btnScreen.className = 'call-btn call-btn--default';
+            screenBadge.classList.remove('active');
+            playSound(snd.ssEnd);
+        } else {
+            try {
+                screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                const screenTrack = screenStream.getVideoTracks()[0];
+
+                // Replace video track in peer connection
+                if (pc) {
+                    const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                    if (sender) {
+                        sender.replaceTrack(screenTrack);
+                    } else {
+                        pc.addTrack(screenTrack, screenStream);
+                    }
+                }
+
+                localVideo.srcObject = screenStream;
+                isScreenOn = true;
+                btnScreen.className = 'call-btn call-btn--screen-active';
+                screenBadge.classList.add('active');
+                playSound(snd.ssStart);
+
+                // When user stops from browser UI
+                screenTrack.addEventListener('ended', () => {
+                    if (pc && localStream) {
+                        const vidTrack = localStream.getVideoTracks()[0];
+                        if (vidTrack) {
+                            const s = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+                            if (s) s.replaceTrack(vidTrack);
+                        }
+                    }
+                    localVideo.srcObject = localStream;
+                    isScreenOn = false;
+                    screenStream = null;
+                    btnScreen.className = 'call-btn call-btn--default';
+                    screenBadge.classList.remove('active');
+                    playSound(snd.ssEnd);
+                });
+            } catch (err) {
+                console.log('Screen share cancelled');
+            }
+        }
+    });
+}
+
+if (btnEnd) {
+    btnEnd.addEventListener('click', () => endCall());
+}
+if (btnAccept) {
+    btnAccept.addEventListener('click', () => acceptCall());
+}
+if (btnReject) {
+    btnReject.addEventListener('click', () => rejectCall());
+}
+
+/* ───────────────────────────────────────────
+   DRAGGABLE LOCAL PIP
+   ─────────────────────────────────────────── */
+(function() {
+    let isDragging = false, startX, startY, startLeft, startTop;
+    localContainer.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        localContainer.classList.add('call-local--dragging');
+        const rect = localContainer.getBoundingClientRect();
+        startX = e.clientX; startY = e.clientY;
+        startLeft = rect.left; startTop = rect.top;
+        e.preventDefault();
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startX, dy = e.clientY - startY;
+        localContainer.style.position = 'absolute';
+        localContainer.style.left = (startLeft + dx) + 'px';
+        localContainer.style.top = (startTop + dy) + 'px';
+        localContainer.style.right = 'auto';
+        localContainer.style.bottom = 'auto';
+    });
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        localContainer.classList.remove('call-local--dragging');
+    });
+})();
+
+/* ───────────────────────────────────────────
+   WINDOW CLOSE = END CALL
+   ─────────────────────────────────────────── */
+window.addEventListener('beforeunload', () => {
+    if (!callEnded) {
+        // Fire-and-forget end call
+        navigator.sendBeacon('/call/' + CALL_ID + '/end-ajax', '');
+        if (localStream) localStream.getTracks().forEach(t => t.stop());
+        if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+    }
+});
+
+/* ───────────────────────────────────────────
+   INIT
+   ─────────────────────────────────────────── */
+(async function init() {
+    // If call is already ended/rejected
+    if (callState === 'ENDED' || callState === 'REJECTED' || callState === 'MISSED') {
+        endedText.textContent = callState === 'REJECTED' ? 'Call was declined' : 'Call ended';
+        endedOverlay.classList.add('active');
+        return;
+    }
+
+    if (IS_CALLER) {
+        await startCallerFlow();
+    } else if (callState === 'RINGING') {
+        await startCalleeFlow();
+    } else if (callState === 'CONNECTED') {
+        // Callee accepted via notification overlay — popup opened after server accepted.
+        // Just create PC and wait for the caller's offer to arrive via polling.
+        await getLocalMedia();
+        createPeerConnection();
+        await onCallConnected();  // UI update (IS_CALLER=false, no offer sent)
+        pollTimer = setInterval(pollSignals, 800);
+    }
+})();
+
+})();
+</script>
+</body>
+</html>

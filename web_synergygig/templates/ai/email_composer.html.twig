@@ -1,0 +1,103 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Email Composer | AI Tools{% endblock %}
+{% block page_title %}AI Email Composer{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_ai_index') }}" class="btn btn-ghost btn-sm">← All Tools</a>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;min-height:500px">
+    {# ── Input Panel ── #}
+    <div class="card" style="padding:1.25rem">
+        <h3 style="margin:0 0 1rem;font-size:1rem">Compose Settings</h3>
+
+        <div style="margin-bottom:1rem">
+            <label class="form-label">Recipient</label>
+            <input id="recipientField" type="text" class="form-input" placeholder="e.g. John Smith (optional)">
+        </div>
+
+        <div style="margin-bottom:1rem">
+            <label class="form-label">Purpose <span style="color:var(--danger)">*</span></label>
+            <input id="purposeField" type="text" class="form-input" placeholder="e.g. Request for project extension">
+        </div>
+
+        <div style="margin-bottom:1rem">
+            <label class="form-label">Key Points</label>
+            <textarea id="keyPointsArea" class="form-input" rows="5" placeholder="One point per line (optional)&#10;- Deadline is next Friday&#10;- Need approval from finance"></textarea>
+        </div>
+
+        <div style="margin-bottom:1.25rem">
+            <label class="form-label">Tone</label>
+            <select id="toneSelect" class="form-input" style="max-width:200px">
+                {% for t in ['Professional','Friendly','Formal','Casual','Urgent','Diplomatic'] %}
+                <option{{ t == 'Professional' ? ' selected' : '' }}>{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="display:flex;gap:0.75rem">
+            <button id="btnCompose" class="btn btn-primary" onclick="compose()">✉️ Generate Email</button>
+            <button id="btnRewrite" class="btn btn-ghost" onclick="compose()" style="display:none">🔄 Rewrite</button>
+        </div>
+    </div>
+
+    {# ── Result Panel ── #}
+    <div class="card" style="display:flex;flex-direction:column;padding:1.25rem;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <h3 style="margin:0;font-size:1rem">Generated Email</h3>
+            <button id="btnCopy" class="btn btn-ghost btn-sm" onclick="copyEmail()" style="display:none">📋 Copy</button>
+        </div>
+
+        <div id="resultArea" style="flex:1;overflow-y:auto">
+            <div id="placeholder" class="text-muted" style="display:flex;align-items:center;justify-content:center;height:100%;text-align:center">
+                <div>
+                    <div style="font-size:3rem;margin-bottom:1rem">✉️</div>
+                    <p>Fill in the details and click <strong>Generate Email</strong>.</p>
+                </div>
+            </div>
+            <pre id="emailContent" style="display:none;white-space:pre-wrap;font-family:inherit;line-height:1.7;margin:0;color:var(--text-primary);background:var(--bg-tertiary);padding:1.25rem;border-radius:var(--radius-md)"></pre>
+            <div id="loading" style="display:none;text-align:center;padding:2rem">
+                <div class="spinner"></div>
+                <p class="text-muted" style="margin-top:1rem">Composing email…</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>.spinner{width:32px;height:32px;border:3px solid var(--border-primary);border-top-color:var(--accent-primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<script>
+let lastEmail='';
+
+async function compose(){
+    const purpose=document.getElementById('purposeField').value.trim();
+    if(!purpose){alert('Purpose is required.');return}
+
+    document.getElementById('placeholder').style.display='none';
+    document.getElementById('emailContent').style.display='none';
+    document.getElementById('loading').style.display='block';
+    document.getElementById('btnCompose').disabled=true;
+
+    try{
+        const r=await fetch('{{ path("app_ai_email_composer_process") }}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+            recipient:document.getElementById('recipientField').value,
+            purpose,
+            keyPoints:document.getElementById('keyPointsArea').value,
+            tone:document.getElementById('toneSelect').value
+        })});
+        const d=await r.json();
+        if(d.error){alert(d.error);return}
+        lastEmail=d.email;
+        document.getElementById('emailContent').textContent=d.email;
+        document.getElementById('emailContent').style.display='block';
+        document.getElementById('btnCopy').style.display='inline-flex';
+        document.getElementById('btnRewrite').style.display='inline-flex';
+    }catch(e){alert('Error: '+e.message)}
+    finally{document.getElementById('loading').style.display='none';document.getElementById('btnCompose').disabled=false}
+}
+
+function copyEmail(){navigator.clipboard.writeText(lastEmail).then(()=>{const b=document.getElementById('btnCopy');b.textContent='✅ Copied!';setTimeout(()=>b.textContent='📋 Copy',1500)})}
+</script>
+{% endblock %}

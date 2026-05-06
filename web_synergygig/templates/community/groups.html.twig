@@ -1,0 +1,89 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Community Groups{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/community.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="community-layout">
+    {% include 'community/_sidebar.html.twig' %}
+
+    <main class="community-main">
+        {# ── Flash Messages ── #}
+        {% for type, messages in app.flashes %}
+            {% for msg in messages %}
+                <div class="flash-toast" data-type="{{ type }}">{{ msg }}</div>
+            {% endfor %}
+        {% endfor %}
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+            <h2 style="color:#E4E4E8;font-size:1.125rem;margin:0">{{ groups|length }} Groups</h2>
+            <details class="new-group-details">
+                <summary class="btn-publish">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    New Group
+                </summary>
+                <form action="{{ path('app_community_create_group') }}" method="post" class="new-group-form" novalidate>
+                    <input type="text" name="name" placeholder="Group name" class="comment-input">
+                    <textarea name="description" placeholder="Description (optional)" rows="2" class="comment-input" style="resize:vertical"></textarea>
+                    <select name="privacy" class="visibility-select">
+                        <option value="PUBLIC">Public</option>
+                        <option value="PRIVATE">Private</option>
+                    </select>
+                    <button type="submit" class="btn-publish">Create</button>
+                </form>
+            </details>
+        </div>
+
+        <div class="groups-grid">
+            {% for group in groups %}
+            <div class="group-card">
+                <div class="group-card-header">
+                    <div class="group-icon">{{ group.name|first|upper }}</div>
+                    <div class="group-info">
+                        <a href="{{ path('app_community_group_detail', {id: group.id}) }}" class="group-name">{{ group.name }}</a>
+                        <span class="group-meta">
+                            <span class="group-privacy {{ group.privacy|default('PUBLIC') == 'PRIVATE' ? 'private' : '' }}">{{ group.privacy|default('PUBLIC') }}</span>
+                            · {{ group.member_count ?? 0 }} members
+                        </span>
+                    </div>
+                </div>
+
+                {% if group.description %}
+                <p class="group-desc">{{ group.description|slice(0, 140) }}{% if group.description|length > 140 %}...{% endif %}</p>
+                {% endif %}
+
+                <div class="group-card-footer">
+                    {% if group.creator %}
+                    <span class="group-creator">By {{ group.creator.firstName }}</span>
+                    {% endif %}
+
+                    {% set myRole = membership[group.id]|default(null) %}
+                    {% if myRole == 'ADMIN' %}
+                        <span class="btn-admin">Admin</span>
+                    {% elseif myRole %}
+                        <form action="{{ path('app_community_leave_group', {id: group.id}) }}" method="post" style="margin:0">
+                            <button type="submit" class="btn-leave">Leave</button>
+                        </form>
+                    {% else %}
+                        <form action="{{ path('app_community_join_group', {id: group.id}) }}" method="post" style="margin:0">
+                            <button type="submit" class="btn-join">Join</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+                <div class="empty-state" style="grid-column:1/-1">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#2C666E" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <h3>No groups yet</h3>
+                    <p>Create the first group!</p>
+                </div>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+
+{% endblock %}

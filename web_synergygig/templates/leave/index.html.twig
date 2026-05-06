@@ -1,0 +1,304 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Leave Requests{% endblock %}
+
+{% block header_actions %}
+    {% if is_granted('ROLE_HR') %}
+    <a href="{{ path('app_export_leave_csv') }}" class="btn btn-ghost btn-sm" title="Export CSV">📥 CSV</a>
+    {% endif %}
+    <a href="{{ path('app_leave_new') }}" class="btn btn-primary btn-sm">+ New Request</a>
+{% endblock %}
+
+{% block content %}
+{# Filter bar #}
+<div class="card" style="padding:var(--space-md) var(--space-lg);margin-bottom:var(--space-lg);display:flex;align-items:center;gap:var(--space-md);flex-wrap:wrap">
+    <form method="get" action="{{ path('app_leave_index') }}" style="flex:1;display:flex;align-items:center;gap:var(--space-md);flex-wrap:wrap">
+        <select name="status" class="form-control form-select" style="width:auto;min-width:130px">
+            <option value="">All Status</option>
+            <option value="PENDING" {{ app.request.query.get('status') == 'PENDING' ? 'selected' }}>Pending</option>
+            <option value="APPROVED" {{ app.request.query.get('status') == 'APPROVED' ? 'selected' }}>Approved</option>
+            <option value="REJECTED" {{ app.request.query.get('status') == 'REJECTED' ? 'selected' }}>Rejected</option>
+        </select>
+        <select name="type" class="form-control form-select" style="width:auto;min-width:130px">
+            <option value="">All Types</option>
+            <option value="VACATION" {{ app.request.query.get('type') == 'VACATION' ? 'selected' }}>Vacation</option>
+            <option value="SICK" {{ app.request.query.get('type') == 'SICK' ? 'selected' }}>Sick</option>
+            <option value="UNPAID" {{ app.request.query.get('type') == 'UNPAID' ? 'selected' }}>Unpaid</option>
+            <option value="MATERNITY" {{ app.request.query.get('type') == 'MATERNITY' ? 'selected' }}>Maternity</option>
+            <option value="PERSONAL" {{ app.request.query.get('type') == 'PERSONAL' ? 'selected' }}>Personal</option>
+        </select>
+        <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+        {% if app.request.query.get('status') or app.request.query.get('type') %}
+        <a href="{{ path('app_leave_index') }}" class="btn btn-ghost btn-sm" style="color:var(--color-danger)">✕ Clear</a>
+        {% endif %}
+    </form>
+    {# View toggle #}
+    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <span class="text-muted" style="font-size:.8rem;white-space:nowrap">View as:</span>
+        <button type="button" id="btn-view-list" onclick="setLeaveView('list')" title="List view"
+            style="padding:5px 8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-card);cursor:pointer;display:flex;align-items:center;color:var(--text-primary)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </button>
+        <button type="button" id="btn-view-grid" onclick="setLeaveView('grid')" title="Grid view"
+            style="padding:5px 8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-card);cursor:pointer;display:flex;align-items:center;color:var(--text-primary)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </button>
+    </div>
+</div>
+
+{% if leaves|length > 0 %}
+
+{# ── LIST VIEW ── #}
+<div id="leave-list-view" class="card">
+    <div class="table-wrap" style="overflow:visible">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Employee</th>
+                    <th>Type</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in leaves %}
+                <tr>
+                    <td class="text-muted">{{ l.id }}</td>
+                    <td>
+                        {% if l.user %}
+                            <div style="display:flex;align-items:center;gap:0.5rem">
+                                {% if l.user.avatar_path %}
+                                    <img src="{{ asset('uploads/avatars/' ~ l.user.avatar_path) }}" alt="" style="width:30px;height:30px;border-radius:50%;object-fit:cover;flex-shrink:0">
+                                {% else %}
+                                    <div class="avatar avatar--sm">{{ l.user.firstName|first }}{{ l.user.lastName|first }}</div>
+                                {% endif %}
+                                {{ l.user.firstName }} {{ l.user.lastName }}
+                            </div>
+                        {% else %}<span class="text-muted">—</span>{% endif %}
+                    </td>
+                    <td><span class="badge badge--purple">{{ l.type ?? '—' }}</span></td>
+                    <td>{{ l.startDate ? l.startDate|date('M d, Y') : '—' }}</td>
+                    <td>{{ l.endDate ? l.endDate|date('M d, Y') : '—' }}</td>
+                    <td>
+                        {% set sc = {'PENDING': 'orange', 'APPROVED': 'green', 'REJECTED': 'red'} %}
+                        {% if l.status == 'PENDING' and is_granted('ROLE_HR') %}
+                        <button type="button" class="badge badge--orange leave-status-btn" style="border:none;cursor:pointer;font:inherit;letter-spacing:inherit"
+                            data-approve-url="{{ path('app_leave_approve', {id: l.id}) }}"
+                            data-approve-token="{{ csrf_token('approve' ~ l.id) }}"
+                            data-reject-url="{{ path('app_leave_reject', {id: l.id}) }}"
+                            data-reject-token="{{ csrf_token('reject' ~ l.id) }}"
+                            onclick="showLeavePopup(this)" title="Click to approve or decline">
+                            ⏳ PENDING
+                        </button>
+                        {% else %}
+                        <span class="badge badge--{{ sc[l.status] ?? 'blue' }}">{{ l.status ?? 'N/A' }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <details class="crud-actions-menu">
+                            <summary class="btn btn-ghost btn-sm" title="Actions"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></summary>
+                            <div class="crud-actions-dropdown">
+                                <a href="{{ path('app_leave_show', {id: l.id}) }}" class="crud-action-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> View</a>
+                                {% if is_granted('ROLE_HR') or (l.user and l.user.id == app.user.id and l.status == 'PENDING') %}
+                                <a href="{{ path('app_leave_edit', {id: l.id}) }}" class="crud-action-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit</a>
+                                {% endif %}
+                                {% if is_granted('ROLE_HR') %}
+                                <form method="post" action="{{ path('app_leave_delete', {id: l.id}) }}" onsubmit="return confirm('Delete this leave request?')">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ l.id) }}">
+                                    <button type="submit" class="crud-action-item crud-action-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Delete</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# ── GRID VIEW ── #}
+<div id="leave-grid-view" style="display:none;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:var(--space-lg)">
+    {% for l in leaves %}
+    {% set sc = {'PENDING': 'orange', 'APPROVED': 'green', 'REJECTED': 'red'} %}
+    <div class="card" style="padding:0;overflow:visible;position:relative">
+        {# 3-dot menu #}
+        <details class="crud-actions-menu" style="position:absolute;top:var(--space-sm);right:var(--space-sm)">
+            <summary class="btn btn-ghost btn-sm" style="padding:4px" title="Actions">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+            </summary>
+            <div class="crud-actions-dropdown" style="right:0;left:auto">
+                <a href="{{ path('app_leave_show', {id: l.id}) }}" class="crud-action-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> View</a>
+                {% if is_granted('ROLE_HR') or (l.user and l.user.id == app.user.id and l.status == 'PENDING') %}
+                <a href="{{ path('app_leave_edit', {id: l.id}) }}" class="crud-action-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit</a>
+                {% endif %}
+                {% if is_granted('ROLE_HR') %}
+                <form method="post" action="{{ path('app_leave_delete', {id: l.id}) }}" onsubmit="return confirm('Delete this leave request?')">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ l.id) }}">
+                    <button type="submit" class="crud-action-item crud-action-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Delete</button>
+                </form>
+                {% endif %}
+            </div>
+        </details>
+
+        <div style="padding:var(--space-lg)">
+            {# Employee #}
+            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:var(--space-md);padding-right:2rem">
+                {% if l.user %}
+                    {% if l.user.avatar_path %}
+                        <img src="{{ asset('uploads/avatars/' ~ l.user.avatar_path) }}" alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover;flex-shrink:0">
+                    {% else %}
+                        <div class="avatar avatar--lg" style="width:46px;height:46px;font-size:1.1rem;flex-shrink:0">{{ l.user.firstName|first }}{{ l.user.lastName|first }}</div>
+                    {% endif %}
+                    <div>
+                        <div style="font-weight:600;color:var(--text-primary)">{{ l.user.firstName }} {{ l.user.lastName }}</div>
+                        <div class="text-muted" style="font-size:.75rem">{{ l.user.email ?? '' }}</div>
+                    </div>
+                {% else %}
+                    <div class="avatar avatar--lg" style="width:46px;height:46px;font-size:1.1rem">?</div>
+                    <span class="text-muted">Unknown</span>
+                {% endif %}
+            </div>
+
+            {# Type + Status #}
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:var(--space-sm);flex-wrap:wrap">
+                <span class="badge badge--purple">{{ l.type ?? '—' }}</span>
+                {% if l.status == 'PENDING' and is_granted('ROLE_HR') %}
+                <button type="button" class="badge badge--orange leave-status-btn" style="border:none;cursor:pointer;font:inherit;letter-spacing:inherit"
+                    data-approve-url="{{ path('app_leave_approve', {id: l.id}) }}"
+                    data-approve-token="{{ csrf_token('approve' ~ l.id) }}"
+                    data-reject-url="{{ path('app_leave_reject', {id: l.id}) }}"
+                    data-reject-token="{{ csrf_token('reject' ~ l.id) }}"
+                    onclick="showLeavePopup(this)" title="Click to approve or decline">
+                    ⏳ PENDING
+                </button>
+                {% else %}
+                <span class="badge badge--{{ sc[l.status] ?? 'blue' }}">{{ l.status ?? 'N/A' }}</span>
+                {% endif %}
+            </div>
+
+            {# Dates #}
+            <div class="text-muted" style="font-size:.8125rem;display:flex;align-items:center;gap:.4rem;margin-bottom:4px">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                {{ l.startDate ? l.startDate|date('M d, Y') : '—' }}
+                <span>→</span>
+                {{ l.endDate ? l.endDate|date('M d, Y') : '—' }}
+            </div>
+
+            <div class="text-muted" style="font-size:.75rem"># {{ l.id }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<div class="card">
+    <div style="text-align:center;padding:3rem">
+        <p class="text-muted">No leave requests yet.</p>
+        <a href="{{ path('app_leave_new') }}" class="btn btn-primary" style="margin-top:1rem">+ Submit Request</a>
+    </div>
+</div>
+{% endif %}
+
+{% if pagination is defined %}{% include 'components/_pagination.html.twig' %}{% endif %}
+
+{# Portal popup — rendered at body level to avoid overflow clipping #}
+<div id="leave-popup-portal" style="display:none;position:fixed;z-index:9999;background:#1a191d;border:1px solid #333;border-radius:10px;padding:6px;min-width:180px;box-shadow:0 12px 32px rgba(0,0,0,.5)">
+    <div id="leave-popup-arrow" style="position:absolute;top:-5px;left:50%;transform:translateX(-50%);width:10px;height:10px;background:#1a191d;border-left:1px solid #333;border-top:1px solid #333;rotate:45deg"></div>
+    <form id="leave-popup-approve-form" method="post" style="margin:0">
+        <input type="hidden" id="leave-popup-approve-token" name="_token">
+        <button type="submit" style="width:100%;background:none;border:none;padding:9px 14px;text-align:left;color:#4ade80;font-size:.85rem;font-weight:600;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px;white-space:nowrap"
+            onmouseover="this.style.background='rgba(74,222,128,.12)'" onmouseout="this.style.background='none'">
+            ✓ Approve
+        </button>
+    </form>
+    <div style="height:1px;background:#333;margin:2px 6px"></div>
+    <form id="leave-popup-reject-form" method="post" style="margin:0">
+        <input type="hidden" id="leave-popup-reject-token" name="_token">
+        <button type="submit" style="width:100%;background:none;border:none;padding:9px 14px;text-align:left;color:#f87171;font-size:.85rem;font-weight:600;cursor:pointer;border-radius:6px;display:flex;align-items:center;gap:8px;white-space:nowrap"
+            onmouseover="this.style.background='rgba(248,113,113,.12)'" onmouseout="this.style.background='none'">
+            ✕ Decline
+        </button>
+    </form>
+</div>
+
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+// ── View toggle ──
+function setLeaveView(v) {
+    const lv = document.getElementById('leave-list-view');
+    const gv = document.getElementById('leave-grid-view');
+    const bl = document.getElementById('btn-view-list');
+    const bg = document.getElementById('btn-view-grid');
+    if (v === 'grid') {
+        lv.style.display = 'none';
+        gv.style.display = 'grid';
+        bl.style.background = 'var(--bg-card)';
+        bg.style.background = 'var(--color-primary,#7c3aed)';
+        bg.style.color = '#fff';
+        bg.style.borderColor = 'transparent';
+        bl.style.color = 'var(--text-primary)';
+        bl.style.borderColor = 'var(--border-color)';
+    } else {
+        lv.style.display = '';
+        gv.style.display = 'none';
+        bg.style.background = 'var(--bg-card)';
+        bl.style.background = 'var(--color-primary,#7c3aed)';
+        bl.style.color = '#fff';
+        bl.style.borderColor = 'transparent';
+        bg.style.color = 'var(--text-primary)';
+        bg.style.borderColor = 'var(--border-color)';
+    }
+    try { localStorage.setItem('leaveView', v); } catch(e) {}
+}
+
+// ── Portal popup ──
+var _activeBtn = null;
+function showLeavePopup(btn) {
+    const portal = document.getElementById('leave-popup-portal');
+    if (_activeBtn === btn && portal.style.display !== 'none') {
+        portal.style.display = 'none';
+        _activeBtn = null;
+        return;
+    }
+    _activeBtn = btn;
+    document.getElementById('leave-popup-approve-form').action = btn.dataset.approveUrl;
+    document.getElementById('leave-popup-approve-token').value = btn.dataset.approveToken;
+    document.getElementById('leave-popup-reject-form').action = btn.dataset.rejectUrl;
+    document.getElementById('leave-popup-reject-token').value = btn.dataset.rejectToken;
+
+    portal.style.display = 'block';
+    const rect = btn.getBoundingClientRect();
+    const pw = portal.offsetWidth || 180;
+    let left = rect.left + rect.width / 2 - pw / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+    portal.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+    portal.style.left = left + 'px';
+    // arrow position
+    const arrowLeft = (rect.left + rect.width / 2) - left;
+    document.getElementById('leave-popup-arrow').style.left = arrowLeft + 'px';
+}
+
+document.addEventListener('click', function(e) {
+    const portal = document.getElementById('leave-popup-portal');
+    if (!e.target.closest('.leave-status-btn') && !e.target.closest('#leave-popup-portal')) {
+        portal.style.display = 'none';
+        _activeBtn = null;
+    }
+});
+
+// Restore view preference
+try {
+    const saved = localStorage.getItem('leaveView');
+    if (saved) setLeaveView(saved);
+    else setLeaveView('list');
+} catch(e) { setLeaveView('list'); }
+</script>
+{% endblock %}

@@ -1,0 +1,164 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Interview Prep | AI Tools{% endblock %}
+{% block page_title %}AI Interview Prep{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_ai_index') }}" class="btn btn-ghost btn-sm">← All Tools</a>
+{% endblock %}
+
+{% block content %}
+{# ── Setup Card ── #}
+<div id="setupSection" style="max-width:600px;margin:0 auto">
+    <div class="card" style="padding:1.5rem;text-align:center;margin-bottom:1.25rem">
+        <div style="font-size:3rem;margin-bottom:0.75rem">🎤</div>
+        <h3 style="margin:0 0 0.5rem">Mock Interview Coach</h3>
+        <p class="text-muted" style="margin-bottom:1.25rem">Practice interviews with AI-powered coaching. Get rated on each answer with tips to improve.</p>
+        <div style="display:flex;justify-content:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.25rem">
+            <span class="badge badge--blue">🎤 Behavioral</span>
+            <span class="badge badge--purple">💻 Technical</span>
+            <span class="badge badge--orange">🧩 Situational</span>
+        </div>
+    </div>
+
+    <div class="card" style="padding:1.25rem">
+        <div style="margin-bottom:1rem">
+            <label class="form-label">Target Role <span style="color:var(--danger)">*</span></label>
+            <input id="roleField" type="text" class="form-input" placeholder="e.g. Java Developer, Product Manager">
+        </div>
+        <div style="margin-bottom:1.25rem">
+            <label class="form-label">Experience Level</label>
+            <select id="levelSelect" class="form-input" style="max-width:200px">
+                {% for l in ['Junior','Mid-level','Senior','Lead / Staff','Manager'] %}
+                <option{{ l == 'Junior' ? ' selected' : '' }}>{{ l }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button class="btn btn-primary" onclick="startSession()" style="width:100%">🚀 Start Interview</button>
+    </div>
+</div>
+
+{# ── Chat Section ── #}
+<div id="chatSection" style="display:none;max-width:700px;margin:0 auto">
+    {# Progress #}
+    <div class="card" style="padding:0.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem">
+        <span id="qBadge" class="badge badge--blue" style="font-weight:600;white-space:nowrap">Q 0 / 8</span>
+        <div style="flex:1;height:6px;background:var(--bg-tertiary);border-radius:99px;overflow:hidden">
+            <div id="progressBar" style="height:100%;width:0;background:var(--accent-primary);border-radius:99px;transition:width .3s"></div>
+        </div>
+    </div>
+
+    {# Messages #}
+    <div id="chatMessages" style="min-height:300px;max-height:calc(100vh - 360px);overflow-y:auto;padding:0.5rem 0;margin-bottom:1rem"></div>
+
+    {# Input Row #}
+    <div id="inputRow" class="card" style="padding:1rem;display:flex;gap:0.75rem;align-items:flex-end">
+        <textarea id="answerInput" class="form-input" rows="2" placeholder="Type your answer…"
+            style="flex:1;resize:none" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAnswer()}"></textarea>
+        <div style="display:flex;flex-direction:column;gap:0.5rem">
+            <button class="btn btn-primary btn-sm" onclick="sendAnswer()">Send</button>
+            <button class="btn btn-ghost btn-sm" onclick="skipQuestion()">Skip</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="endSession()">End</button>
+        </div>
+    </div>
+</div>
+
+<style>
+.chat-bubble{max-width:85%;padding:.85rem 1rem;border-radius:var(--radius-lg);margin-bottom:.75rem;line-height:1.6;font-size:.9rem;animation:fadeIn .25s}
+.chat-bot{background:var(--bg-tertiary);color:var(--text-primary);align-self:flex-start;border-bottom-left-radius:4px}
+.chat-user{background:var(--accent-primary);color:#fff;align-self:flex-end;border-bottom-right-radius:4px;margin-left:auto}
+.chat-system{text-align:center;font-size:.8rem;color:var(--text-secondary);padding:.5rem;font-style:italic}
+.typing-dots span{display:inline-block;width:6px;height:6px;background:var(--text-secondary);border-radius:50%;margin:0 2px;animation:bounce .6s infinite alternate}
+.typing-dots span:nth-child(2){animation-delay:.15s}
+.typing-dots span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{to{transform:translateY(-6px)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.chat-bubble h2,.chat-bubble h3{margin:.75rem 0 .4rem;font-size:1rem}
+.chat-bubble strong{color:inherit}
+</style>
+
+<script>
+let currentQ=0,role='',level='',sessionActive=false;
+const msgs=document.getElementById('chatMessages');
+
+function startSession(){
+    role=document.getElementById('roleField').value.trim();
+    if(!role){document.getElementById('roleField').style.boxShadow='0 0 0 2px var(--danger)';setTimeout(()=>document.getElementById('roleField').style.boxShadow='',1500);return}
+    level=document.getElementById('levelSelect').value;
+    document.getElementById('setupSection').style.display='none';
+    document.getElementById('chatSection').style.display='block';
+    sessionActive=true;
+
+    addSystem(`Session started — ${role} (${level})`);
+    sendToAI('start','');
+}
+
+async function sendToAI(action,answer){
+    showTyping();
+    try{
+        const r=await fetch('{{ path("app_ai_interview_prep_process") }}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role,level,action,answer,questionNumber:currentQ})});
+        const d=await r.json();
+        removeTyping();
+        if(d.error){addBot(d.error);return}
+
+        if(d.question) currentQ=d.question;
+        updateProgress();
+
+        if(d.type==='summary'){
+            addBot(d.message);
+            document.getElementById('inputRow').style.display='none';
+            document.getElementById('qBadge').textContent='✅ Complete';
+            document.getElementById('progressBar').style.width='100%';
+            sessionActive=false;
+            // Restart button
+            const btn=document.createElement('button');btn.className='btn btn-primary';btn.textContent='🔄 Start New Session';btn.style.cssText='width:100%;margin-top:1rem';
+            btn.onclick=()=>location.reload();
+            msgs.appendChild(btn);
+        }else{
+            addBot(d.message);
+        }
+    }catch(e){removeTyping();addBot('Error: '+e.message)}
+}
+
+function sendAnswer(){
+    if(!sessionActive)return;
+    const inp=document.getElementById('answerInput');
+    const text=inp.value.trim();
+    if(!text)return;
+    addUser(text);
+    inp.value='';
+    sendToAI('answer',text);
+}
+
+function skipQuestion(){
+    if(!sessionActive)return;
+    addSystem('Skipped question');
+    sendToAI('skip','');
+}
+
+function endSession(){
+    if(!sessionActive)return;
+    addSystem('Interview ended by user');
+    sendToAI('end','');
+}
+
+function addBot(md){const el=document.createElement('div');el.className='chat-bubble chat-bot';el.innerHTML=marked(md);msgs.appendChild(el);scroll()}
+function addUser(text){const el=document.createElement('div');el.className='chat-bubble chat-user';el.textContent=text;msgs.appendChild(el);scroll()}
+function addSystem(text){const el=document.createElement('div');el.className='chat-system';el.textContent=text;msgs.appendChild(el);scroll()}
+function showTyping(){const el=document.createElement('div');el.id='typing';el.className='chat-bubble chat-bot';el.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';msgs.appendChild(el);scroll()}
+function removeTyping(){const el=document.getElementById('typing');if(el)el.remove()}
+function scroll(){msgs.scrollTop=msgs.scrollHeight}
+
+function updateProgress(){
+    document.getElementById('qBadge').textContent=`Q ${currentQ} / 8`;
+    document.getElementById('progressBar').style.width=((currentQ/8)*100)+'%';
+}
+
+function marked(md){
+    return md.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>')
+        .replace(/^- (.+)$/gm,'<li>$1</li>').replace(/^(\d+)\. (.+)$/gm,'<li>$2</li>')
+        .replace(/\n{2,}/g,'<br><br>').replace(/\n/g,'<br>');
+}
+</script>
+{% endblock %}

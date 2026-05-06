@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Reset your SynergyGig password</title></head>
+<body style="font-family:Inter,sans-serif;background:#0A090C;color:#e5e7eb;margin:0;padding:40px 20px">
+    <div style="max-width:520px;margin:0 auto;background:#0F0E11;border-radius:12px;padding:40px;border:1px solid rgba(255,255,255,.08)">
+        <div style="text-align:center;margin-bottom:32px">
+            <div style="font-family:Outfit,sans-serif;font-size:1.5rem;font-weight:700;color:#90DDF0;letter-spacing:-.5px">SynergyGig</div>
+        </div>
+        <h2 style="font-family:Outfit,sans-serif;font-size:1.25rem;margin:0 0 16px;color:#f1f5f9">Reset your password</h2>
+        <p style="color:#94a3b8;font-size:.9rem;line-height:1.6;margin:0 0 24px">
+            Someone requested a password reset for your account. If this was you, click the button below.
+            The link will expire in <strong style="color:#e2e8f0">{{ resetToken.expirationMessageKey|trans(resetToken.expirationMessageData, 'ResetPasswordBundle') }}</strong>.
+        </p>
+        <div style="text-align:center;margin:32px 0">
+            <a href="{{ url('app_reset_password', {token: resetToken.token}) }}"
+               style="background:#2C666E;color:#fff;text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:600;font-size:.95rem;display:inline-block">
+                Reset my password
+            </a>
+        </div>
+        <p style="color:#64748b;font-size:.8rem;margin:0">
+            If you didn't request this, you can safely ignore this email. Your password won't change.
+        </p>
+    </div>
+</body>
+</html>

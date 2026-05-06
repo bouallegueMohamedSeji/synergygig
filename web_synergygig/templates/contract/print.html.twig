@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract #{{ contract.id }} — SynergyGig</title>
+    <style>
+        /* ── Base ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            color: #111;
+            background: #fff;
+            padding: 48px;
+            max-width: 860px;
+            margin: 0 auto;
+            font-size: 13px;
+            line-height: 1.65;
+        }
+
+        /* ── Print rules ── */
+        @page { margin: 20mm 18mm; size: A4; }
+        @media print {
+            body { padding: 0; font-size: 11pt; }
+            .no-print { display: none !important; }
+            .page-break { page-break-before: always; }
+        }
+
+        /* ── Header ── */
+        .doc-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            border-bottom: 3px solid #1e3a5f;
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }
+        .brand { font-size: 22px; font-weight: 700; color: #1e3a5f; letter-spacing: -0.5px; }
+        .brand span { color: #3b82f6; }
+        .doc-meta { text-align: right; font-size: 11px; color: #555; }
+        .doc-meta strong { display: block; font-size: 14px; color: #111; margin-bottom: 2px; }
+
+        /* ── Section titles ── */
+        .section-title {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #1e3a5f;
+            border-bottom: 1px solid #dce3f0;
+            padding-bottom: 4px;
+            margin: 22px 0 10px;
+        }
+
+        /* ── Parties grid ── */
+        .parties-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 8px;
+        }
+        .party-box {
+            border: 1px solid #dce3f0;
+            border-radius: 6px;
+            padding: 12px 14px;
+        }
+        .party-box .role { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: #888; margin-bottom: 4px; }
+        .party-box .name { font-size: 14px; font-weight: 700; color: #111; }
+        .party-box .detail { font-size: 11px; color: #555; }
+
+        /* ── Terms body ── */
+        .terms-body {
+            background: #f8fafc;
+            border: 1px solid #dce3f0;
+            border-radius: 6px;
+            padding: 16px 20px;
+            white-space: pre-wrap;
+            font-family: 'Georgia', serif;
+            font-size: 12px;
+            line-height: 1.8;
+            color: #222;
+        }
+
+        /* ── Info table ── */
+        .info-table { width: 100%; border-collapse: collapse; }
+        .info-table td { padding: 5px 8px; border-bottom: 1px solid #edf0f5; font-size: 12px; }
+        .info-table td:first-child { color: #555; width: 180px; font-weight: 600; }
+
+        /* ── Status badge ── */
+        .status-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        .status-active   { background: #dcfce7; color: #15803d; }
+        .status-draft    { background: #dbeafe; color: #1d4ed8; }
+        .status-signed   { background: #dcfce7; color: #15803d; }
+        .status-other    { background: #f3f4f6; color: #374151; }
+
+        /* ── Signature section ── */
+        .sig-section {
+            border: 1px solid #dce3f0;
+            border-radius: 6px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+        }
+        .sig-image-box {
+            border: 1px solid #dce3f0;
+            border-radius: 4px;
+            background: #fff;
+            padding: 8px;
+            flex-shrink: 0;
+        }
+        .sig-image-box img { max-width: 260px; max-height: 100px; display: block; }
+        .sig-details { font-size: 11px; color: #555; }
+        .sig-details strong { display: block; font-size: 13px; color: #111; margin-bottom: 4px; }
+        .sig-stamp {
+            display: inline-block;
+            border: 2px solid #15803d;
+            color: #15803d;
+            border-radius: 4px;
+            padding: 2px 10px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 8px;
+        }
+
+        /* ── Hash block ── */
+        .hash-block {
+            background: #f1f5f9;
+            border-left: 4px solid #3b82f6;
+            border-radius: 0 6px 6px 0;
+            padding: 10px 14px;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            color: #1e3a5f;
+            word-break: break-all;
+        }
+        .hash-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.8px; color: #888; margin-bottom: 4px; font-family: Georgia, serif; }
+
+        /* ── Verify bar ── */
+        .verify-bar {
+            margin-top: 6px;
+            font-size: 11px;
+            color: #555;
+        }
+        .verify-url { color: #1d4ed8; word-break: break-all; }
+
+        /* ── Footer ── */
+        .doc-footer {
+            border-top: 1px solid #dce3f0;
+            margin-top: 28px;
+            padding-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #888;
+        }
+
+        /* ── No-print toolbar ── */
+        .print-toolbar {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            gap: 8px;
+            z-index: 100;
+        }
+        .print-toolbar button, .print-toolbar a {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: system-ui, sans-serif;
+            cursor: pointer;
+            text-decoration: none;
+            border: none;
+        }
+        .btn-print { background: #1e3a5f; color: #fff; }
+        .btn-close  { background: #f3f4f6; color: #374151; }
+    </style>
+</head>
+<body>
+
+<!-- Print toolbar (hidden during print) -->
+<div class="print-toolbar no-print">
+    <button class="btn-print" onclick="window.print()">⬇ Save / Print PDF</button>
+    <a class="btn-close" href="{{ path('app_contract_show', {id: contract.id}) }}">✕ Close</a>
+</div>
+
+<!-- Document header -->
+<div class="doc-header">
+    <div>
+        <div class="brand">Synergy<span>Gig</span></div>
+        <div style="font-size:11px;color:#555;margin-top:3px">HR & Workforce Management Platform</div>
+    </div>
+    <div class="doc-meta">
+        <strong>GIG CONTRACT</strong>
+        Reference: #{{ contract.id }}<br>
+        {% set sc = contract.status ?? 'DRAFT' %}
+        Status:
+        <span class="status-badge {% if sc in ['ACTIVE','SIGNED'] %}status-active{% elseif sc == 'DRAFT' %}status-draft{% else %}status-other{% endif %}">
+            {{ sc }}
+        </span><br>
+        Generated: {{ "now"|date("M d, Y") }}
+    </div>
+</div>
+
+<!-- Parties -->
+<div class="section-title">Contracting Parties</div>
+<div class="parties-grid">
+    <div class="party-box">
+        <div class="role">Service Provider (Employer / Project Owner)</div>
+        {% if contract.owner %}
+            <div class="name">{{ contract.owner.firstName }} {{ contract.owner.lastName }}</div>
+            <div class="detail">{{ contract.owner.email ?? '' }}</div>
+        {% else %}
+            <div class="name">SynergyGig Platform</div>
+        {% endif %}
+    </div>
+    <div class="party-box">
+        <div class="role">Contractor / Applicant</div>
+        {% if contract.applicant %}
+            <div class="name">{{ contract.applicant.firstName }} {{ contract.applicant.lastName }}</div>
+            <div class="detail">{{ contract.applicant.email ?? '' }}</div>
+        {% else %}
+            <div class="name">—</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Contract details -->
+<div class="section-title">Contract Details</div>
+<table class="info-table">
+    <tr>
+        <td>Offer / Position</td>
+        <td>{{ contract.offer ? contract.offer.title : '—' }}</td>
+    </tr>
+    <tr>
+        <td>Compensation</td>
+        <td>
+            {% if contract.amount %}
+                <strong>{{ contract.amount|number_format(2) }} {{ contract.currency ?? 'USD' }}</strong>
+            {% else %}—{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td>Contract Period</td>
+        <td>
+            {% if contract.startDate %}{{ contract.startDate|date('M d, Y') }}{% endif %}
+            {% if contract.startDate and contract.endDate %} → {% endif %}
+            {% if contract.endDate %}{{ contract.endDate|date('M d, Y') }}{% endif %}
+            {% if not contract.startDate and not contract.endDate %}—{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td>Negotiation Round</td>
+        <td>{{ contract.negotiationRound ?? 0 }}</td>
+    </tr>
+    <tr>
+        <td>Risk Score</td>
+        <td>
+            {% if contract.riskScore %}
+                {{ contract.riskScore }}/100
+                {% if contract.riskScore > 70 %}(High Risk){% elseif contract.riskScore > 40 %}(Medium Risk){% else %}(Low Risk){% endif %}
+            {% else %}Not calculated{% endif %}
+        </td>
+    </tr>
+    <tr>
+        <td>Created</td>
+        <td>{{ contract.createdAt ? contract.createdAt|date('M d, Y H:i') : '—' }}</td>
+    </tr>
+</table>
+
+<!-- Terms & Conditions -->
+{% if contract.terms %}
+<div class="section-title">Terms & Conditions</div>
+<div class="terms-body">{{ contract.terms }}</div>
+{% endif %}
+
+<!-- Counter-proposal (if any) -->
+{% if contract.counterTerms or contract.counterAmount %}
+<div class="section-title">Counter-Proposal (Round {{ contract.negotiationRound }})</div>
+<table class="info-table">
+    {% if contract.counterAmount %}
+    <tr>
+        <td>Counter Amount</td>
+        <td>{{ contract.counterAmount|number_format(2) }} {{ contract.currency ?? 'USD' }}</td>
+    </tr>
+    {% endif %}
+    {% if contract.negotiationNotes %}
+    <tr>
+        <td>Notes</td>
+        <td>{{ contract.negotiationNotes }}</td>
+    </tr>
+    {% endif %}
+</table>
+{% if contract.counterTerms %}
+<div class="terms-body" style="margin-top:8px">{{ contract.counterTerms }}</div>
+{% endif %}
+{% endif %}
+
+<!-- Digital Signature -->
+<div class="section-title">Digital Signature & Verification</div>
+{% if contract.signatureData %}
+<div class="sig-section">
+    <div class="sig-image-box">
+        <img src="{{ contract.signatureData }}" alt="Digital Signature">
+    </div>
+    <div class="sig-details">
+        <strong>
+            {% if contract.applicant %}{{ contract.applicant.firstName }} {{ contract.applicant.lastName }}{% else %}Signatory{% endif %}
+        </strong>
+        Signed on: {{ contract.signedAt ? contract.signedAt|date('F d, Y \\a\\t H:i') : '—' }}<br>
+        Contract status at signing: <strong>{{ contract.status }}</strong>
+        <div class="sig-stamp">✓ Digitally Signed</div>
+    </div>
+</div>
+{% else %}
+<div style="padding:12px 16px;background:#fff9e6;border:1px solid #fde68a;border-radius:6px;color:#92400e;font-size:12px">
+    This contract has not yet been signed.
+</div>
+{% endif %}
+
+<!-- Blockchain Hash -->
+{% if contract.blockchainHash %}
+<div style="margin-top:16px">
+    <div class="hash-label">Blockchain-style Verification Hash (SHA-256)</div>
+    <div class="hash-block">{{ contract.blockchainHash }}</div>
+    <div class="verify-bar">
+        Verify this contract at:
+        <span class="verify-url">{{ app.request.schemeAndHttpHost }}/contracts/verify/{{ contract.blockchainHash }}</span>
+    </div>
+</div>
+{% endif %}
+
+<!-- Footer -->
+<div class="doc-footer">
+    <div>SynergyGig HR Platform — Confidential Document</div>
+    <div>Contract #{{ contract.id }} — Generated {{ "now"|date("Y-m-d H:i") }} UTC</div>
+</div>
+
+</body>
+</html>

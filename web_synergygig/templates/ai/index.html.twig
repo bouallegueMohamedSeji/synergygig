@@ -1,0 +1,30 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}AI Tools | SynergyGig{% endblock %}
+{% block page_title %}AI Tools{% endblock %}
+
+{% block content %}
+<p class="text-muted" style="margin-bottom:1.5rem">AI-powered productivity tools to help you work smarter.</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.25rem">
+    {% set tools = [
+        {name:'Code Review',      icon:'🔍', desc:'Paste code and get instant quality analysis, bug detection, and improvement suggestions.', route:'app_ai_code_review',      color:'#3b82f6'},
+        {name:'Email Composer',    icon:'✉️', desc:'Generate professional emails with the right tone for any occasion.',                       route:'app_ai_email_composer',    color:'#a855f7'},
+        {name:'Meeting Summarizer',icon:'📝', desc:'Paste meeting transcripts and extract key points, action items, and decisions.',            route:'app_ai_meeting_summarizer',color:'#22c55e'},
+        {name:'Resume Parser',     icon:'📄', desc:'Extract structured data from resumes — skills, experience, education, and contact info.',  route:'app_ai_resume_parser',     color:'#f59e0b'},
+        {name:'Interview Prep',    icon:'🎤', desc:'Practice mock interviews with AI coaching, ratings, and personalized tips.',               route:'app_ai_interview_prep',    color:'#ef4444'},
+        {name:'Job Scanner',       icon:'🌐', desc:'Discover matching job opportunities based on your skills and preferences.',                route:'app_job_scanner',          color:'#06b6d4'},
+        {name:'HR Policy Chat',    icon:'🤖', desc:'Ask questions about HR policies, leave, payroll, and workplace procedures.',               route:'app_hr_chatbot',           color:'#ec4899'}
+    ] %}
+
+    {% for t in tools %}
+    <a href="{{ path(t.route) }}" class="card" style="padding:1.5rem;text-decoration:none;border-left:4px solid {{ t.color }};transition:transform .15s,box-shadow .15s"
+       onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,.2)'"
+       onmouseout="this.style.transform='';this.style.boxShadow=''">
+        <div style="font-size:2rem;margin-bottom:0.75rem">{{ t.icon }}</div>
+        <h3 style="margin:0 0 0.5rem;color:var(--text-primary);font-size:1.1rem">{{ t.name }}</h3>
+        <p class="text-muted" style="margin:0;font-size:0.875rem;line-height:1.5">{{ t.desc }}</p>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

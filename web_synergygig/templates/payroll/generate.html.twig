@@ -1,0 +1,100 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Generate Payroll{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_payroll_index') }}" class="btn btn-ghost btn-sm">Back to List</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:600px">
+    <div class="card-header"><h3>Auto-Generate from Attendance</h3></div>
+    <div class="card-body">
+        <form method="post" action="{{ path('app_payroll_generate') }}" novalidate>
+            <input type="hidden" name="_token" value="{{ csrf_token('payroll_generate') }}">
+
+            <div class="form-group" style="margin-bottom:1rem">
+                <label class="form-label">Employee</label>
+                <select name="user_id" class="form-input">
+                    <option value="">— Select Employee —</option>
+                    {% for u in users %}
+                        <option value="{{ u.id }}">{{ u.firstName }} {{ u.lastName }} ({{ u.role ?? 'N/A' }}) — {{ u.monthlySalary ? u.monthlySalary ~ '/mo' : (u.hourlyRate ? u.hourlyRate ~ '/hr' : 'No rate') }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="display:flex;gap:1rem;margin-bottom:1rem">
+                <div class="form-group" style="flex:1">
+                    <label class="form-label">Month</label>
+                    <select name="month" class="form-input">
+                        {% set months = {1:'January',2:'February',3:'March',4:'April',5:'May',6:'June',7:'July',8:'August',9:'September',10:'October',11:'November',12:'December'} %}
+                        {% for num, name in months %}
+                            <option value="{{ num }}" {{ num == current_month ? 'selected' : '' }}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label class="form-label">Year</label>
+                    <input type="number" name="year" class="form-input" value="{{ current_year }}">
+                </div>
+            </div>
+
+            <div style="display:flex;gap:1rem;margin-bottom:1.5rem">
+                <div class="form-group" style="flex:1">
+                    <label class="form-label">Bonus</label>
+                    <input type="number" name="bonus" class="form-input" value="0" step="0.01">
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label class="form-label">Deductions</label>
+                    <input type="number" name="deductions" class="form-input" value="0" step="0.01">
+                </div>
+            </div>
+
+            <div class="card" style="background:var(--bg-secondary);padding:1rem;margin-bottom:1.5rem">
+                <p class="text-muted" style="font-size:0.85rem;margin:0">
+                    <strong>How it works:</strong> The system fetches all attendance records for the selected employee in the chosen month. 
+                    It sums check-in/check-out hours and uses the employee's monthly salary (or hourly rate × hours if no monthly salary is set) as the base. 
+                    Then applies bonus and deductions to calculate the net salary.
+                </p>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width:100%;padding:0.75rem;font-size:1rem">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:0.5rem"><path d="M12 2v20M2 12h20"/></svg>
+                Generate Payroll
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="card" style="max-width:600px;margin-top:1.5rem">
+    <div class="card-header"><h3>⚡ Generate All Payrolls</h3></div>
+    <div class="card-body">
+        <p class="text-muted" style="font-size:0.9rem;margin-bottom:1rem">
+            Automatically generate payroll for <strong>all active employees</strong> for the selected month.
+            Employees who already have a payroll for this month or have no salary set will be skipped.
+        </p>
+        <form method="post" action="{{ path('app_payroll_generate_all') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('payroll_generate_all') }}">
+            <div style="display:flex;gap:1rem;margin-bottom:1rem">
+                <div class="form-group" style="flex:1">
+                    <label class="form-label">Month</label>
+                    <select name="month" class="form-input">
+                        {% set months = {1:'January',2:'February',3:'March',4:'April',5:'May',6:'June',7:'July',8:'August',9:'September',10:'October',11:'November',12:'December'} %}
+                        {% for num, name in months %}
+                            <option value="{{ num }}" {{ num == current_month ? 'selected' : '' }}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label class="form-label">Year</label>
+                    <input type="number" name="year" class="form-input" value="{{ current_year }}">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;padding:0.75rem;font-size:1rem;background:#059669" onclick="return confirm('Generate payroll for ALL active employees?')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:0.5rem"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Generate All Payrolls
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

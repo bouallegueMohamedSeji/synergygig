@@ -1,0 +1,523 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}External Job Feeds | SynergyGig{% endblock %}
+{% block page_title %}External Job Feeds{% endblock %}
+
+{% block content %}
+<style>
+.ej-module { max-width:1100px; margin:0 auto; }
+
+/* Search row */
+.ej-search-row {
+    display:flex; gap:0.75rem; align-items:stretch; margin-bottom:1rem;
+}
+.ej-search-field {
+    flex:1; padding:0.65rem 1rem; border:2px solid var(--accent); border-radius:8px;
+    background:var(--bg-card); color:var(--text-primary); font-size:1rem;
+    outline:none; transition:border-color 0.2s, box-shadow 0.2s;
+}
+.ej-search-field:focus {
+    border-color:var(--accent-blue); box-shadow:0 0 0 3px rgba(99,102,241,0.15);
+}
+.ej-combo {
+    width:140px; padding:0.65rem 0.75rem; border:1px solid var(--border); border-radius:8px;
+    background:var(--bg-card); color:var(--text-primary); font-size:0.9rem; cursor:pointer;
+}
+.ej-search-btn {
+    padding:0.65rem 1.5rem; border:none; border-radius:8px;
+    background:var(--accent); color:#fff; font-size:0.95rem; font-weight:600;
+    cursor:pointer; display:flex; align-items:center; gap:0.4rem; white-space:nowrap;
+    transition:background 0.2s, transform 0.1s;
+}
+.ej-search-btn:hover { filter:brightness(1.1); }
+.ej-search-btn:active { transform:scale(0.97); }
+.ej-search-btn:disabled { opacity:0.6; cursor:not-allowed; }
+
+/* Filter bar */
+.ej-filter-row {
+    display:flex; gap:0.75rem; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap;
+}
+.ej-filter-label { font-weight:600; color:var(--text-secondary); font-size:0.85rem; }
+.ej-filter-combo {
+    padding:0.45rem 0.75rem; border:1px solid var(--border); border-radius:8px;
+    background:var(--bg-card); color:var(--text-primary); font-size:0.85rem; cursor:pointer;
+}
+.ej-reset-btn {
+    margin-left:auto; padding:0.4rem 1rem; border:1px solid var(--border); border-radius:8px;
+    background:transparent; color:var(--text-secondary); font-size:0.85rem; cursor:pointer;
+    transition:background 0.2s;
+}
+.ej-reset-btn:hover { background:var(--bg-secondary); }
+
+/* State containers */
+.ej-content-area { min-height:400px; position:relative; }
+
+/* Empty state */
+.ej-empty-state {
+    text-align:center; padding:4rem 2rem; color:var(--text-secondary);
+}
+.ej-empty-icon { font-size:3rem; opacity:0.5; margin-bottom:1rem; }
+.ej-empty-title { font-size:1.1rem; font-weight:600; color:var(--text-primary); margin-bottom:0.5rem; }
+.ej-empty-subtitle { font-size:0.9rem; color:var(--text-muted); }
+
+/* Loading */
+.ej-loading-state {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:3rem 2rem; min-height:350px;
+}
+.ej-loading-text {
+    margin-top:1.25rem; font-size:0.95rem; color:var(--text-secondary);
+    animation:ej-pulse 2s ease-in-out infinite;
+}
+@keyframes ej-pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+
+/* Radar (reuse from job scanner) */
+.ej-radar { position:relative; width:180px; height:180px; }
+.ej-radar-bg {
+    position:absolute; inset:0; border-radius:50%;
+    background:radial-gradient(circle, rgba(13,14,18,0.95) 0%, rgba(13,14,18,1) 100%);
+    border:1.8px solid var(--accent, #2C666E);
+    box-shadow:0 0 12px rgba(44,102,110,0.35);
+}
+.ej-radar-ring { position:absolute; border-radius:50%; border:0.8px dashed rgba(30,74,80,0.6); }
+.ej-radar-ring--mid { width:66%; height:66%; top:17%; left:17%; }
+.ej-radar-ring--inner { width:33%; height:33%; top:33.5%; left:33.5%; }
+.ej-radar::after, .ej-radar::before { content:''; position:absolute; background:rgba(26,61,66,0.5); }
+.ej-radar::after { width:calc(100% - 8px); height:0.6px; top:50%; left:4px; transform:translateY(-50%); }
+.ej-radar::before { width:0.6px; height:calc(100% - 8px); top:4px; left:50%; transform:translateX(-50%); }
+.ej-radar-dot {
+    position:absolute; width:8px; height:8px; border-radius:50%;
+    background:var(--accent-glow, #90DDF0); top:50%; left:50%;
+    transform:translate(-50%,-50%); box-shadow:0 0 10px var(--accent-glow, #90DDF0); z-index:3;
+}
+.ej-radar-sweep {
+    position:absolute; inset:0; border-radius:50%;
+    animation:ej-spin 3s linear infinite; z-index:2;
+}
+@keyframes ej-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+.ej-radar-sweep::before {
+    content:''; position:absolute; top:50%; left:50%; width:50%; height:50%;
+    transform-origin:0 0; transform:rotate(-25deg);
+    background:conic-gradient(from 0deg, rgba(44,102,110,0.35) 0deg, transparent 55deg);
+    filter:blur(12px); border-radius:0 100% 0 0;
+}
+.ej-radar-sweep::after {
+    content:''; position:absolute; top:50%; left:50%; width:calc(50% - 3px); height:1.5px;
+    background:var(--accent-glow, #90DDF0); transform-origin:0 50%; border-radius:1px;
+}
+
+/* Result cards */
+.ej-results-list { display:flex; flex-direction:column; gap:0.75rem; }
+.ej-job-card {
+    background:var(--bg-card); border:1px solid var(--glass-border); border-radius:10px;
+    padding:1rem 1.25rem; transition:border-color 0.2s, box-shadow 0.2s; cursor:pointer;
+}
+.ej-job-card:hover {
+    border-color:var(--accent); box-shadow:0 2px 12px rgba(99,102,241,0.1);
+}
+.ej-job-title { font-weight:600; font-size:1rem; color:var(--text-primary); }
+.ej-meta-row { display:flex; gap:1rem; flex-wrap:wrap; margin-top:0.35rem; font-size:0.82rem; color:var(--text-secondary); }
+.ej-snippet { font-size:0.82rem; color:var(--text-muted); margin-top:0.35rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.ej-card-actions { display:flex; justify-content:flex-end; margin-top:0.5rem; gap:0.5rem; align-items:center; }
+.ej-open-btn {
+    padding:0.3rem 0.8rem; border:1px solid var(--accent); border-radius:6px;
+    background:transparent; color:var(--accent); font-size:0.8rem; cursor:pointer;
+    transition:background 0.2s;
+}
+.ej-open-btn:hover { background:var(--accent); color:#fff; }
+
+/* Source badges */
+.ej-badge {
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:0.15rem 0.5rem; border-radius:4px; font-size:0.7rem; font-weight:700;
+    min-width:28px; text-align:center;
+}
+/* Match score badge (red dot with %) */
+.ej-score-badge {
+    display:inline-flex; align-items:center; gap:5px;
+    padding:0.2rem 0.55rem; border-radius:20px; font-size:0.72rem; font-weight:700;
+    border:1px solid; white-space:nowrap; flex-shrink:0;
+}
+.ej-score-badge--none  { background:rgba(107,114,128,.1); color:#6b7280; border-color:rgba(107,114,128,.25); }
+.ej-score-badge--low   { background:rgba(239,68,68,.12);  color:#ef4444; border-color:rgba(239,68,68,.35); }
+.ej-score-badge--avg   { background:rgba(245,158,11,.12); color:#f59e0b; border-color:rgba(245,158,11,.35); }
+.ej-score-badge--good  { background:rgba(16,185,129,.12); color:#10b981; border-color:rgba(16,185,129,.35); }
+.ej-score-badge--great { background:rgba(99,102,241,.12); color:#6366f1; border-color:rgba(99,102,241,.35); }
+.ej-score-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.ej-score-dot--low   { background:#ef4444; box-shadow:0 0 5px rgba(239,68,68,.6); }
+.ej-score-dot--avg   { background:#f59e0b; box-shadow:0 0 5px rgba(245,158,11,.6); }
+.ej-score-dot--good  { background:#10b981; box-shadow:0 0 5px rgba(16,185,129,.6); }
+.ej-score-dot--great { background:#6366f1; box-shadow:0 0 5px rgba(99,102,241,.6); }
+.ej-match-bar { height:3px; border-radius:2px; background:var(--bg-secondary); margin-top:6px; overflow:hidden; }
+.ej-match-bar-fill { height:100%; border-radius:2px; transition:width .5s ease; }
+.ej-first-match-banner {
+    margin-bottom:0.75rem; padding:0.55rem 1rem; border-radius:8px;
+    background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(16,185,129,.08));
+    border:1px solid rgba(99,102,241,.2);
+    display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; font-weight:600;
+    color:var(--text-primary);
+}
+.ej-first-match-banner span.pct { color:#6366f1; font-size:1rem; }
+.ej-badge-remotive { background:rgba(99,102,241,0.15); color:#6366f1; }
+.ej-badge-arbeitnow { background:rgba(16,185,129,0.15); color:#10b981; }
+.ej-badge-remoteok { background:rgba(239,68,68,0.15); color:#ef4444; }
+.ej-badge-jobicy { background:rgba(245,158,11,0.15); color:#f59e0b; }
+.ej-badge-type {
+    display:inline-flex; padding:0.1rem 0.4rem; border-radius:4px;
+    font-size:0.7rem; font-weight:500; background:rgba(99,102,241,0.12); color:var(--accent);
+}
+.ej-badge-salary {
+    display:inline-flex; padding:0.1rem 0.4rem; border-radius:4px;
+    font-size:0.7rem; font-weight:600; background:rgba(16,185,129,0.12); color:#10b981;
+}
+
+/* Tags */
+.ej-tags { display:flex; gap:0.3rem; flex-wrap:wrap; margin-top:0.4rem; }
+.ej-tag {
+    padding:0.1rem 0.35rem; border-radius:3px; font-size:0.65rem;
+    background:var(--bg-secondary); color:var(--text-muted); border:1px solid var(--border);
+}
+
+/* Results header */
+.ej-results-header {
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;
+}
+.ej-results-count { font-size:0.9rem; font-weight:600; color:var(--text-primary); }
+.ej-header-status { font-size:0.85rem; color:var(--accent-blue); font-weight:500; }
+
+/* Source stats */
+.ej-source-stats {
+    display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1rem;
+}
+.ej-stat-chip {
+    padding:0.25rem 0.6rem; border-radius:6px; font-size:0.75rem; font-weight:600;
+    background:var(--bg-secondary); color:var(--text-secondary); border:1px solid var(--border);
+}
+</style>
+
+<div class="ej-module">
+    {# ── Search bar ── #}
+    <div class="ej-search-row">
+        <input type="text" id="ejSearch" class="ej-search-field"
+               placeholder="Search remote jobs (e.g. Developer, Designer, Marketing...)" autofocus>
+        <select id="ejSource" class="ej-combo">
+            <option value="all">All Sources</option>
+            <option value="remotive">Remotive</option>
+            <option value="arbeitnow">Arbeitnow</option>
+            <option value="remoteok">RemoteOK</option>
+            <option value="jobicy">Jobicy</option>
+        </select>
+        <button id="ejSearchBtn" class="ej-search-btn">🔎 Search</button>
+    </div>
+
+    {# ── Filter bar ── #}
+    <div class="ej-filter-row">
+        <span class="ej-filter-label">Category:</span>
+        <select id="ejCategory" class="ej-filter-combo">
+            <option value="">All Categories</option>
+            {% for key, label in categories %}
+                <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+        <button id="ejResetBtn" class="ej-reset-btn">Reset</button>
+    </div>
+
+    {# ── Content area ── #}
+    <div class="ej-content-area">
+
+        {# Empty state #}
+        <div id="ejEmpty" class="ej-empty-state">
+            <div class="ej-empty-icon">🌍</div>
+            <div class="ej-empty-title">Discover remote jobs from top platforms</div>
+            <div class="ej-empty-subtitle">Search across Remotive, Arbeitnow, RemoteOK & Jobicy simultaneously</div>
+        </div>
+
+        {# Loading state #}
+        <div id="ejLoading" class="ej-loading-state" style="display:none">
+            <div class="ej-radar">
+                <div class="ej-radar-bg"></div>
+                <div class="ej-radar-ring ej-radar-ring--mid"></div>
+                <div class="ej-radar-ring ej-radar-ring--inner"></div>
+                <div class="ej-radar-dot"></div>
+                <div class="ej-radar-sweep"></div>
+            </div>
+            <div id="ejLoadingLabel" class="ej-loading-text">Scanning job boards...</div>
+        </div>
+
+        {# Results #}
+        <div id="ejResults" style="display:none">
+            <div class="ej-results-header">
+                <div id="ejResultsCount" class="ej-results-count"></div>
+                <span id="ejHeaderStatus" class="ej-header-status"></span>
+            </div>
+            <div id="ejSourceStats" class="ej-source-stats"></div>
+            <div id="ejResultsList" class="ej-results-list"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+    const searchField = document.getElementById('ejSearch');
+    const sourceCombo = document.getElementById('ejSource');
+    const categoryCombo = document.getElementById('ejCategory');
+    const searchBtn   = document.getElementById('ejSearchBtn');
+    const resetBtn    = document.getElementById('ejResetBtn');
+
+    const emptyState   = document.getElementById('ejEmpty');
+    const loadingState = document.getElementById('ejLoading');
+    const loadingLabel = document.getElementById('ejLoadingLabel');
+    const resultsDiv   = document.getElementById('ejResults');
+    const resultsList  = document.getElementById('ejResultsList');
+    const resultsCount = document.getElementById('ejResultsCount');
+    const headerStatus = document.getElementById('ejHeaderStatus');
+    const sourceStats  = document.getElementById('ejSourceStats');
+
+    let searching = false;
+    let cvScores = []; // parallel scores array indexed by job position
+
+    function showState(s) {
+        emptyState.style.display   = s === 'empty'   ? '' : 'none';
+        loadingState.style.display = s === 'loading'  ? '' : 'none';
+        resultsDiv.style.display   = s === 'results'  ? '' : 'none';
+    }
+
+    searchField.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+    });
+    searchBtn.addEventListener('click', doSearch);
+
+    resetBtn.addEventListener('click', function() {
+        searchField.value = '';
+        sourceCombo.value = 'all';
+        categoryCombo.selectedIndex = 0;
+        showState('empty');
+        document.querySelector('.ej-empty-title').textContent = 'Discover remote jobs from top platforms';
+        document.querySelector('.ej-empty-subtitle').textContent = 'Search across Remotive, Arbeitnow, RemoteOK & Jobicy simultaneously';
+        document.querySelector('.ej-empty-icon').textContent = '🌍';
+        headerStatus.textContent = '';
+    });
+
+    async function doSearch() {
+        const query = searchField.value.trim();
+        if (!query) {
+            searchField.style.borderColor = '#ff4444';
+            searchField.focus();
+            return;
+        }
+        searchField.style.borderColor = '';
+        if (searching) return;
+        searching = true;
+
+        const srcName = sourceCombo.options[sourceCombo.selectedIndex].text;
+        showState('loading');
+        loadingLabel.textContent = 'Scanning ' + srcName + ' for "' + query + '"...';
+        searchBtn.disabled = true;
+        searchBtn.textContent = 'Searching...';
+
+        try {
+            const resp = await fetch('{{ path("app_external_jobs_search") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query:    query,
+                    source:   sourceCombo.value,
+                    category: categoryCombo.value,
+                })
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                showState('empty');
+                document.querySelector('.ej-empty-icon').textContent = '⚠️';
+                document.querySelector('.ej-empty-title').textContent = 'Search failed';
+                document.querySelector('.ej-empty-subtitle').textContent = data.error;
+            } else if (!data.results || data.results.length === 0) {
+                showState('empty');
+                document.querySelector('.ej-empty-icon').textContent = '🔍';
+                document.querySelector('.ej-empty-title').textContent = 'No jobs found for "' + query + '"';
+                document.querySelector('.ej-empty-subtitle').textContent = 'Try a different keyword, source, or category';
+            } else {
+                cvScores = [];
+                buildCards(data.results, []);
+                buildSourceStats(data.results);
+                const count = data.count || data.results.length;
+                resultsCount.textContent = count + ' remote job' + (count > 1 ? 's' : '') + ' found';
+                headerStatus.textContent = count + ' result' + (count > 1 ? 's' : '');
+                showState('results');
+                // Score jobs against CV in background
+                scoreJobsAgainstCV(data.results);
+            }
+        } catch (e) {
+            showState('empty');
+            document.querySelector('.ej-empty-icon').textContent = '⚠️';
+            document.querySelector('.ej-empty-title').textContent = 'Connection failed';
+            document.querySelector('.ej-empty-subtitle').textContent = e.message || 'Network error';
+        } finally {
+            searching = false;
+            searchBtn.disabled = false;
+            searchBtn.textContent = '🔎 Search';
+        }
+    }
+
+    function buildSourceStats(jobs) {
+        const counts = {};
+        jobs.forEach(j => { counts[j.source] = (counts[j.source] || 0) + 1; });
+        sourceStats.innerHTML = '';
+        for (const [src, cnt] of Object.entries(counts)) {
+            const chip = document.createElement('span');
+            chip.className = 'ej-stat-chip';
+            chip.textContent = src + ': ' + cnt;
+            sourceStats.appendChild(chip);
+        }
+    }
+
+    function buildCards(jobs, scores) {
+        scores = scores || [];
+        resultsList.innerHTML = '';
+
+        // First-match banner (best scored job)
+        if (scores.length > 0) {
+            const best = scores.reduce((a, b) => (a.score > b.score ? a : b), scores[0]);
+            if (best && best.score > 0) {
+                const banner = document.createElement('div');
+                banner.className = 'ej-first-match-banner';
+                const dotCls = scoreDotClass(best.score);
+                banner.innerHTML = '<div class="ej-score-dot ' + dotCls + '"></div>'
+                    + '<span class="pct">' + best.score + '%</span>'
+                    + ' <span>best compatibility match based on your CV</span>';
+                resultsList.appendChild(banner);
+            }
+        }
+
+        jobs.forEach(function(job, idx) {
+            const scoreInfo = scores[idx] || null;
+            const card = document.createElement('div');
+            card.className = 'ej-job-card';
+            if (job.url) { card.onclick = function() { window.open(job.url, '_blank'); }; }
+
+            // Source badge
+            let badgeHtml = '';
+            const srcLower = (job.source || '').toLowerCase();
+            const badgeClass = 'ej-badge-' + srcLower;
+            badgeHtml += '<span class="ej-badge ' + badgeClass + '">' + esc(job.source) + '</span> ';
+
+            // Type badge
+            if (job.type) {
+                badgeHtml += '<span class="ej-badge-type">' + esc(job.type) + '</span> ';
+            }
+
+            // Salary badge
+            if (job.salary) {
+                badgeHtml += '<span class="ej-badge-salary">' + esc(job.salary) + '</span> ';
+            }
+
+            // Score badge (right side)
+            let scoreBadge = '';
+            if (scoreInfo) {
+                const dotCls  = scoreDotClass(scoreInfo.score);
+                const bdgCls  = scoreBadgeClass(scoreInfo.score);
+                scoreBadge = '<span class="ej-score-badge ' + bdgCls + '" title="' + escAttr(scoreInfo.label) + '">'
+                    + '<span class="ej-score-dot ' + dotCls + '"></span>'
+                    + scoreInfo.score + '%'
+                    + '</span>';
+            }
+
+            // Meta row
+            let metaHtml = '';
+            if (job.company) metaHtml += '<span>🏢 ' + esc(job.company) + '</span>';
+            if (job.location) metaHtml += '<span>📍 ' + esc(job.location) + '</span>';
+            if (job.date) metaHtml += '<span>🕐 ' + formatDate(job.date) + '</span>';
+            if (job.category) metaHtml += '<span>📂 ' + esc(job.category) + '</span>';
+
+            // Tags
+            let tagsHtml = '';
+            if (job.tags && job.tags.length > 0) {
+                tagsHtml = '<div class="ej-tags">' + job.tags.slice(0, 6).map(t => '<span class="ej-tag">' + esc(t) + '</span>').join('') + '</div>';
+            }
+
+            // Match bar (shown when score present)
+            let matchBarHtml = '';
+            if (scoreInfo) {
+                const barColor = scoreBarColor(scoreInfo.score);
+                matchBarHtml = '<div class="ej-match-bar"><div class="ej-match-bar-fill" style="width:' + scoreInfo.score + '%;background:' + barColor + '"></div></div>';
+            }
+
+            card.innerHTML =
+                '<div style="display:flex;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;justify-content:space-between">'
+                    + '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;flex:1;min-width:0">'
+                        + badgeHtml
+                        + '<span class="ej-job-title">' + esc(job.title) + '</span>'
+                    + '</div>'
+                    + (scoreBadge ? '<div style="flex-shrink:0">' + scoreBadge + '</div>' : '')
+                + '</div>'
+                + matchBarHtml
+                + '<div class="ej-meta-row">' + metaHtml + '</div>'
+                + (job.description ? '<div class="ej-snippet">' + esc(job.description) + '</div>' : '')
+                + tagsHtml
+                + (job.url ? '<div class="ej-card-actions"><button class="ej-open-btn" onclick="event.stopPropagation();window.open(\'' + escAttr(job.url) + '\',\'_blank\')">Apply →</button></div>' : '');
+
+            resultsList.appendChild(card);
+        });
+    }
+
+    function scoreDotClass(score) {
+        if (score >= 70) return 'ej-score-dot--great';
+        if (score >= 50) return 'ej-score-dot--good';
+        if (score >= 30) return 'ej-score-dot--avg';
+        return 'ej-score-dot--low';
+    }
+    function scoreBadgeClass(score) {
+        if (score >= 70) return 'ej-score-badge--great';
+        if (score >= 50) return 'ej-score-badge--good';
+        if (score >= 30) return 'ej-score-badge--avg';
+        return 'ej-score-badge--low';
+    }
+    function scoreBarColor(score) {
+        if (score >= 70) return '#6366f1';
+        if (score >= 50) return '#10b981';
+        if (score >= 30) return '#f59e0b';
+        return '#ef4444';
+    }
+
+    function scoreJobsAgainstCV(jobs) {
+        fetch('{{ path('app_external_jobs_score') }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jobs: jobs })
+        })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+            if (!data || !data.hasCV) return;
+            cvScores = data.scores || [];
+            buildCards(jobs, cvScores);
+        })
+        .catch(() => {/* silent fail */});
+    }
+
+    function formatDate(dateStr) {
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d)) return dateStr;
+            const now = new Date();
+            const days = Math.floor((now - d) / 86400000);
+            if (days === 0) return 'Today';
+            if (days === 1) return 'Yesterday';
+            if (days < 7) return days + ' days ago';
+            if (days < 30) return Math.floor(days/7) + ' week' + (Math.floor(days/7)>1?'s':'') + ' ago';
+            return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+        } catch(e) { return dateStr; }
+    }
+
+    function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function escAttr(s) {
+        return s.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+})();
+</script>
+{% endblock %}

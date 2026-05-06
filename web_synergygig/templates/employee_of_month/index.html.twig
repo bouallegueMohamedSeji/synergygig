@@ -1,0 +1,89 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Employee of the Month | SynergyGig{% endblock %}
+{% block page_title %}Employee of the Month{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem">
+    {# Winner Spotlight #}
+    <div class="card" style="padding:2rem;text-align:center;border:2px solid #f59e0b;background:linear-gradient(135deg,rgba(245,158,11,.05),rgba(245,158,11,.1))">
+        {% if winner %}
+        <div style="font-size:4rem;margin-bottom:0.5rem">🏆</div>
+        <h2 style="margin:0 0 0.25rem;color:var(--text-primary)">{{ winner.name }}</h2>
+        <div class="text-muted" style="margin-bottom:1rem">{{ winner.department }}</div>
+        <div style="display:flex;justify-content:center;gap:2rem;margin-bottom:1rem">
+            <div>
+                <div style="font-size:1.5rem;font-weight:700;color:#f59e0b">{{ winner.done }}</div>
+                <div class="text-muted" style="font-size:0.8rem">Tasks Done</div>
+            </div>
+            <div>
+                <div style="font-size:1.5rem;font-weight:700;color:#ef4444">{{ winner.highPriority }}</div>
+                <div class="text-muted" style="font-size:0.8rem">High Priority</div>
+            </div>
+            <div>
+                <div style="font-size:1.5rem;font-weight:700;color:#3b82f6">{{ winner.score }}</div>
+                <div class="text-muted" style="font-size:0.8rem">Total Score</div>
+            </div>
+        </div>
+        {% else %}
+        <div style="font-size:3rem;margin-bottom:0.5rem">📊</div>
+        <h2 style="margin:0;color:var(--text-secondary)">No data yet</h2>
+        <p class="text-muted">Complete some tasks to see the leaderboard.</p>
+        {% endif %}
+    </div>
+
+    {# Announcement #}
+    <div class="card" style="padding:1.5rem">
+        <h3 style="margin:0 0 1rem;color:var(--text-primary)">📢 Post Announcement</h3>
+        <form method="post" action="{{ path('app_employee_of_month_post') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('eom_post') }}">
+            <textarea name="announcement" rows="6" class="form-control"
+                style="width:100%;padding:0.75rem;border:1px solid var(--border);border-radius:6px;background:var(--bg-card);color:var(--text-primary);resize:vertical;margin-bottom:1rem"
+            >{{ announcement }}</textarea>
+            <button type="submit" class="btn btn-primary" style="width:100%"{% if not winner %} disabled{% endif %}>
+                📣 Post to Community
+            </button>
+        </form>
+    </div>
+</div>
+
+{# Leaderboard Table #}
+<div class="card" style="padding:1.5rem">
+    <h3 style="margin:0 0 1rem;color:var(--text-primary)">🥇 Top 10 Leaderboard</h3>
+    {% if leaderboard|length > 0 %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th style="width:60px">Rank</th>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th style="text-align:center">Tasks Done</th>
+                    <th style="text-align:center">High Priority</th>
+                    <th style="text-align:center">Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in leaderboard %}
+                <tr{% if entry.rank == 1 %} style="background:rgba(245,158,11,.08)"{% endif %}>
+                    <td>
+                        {% if entry.rank == 1 %}🥇
+                        {% elseif entry.rank == 2 %}🥈
+                        {% elseif entry.rank == 3 %}🥉
+                        {% else %}{{ entry.rank }}{% endif %}
+                    </td>
+                    <td><strong>{{ entry.name }}</strong></td>
+                    <td>{{ entry.department }}</td>
+                    <td style="text-align:center">{{ entry.done }}</td>
+                    <td style="text-align:center">{{ entry.highPriority }}</td>
+                    <td style="text-align:center"><strong>{{ entry.score }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted" style="text-align:center;padding:2rem">No completed tasks found. Assign and complete tasks to populate the leaderboard.</p>
+    {% endif %}
+</div>
+{% endblock %}

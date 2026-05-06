@@ -1,0 +1,188 @@
+{% extends 'layouts/auth.html.twig' %}
+
+{% block title %}Apply Now | SynergyGig{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .signup-icon {
+            width: 56px; height: 56px; margin: 0 auto var(--space-md);
+            background: linear-gradient(135deg, rgba(59,130,246,.12), rgba(16,163,127,.12));
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        }
+        .role-option {
+            flex: 1; display: flex; align-items: center; gap: var(--space-xs);
+            padding: var(--space-sm) var(--space-md);
+            border: 1.5px solid var(--border-primary); border-radius: var(--radius-md);
+            cursor: pointer; font-size: 0.875rem; transition: border-color .2s, background .2s, box-shadow .2s;
+        }
+        .role-option:hover { border-color: var(--accent-blue); }
+        .role-option input[type="radio"] { accent-color: var(--accent-primary); }
+        .role-option:has(input:checked) {
+            border-color: var(--accent-primary);
+            background: rgba(139,92,75,0.05);
+            box-shadow: 0 0 0 2px rgba(139,92,246,.1);
+        }
+        .form-group .form-label {
+            display: flex; align-items: center; gap: 6px;
+        }
+        .form-group .form-label svg { color: var(--text-muted); }
+        #pwdChecks .pass { color: #16a34a; }
+        #pwdChecks .fail { color: var(--text-muted); }
+    </style>
+{% endblock %}
+
+{% block auth_body %}
+    <div style="text-align:center;margin-bottom:var(--space-xl)">
+        <div class="signup-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        </div>
+        <h2 style="font-family:var(--font-heading);margin:0 0 var(--space-xs)">Join SynergyGig</h2>
+        <p style="color:var(--text-secondary);font-size:0.875rem;margin:0">Create your workforce account</p>
+    </div>
+
+    {{ form_start(form, {'action': path('app_signup'), 'attr': {'novalidate': 'novalidate', 'id': 'signupForm'}}) }}
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+            <div class="form-group">
+                <label class="form-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    {{ form_label(form.first_name) }}
+                </label>
+                {{ form_widget(form.first_name) }}
+                {% if form.first_name.vars.errors|length > 0 %}
+                    <div class="field-error">{{ form_errors(form.first_name) }}</div>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.last_name) }}
+                {{ form_widget(form.last_name) }}
+                {% if form.last_name.vars.errors|length > 0 %}
+                    <div class="field-error">{{ form_errors(form.last_name) }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                {{ form_label(form.email) }}
+            </label>
+            {{ form_widget(form.email) }}
+            {% if form.email.vars.errors|length > 0 %}
+                <div class="field-error">{{ form_errors(form.email) }}</div>
+            {% endif %}
+        </div>
+
+        {# Role selector #}
+        <div class="form-group">
+            <label class="form-label">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                {{ form_label(form.role) }}
+            </label>
+            <div style="display:flex;gap:var(--space-md);margin-top:var(--space-xs)">
+                {% for child in form.role %}
+                    <label class="role-option">
+                        {{ form_widget(child) }}
+                        {{ child.vars.label }}
+                    </label>
+                {% endfor %}
+            </div>
+            {% if form.role.vars.errors|length > 0 %}
+                <div class="field-error">{{ form_errors(form.role) }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                {{ form_label(form.password.first) }}
+            </label>
+            <div style="position:relative">
+                {{ form_widget(form.password.first, {'attr': {'id': 'pwd1', 'style': 'padding-right:2.5rem'}}) }}
+                <button type="button" class="pwd-toggle" data-target="pwd1" style="position:absolute;right:.5rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:var(--text-muted)" aria-label="Toggle password visibility">
+                    <svg class="eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    <svg class="eye-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+            </div>
+            {% if form.password.first.vars.errors|length > 0 %}
+                <div class="field-error">{{ form_errors(form.password.first) }}</div>
+            {% endif %}
+            {% if form.password.vars.errors|length > 0 %}
+                <div class="field-error">{{ form_errors(form.password) }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                {{ form_label(form.password.second) }}
+            </label>
+            <div style="position:relative">
+                {{ form_widget(form.password.second, {'attr': {'id': 'pwd2', 'style': 'padding-right:2.5rem'}}) }}
+                <button type="button" class="pwd-toggle" data-target="pwd2" style="position:absolute;right:.5rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:var(--text-muted)" aria-label="Toggle password visibility">
+                    <svg class="eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    <svg class="eye-on" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+            </div>
+            {% if form.password.second.vars.errors|length > 0 %}
+                <div class="field-error">{{ form_errors(form.password.second) }}</div>
+            {% endif %}
+        </div>
+
+        {# Real-time password validation checklist #}
+        <div id="pwdChecks" style="font-size:0.75rem;margin-bottom:var(--space-md);display:grid;grid-template-columns:1fr 1fr;gap:2px var(--space-md)">
+            <span id="chkLen" style="color:var(--text-muted)">✗ Min 8 characters</span>
+            <span id="chkUpper" style="color:var(--text-muted)">✗ 1 uppercase letter</span>
+            <span id="chkLower" style="color:var(--text-muted)">✗ 1 lowercase letter</span>
+            <span id="chkDigit" style="color:var(--text-muted)">✗ 1 digit</span>
+            <span id="chkMatch" style="color:var(--text-muted)">✗ Passwords match</span>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="submitBtn">Create Account</button>
+    {{ form_end(form) }}
+
+    <script>
+    (function(){
+        // Password toggle
+        document.querySelectorAll('.pwd-toggle').forEach(function(btn){
+            btn.addEventListener('click',function(){
+                var inp=document.getElementById(btn.dataset.target);
+                var v=inp.type==='password';
+                inp.type=v?'text':'password';
+                btn.querySelector('.eye-off').style.display=v?'none':'';
+                btn.querySelector('.eye-on').style.display=v?'':'none';
+            });
+        });
+        // Real-time validation
+        var p1 = document.getElementById('pwd1');
+        var p2 = document.getElementById('pwd2');
+        var checks = {
+            len:   document.getElementById('chkLen'),
+            upper: document.getElementById('chkUpper'),
+            lower: document.getElementById('chkLower'),
+            digit: document.getElementById('chkDigit'),
+            match: document.getElementById('chkMatch')
+        };
+        function update() {
+            var v = p1.value;
+            var v2 = p2.value;
+            set(checks.len,   v.length >= 8,       '✓ Min 8 characters',  '✗ Min 8 characters');
+            set(checks.upper, /[A-Z]/.test(v),     '✓ 1 uppercase letter','✗ 1 uppercase letter');
+            set(checks.lower, /[a-z]/.test(v),     '✓ 1 lowercase letter','✗ 1 lowercase letter');
+            set(checks.digit, /\d/.test(v),        '✓ 1 digit',          '✗ 1 digit');
+            set(checks.match, v.length > 0 && v === v2, '✓ Passwords match','✗ Passwords match');
+        }
+        function set(el, ok, yes, no) {
+            el.textContent = ok ? yes : no;
+            el.className = ok ? 'pass' : 'fail';
+        }
+        p1.addEventListener('input', update);
+        p2.addEventListener('input', update);
+    })();
+    </script>
+{% endblock %}
+
+{% block footer_links %}
+    Already have an account? <a href="{{ path('app_login') }}">Sign In</a>
+{% endblock %}

@@ -1,0 +1,165 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Payroll Department Overview{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_payroll_index') }}" class="btn btn-ghost btn-sm">← Payroll Records</a>
+{% endblock %}
+
+{% block content %}
+
+{# ── Summary Bar ── #}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--space-md);margin-bottom:var(--space-lg)">
+    <div class="card" style="padding:1.25rem 1.5rem">
+        <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-muted);margin-bottom:.4rem">Total Budget</div>
+        <div style="font-size:1.75rem;font-weight:800;color:var(--color-primary)">${{ totalBudget|number_format(0, '.', ',') }}</div>
+        <div style="font-size:.75rem;color:var(--color-text-muted);margin-top:.2rem">{{ deptStats|length }} departments</div>
+    </div>
+    <div class="card" style="padding:1.25rem 1.5rem">
+        <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-muted);margin-bottom:.4rem">Allocated</div>
+        <div style="font-size:1.75rem;font-weight:800;color:{% if totalAllocated > totalBudget %}var(--color-danger){% else %}var(--color-text){% endif %}">${{ totalAllocated|number_format(0, '.', ',') }}</div>
+        <div style="font-size:.75rem;color:var(--color-text-muted);margin-top:.2rem">{{ employees|length }} employees</div>
+    </div>
+    <div class="card" style="padding:1.25rem 1.5rem">
+        <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-muted);margin-bottom:.4rem">Remaining</div>
+        <div style="font-size:1.75rem;font-weight:800;color:{% if totalRemaining < 0 %}var(--color-danger){% else %}var(--color-success){% endif %}">${{ totalRemaining|number_format(0, '.', ',') }}</div>
+        <div style="font-size:.75rem;color:var(--color-text-muted);margin-top:.2rem">{% if totalRemaining < 0 %}⚠️ Over budget{% else %}Available{% endif %}</div>
+    </div>
+    {% if noDeptEmployees|length > 0 %}
+    <div class="card" style="padding:1.25rem 1.5rem;border:1px solid var(--color-warning,#f59e0b)">
+        <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--color-warning,#f59e0b);margin-bottom:.4rem">Unassigned</div>
+        <div style="font-size:1.75rem;font-weight:800;color:var(--color-warning,#f59e0b)">{{ noDeptEmployees|length }}</div>
+        <div style="font-size:.75rem;color:var(--color-text-muted);margin-top:.2rem">no department set</div>
+    </div>
+    {% endif %}
+</div>
+
+{# ── Department Cards ── #}
+<h2 style="font-size:1.125rem;font-weight:700;margin-bottom:var(--space-md)">Departments</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:var(--space-md);margin-bottom:var(--space-xl)">
+    {% for ds in deptStats %}
+    {% set borderColor = ds.status == 'over' ? 'var(--color-danger,#ef4444)' : (ds.status == 'near' ? 'var(--color-warning,#f59e0b)' : 'transparent') %}
+    <div class="card" style="padding:1.5rem;border:1px solid {{ borderColor }}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem">
+            <div>
+                <div style="font-weight:700;font-size:1rem">{{ ds.dept.name }}</div>
+                <div style="font-size:.8rem;color:var(--color-text-muted)">{{ ds.employees|length }} employee{{ ds.employees|length != 1 ? 's' }}</div>
+            </div>
+            <span class="badge badge--{% if ds.status == 'over' %}red{% elseif ds.status == 'near' %}orange{% elseif ds.status == 'no-budget' %}blue{% else %}green{% endif %}" style="font-size:.7rem">
+                {% if ds.status == 'over' %}⚠ Over Budget
+                {% elseif ds.status == 'near' %}⚡ Near Limit
+                {% elseif ds.status == 'no-budget' %}No Budget
+                {% else %}✓ Under Budget{% endif %}
+            </span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1rem;font-size:.875rem">
+            <div>
+                <div style="color:var(--color-text-muted);font-size:.75rem">Budget</div>
+                <div style="font-weight:600">${{ ds.budget|number_format(0, '.', ',') }}</div>
+            </div>
+            <div>
+                <div style="color:var(--color-text-muted);font-size:.75rem">Allocated</div>
+                <div style="font-weight:600;color:{% if ds.status == 'over' %}var(--color-danger){% endif %}">${{ ds.allocated|number_format(0, '.', ',') }}</div>
+            </div>
+            <div>
+                <div style="color:var(--color-text-muted);font-size:.75rem">Remaining</div>
+                <div style="font-weight:600;color:{% if ds.remaining < 0 %}var(--color-danger,#ef4444){% else %}var(--color-success,#10b981){% endif %}">${{ ds.remaining|number_format(0, '.', ',') }}</div>
+            </div>
+            <div>
+                <div style="color:var(--color-text-muted);font-size:.75rem">Utilisation</div>
+                <div style="font-weight:600">{{ ds.pct }}%</div>
+            </div>
+        </div>
+
+        {# Progress bar #}
+        {% if ds.budget > 0 %}
+        <div style="background:var(--color-border,#e5e7eb);border-radius:999px;height:8px;overflow:hidden">
+            <div style="width:{{ [ds.pct, 100]|min }}%;height:100%;border-radius:999px;background:{% if ds.status == 'over' %}var(--color-danger,#ef4444){% elseif ds.status == 'near' %}var(--color-warning,#f59e0b){% else %}var(--color-success,#10b981){% endif %};transition:width .4s"></div>
+        </div>
+        {% endif %}
+
+        {# Employee mini-list #}
+        {% if ds.employees|length > 0 %}
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--color-border,#e5e7eb)">
+            {% for u in ds.employees|slice(0, 4) %}
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:.25rem 0;font-size:.8rem">
+                <span>{{ u.firstName }} {{ u.lastName }}</span>
+                <span style="color:var(--color-text-muted)">${{ (u.monthlySalary ?? 0)|number_format(0, '.', ',') }}</span>
+            </div>
+            {% endfor %}
+            {% if ds.employees|length > 4 %}
+            <div style="font-size:.75rem;color:var(--color-text-muted);margin-top:.25rem">+{{ ds.employees|length - 4 }} more</div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="card" style="padding:3rem;text-align:center;color:var(--color-text-muted)">No departments configured.</div>
+    {% endfor %}
+</div>
+
+{# ── Employee Table ── #}
+<h2 style="font-size:1.125rem;font-weight:700;margin-bottom:var(--space-md)">All Employees</h2>
+<div class="card">
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Employee</th>
+                    <th>Role</th>
+                    <th>Department</th>
+                    <th>Monthly Salary</th>
+                    <th>Pay Frequency</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in employees %}
+                <tr>
+                    <td class="text-muted">{{ loop.index }}</td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:.5rem">
+                            <div class="avatar avatar--sm">{{ u.firstName|first }}{{ u.lastName|first }}</div>
+                            <div>
+                                <div style="font-weight:600">{{ u.firstName }} {{ u.lastName }}</div>
+                                <div style="font-size:.75rem;color:var(--color-text-muted)">{{ u.email }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% set roleMap = {EMPLOYEE:'Employee', HR:'HR', PROJECT_OWNER:'Project Owner', ADMIN:'Admin'} %}
+                        <span class="badge badge--blue">{{ roleMap[u.role] ?? u.role ?? 'Employee' }}</span>
+                    </td>
+                    <td>
+                        {% if u.department %}
+                            {{ u.department.name }}
+                        {% else %}
+                            <span class="badge badge--orange">Unassigned</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if u.monthlySalary %}
+                            <strong>${{ u.monthlySalary|number_format(0, '.', ',') }}</strong>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td><span class="badge badge--blue">Monthly</span></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" style="text-align:center;color:var(--color-text-muted);padding:2rem">No employees found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if noDeptEmployees|length > 0 %}
+<div class="card" style="margin-top:var(--space-md);padding:1rem 1.5rem;border:1px solid var(--color-warning,#f59e0b)">
+    <strong>⚠ {{ noDeptEmployees|length }} employee{{ noDeptEmployees|length != 1 ? 's' }} without a department:</strong>
+    {% for u in noDeptEmployees %}{{ u.firstName }} {{ u.lastName }}{% if not loop.last %}, {% endif %}{% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .ambient {
+            position: fixed;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            opacity: 0.08;
+            filter: blur(120px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .ambient--1 {
+            top: -10%;
+            left: 20%;
+            background: var(--accent-blue);
+            animation: auth-drift 20s infinite alternate ease-in-out;
+        }
+        .ambient--2 {
+            bottom: -15%;
+            right: 10%;
+            background: var(--accent-purple);
+            animation: auth-drift 25s infinite alternate-reverse ease-in-out;
+        }
+        @keyframes auth-drift {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(-30px, 30px) scale(1.1); }
+        }
+
+        .auth-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 420px;
+            padding: var(--space-xl);
+        }
+
+        .auth-brand {
+            font-family: var(--font-heading);
+            font-size: 2rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            margin-bottom: var(--space-2xl);
+            letter-spacing: -0.5px;
+        }
+
+        .auth-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-xl);
+            padding: var(--space-2xl);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 40%);
+            pointer-events: none;
+        }
+
+        .auth-card .btn-primary {
+            width: 100%;
+            padding: 0.75rem;
+            font-size: 1rem;
+            margin-top: var(--space-sm);
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: var(--space-xl);
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        .auth-footer a {
+            color: var(--accent-blue);
+            font-weight: 500;
+        }
+        .auth-footer a:hover {
+            color: var(--accent-purple);
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <div class="ambient ambient--1"></div>
+    <div class="ambient ambient--2"></div>
+
+    <div class="auth-container">
+        <div class="auth-brand">SynergyGig.</div>
+        <div class="auth-card">
+            {# Flash messages #}
+            {% for type, messages in app.flashes %}
+                {% for message in messages %}
+                    <div class="alert alert--{{ type == 'error' ? 'danger' : type }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endfor %}
+
+            {% block auth_body %}{% endblock %}
+        </div>
+        <div class="auth-footer">
+            {% block footer_links %}{% endblock %}
+        </div>
+    </div>
+{% endblock %}

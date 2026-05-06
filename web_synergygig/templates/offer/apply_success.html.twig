@@ -1,0 +1,46 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}{{ alreadyApplied ? 'Already Applied' : 'Application Submitted' }}{% endblock %}
+
+{% block content %}
+<div style="max-width:560px;margin:3rem auto;text-align:center">
+    <div class="card" style="padding:3rem 2rem">
+        {% if alreadyApplied %}
+        {# Already applied icon #}
+        <div style="margin-bottom:1.5rem">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+        </div>
+        <h2 style="margin-bottom:.5rem;color:var(--text-primary)">Already Applied</h2>
+        <p class="text-muted" style="margin-bottom:1.5rem">You've already submitted an application for <strong>{{ offer.title }}</strong>. You can track its status from your applications page.</p>
+        {% else %}
+        {# Success icon #}
+        <div style="margin-bottom:1.5rem">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="16 9 10.5 14.5 8 12"/>
+            </svg>
+        </div>
+        <h2 style="margin-bottom:.5rem;color:var(--text-primary)">Application Submitted!</h2>
+        <p class="text-muted" style="margin-bottom:1.5rem">Your application for <strong>{{ offer.title }}</strong> has been sent successfully. The HR team will review it shortly.</p>
+        {% endif %}
+
+        {# Offer summary card #}
+        <div style="background:var(--bg-tertiary);border-radius:var(--radius-md);padding:1rem 1.25rem;margin-bottom:2rem;text-align:left">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+                <span style="font-weight:600;color:var(--text-primary)">{{ offer.title }}</span>
+                {% set sc = {'DRAFT': 'blue', 'OPEN': 'green', 'CLOSED': 'red', 'CANCELLED': 'orange'} %}
+                <span class="badge badge--{{ sc[offer.status] ?? 'blue' }}">{{ offer.status }}</span>
+            </div>
+            {% if offer.offerType %}<div class="text-muted" style="font-size:.8rem">{{ offer.offerType|replace({'_': ' '}) }}</div>{% endif %}
+            {% if offer.amount %}<div style="font-size:.85rem;margin-top:.35rem;color:var(--accent-emerald)">{{ offer.amount }} {{ offer.currency ?? 'TND' }}</div>{% endif %}
+        </div>
+
+        <div style="display:flex;gap:.75rem;justify-content:center">
+            <a href="{{ path('app_my_applications') }}" class="btn btn-primary">My Applications</a>
+            <a href="{{ path('app_offer_index') }}" class="btn btn-secondary">Browse Offers</a>
+            <a href="{{ path('app_offer_show', {id: offer.id}) }}" class="btn btn-ghost">View Offer</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

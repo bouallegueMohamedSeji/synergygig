@@ -1,0 +1,56 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}{{ is_edit ? 'Edit Project' : 'New Project' }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:720px">
+    <div class="card-header"><h3>{{ is_edit ? 'Edit Project' : 'Create Project' }}</h3></div>
+    <div class="card-body">
+        {{ form_start(form, {'attr': {'novalidate': 'novalidate'}}) }}
+            <div class="form-group">
+                {{ form_label(form.name) }}
+                {{ form_widget(form.name) }}
+                {{ form_errors(form.name) }}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.description) }}
+                {{ form_widget(form.description) }}
+                {{ form_errors(form.description) }}
+            </div>
+            <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                <div class="form-group">
+                    {{ form_label(form.owner) }}
+                    {{ form_widget(form.owner) }}
+                    {{ form_errors(form.owner) }}
+                </div>
+                <div class="form-group">
+                    {{ form_label(form.department) }}
+                    {{ form_widget(form.department) }}
+                    {{ form_errors(form.department) }}
+                </div>
+            </div>
+            <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                <div class="form-group">
+                    {{ form_label(form.start_date) }}
+                    {{ form_widget(form.start_date) }}
+                    {{ form_errors(form.start_date) }}
+                </div>
+                <div class="form-group">
+                    {{ form_label(form.deadline) }}
+                    {{ form_widget(form.deadline) }}
+                    {{ form_errors(form.deadline) }}
+                </div>
+            </div>
+            <div class="form-group">
+                {{ form_label(form.status) }}
+                {{ form_widget(form.status) }}
+                {{ form_errors(form.status) }}
+            </div>
+            <div class="form-actions" style="display:flex;gap:0.75rem;margin-top:1.5rem">
+                <a href="{{ path('app_project_index') }}" class="btn btn-ghost">Cancel</a>
+                <button type="submit" class="btn btn-primary">{{ is_edit ? 'Update' : 'Create' }}</button>
+            </div>
+        {{ form_end(form) }}
+    </div>
+</div>
+{% endblock %}

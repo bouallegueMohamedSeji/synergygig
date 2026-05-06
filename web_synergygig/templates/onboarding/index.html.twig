@@ -1,0 +1,158 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Onboarding Checklist{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <h2 class="mb-1"><i class="bi bi-clipboard-check"></i> Onboarding Checklist</h2>
+            <p class="text-muted mb-0">Complete all items to finish your onboarding</p>
+        </div>
+        <div class="col-lg-4 d-flex align-items-center">
+            <div class="w-100">
+                <div class="d-flex justify-content-between mb-1">
+                    <small class="fw-semibold">Progress</small>
+                    <small id="progress-text" class="fw-semibold">
+                        {% set total = 0 %}
+                        {% for section in checklist %}{% set total = total + section.items|length %}{% endfor %}
+                        {{ checked|length }} / {{ total }} ({{ total > 0 ? ((checked|length / total) * 100)|round : 0 }}%)
+                    </small>
+                </div>
+                <div class="progress" style="height: 12px;">
+                    <div id="progress-bar" class="progress-bar bg-success" role="progressbar"
+                         style="width: {{ total > 0 ? ((checked|length / total) * 100)|round : 0 }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            {% for sIdx, section in checklist %}
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">{{ section.title }}</h5>
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for iIdx, item in section.items %}
+                    {% set key = sIdx ~ '-' ~ iIdx %}
+                    <li class="list-group-item d-flex align-items-center">
+                        <div class="form-check w-100">
+                            <input class="form-check-input onboarding-check" type="checkbox"
+                                   id="item-{{ key }}" data-key="{{ key }}"
+                                   {{ key in checked ? 'checked' : '' }}>
+                            <label class="form-check-label {{ key in checked ? 'text-decoration-line-through text-muted' : '' }}"
+                                   for="item-{{ key }}">
+                                {{ item }}
+                            </label>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm sticky-top" style="top: 80px;">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="bi bi-robot"></i> Onboarding Assistant</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small">Have a question about your onboarding? Ask the AI assistant!</p>
+                    <div class="mb-3">
+                        <textarea id="ai-question" class="form-control" rows="3"
+                                  placeholder="e.g. What software do I need to install?"></textarea>
+                    </div>
+                    <button id="ai-ask" class="btn btn-primary w-100 mb-3">
+                        <i class="bi bi-send"></i> Ask
+                    </button>
+                    <div id="ai-answer" class="d-none">
+                        <hr>
+                        <div class="bg-light p-3 rounded small" id="ai-answer-text"></div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white">
+                    <small class="text-muted">Quick questions:</small>
+                    <div class="d-flex flex-wrap gap-1 mt-2">
+                        <button class="btn btn-sm btn-outline-secondary quick-q" data-q="What tools should I set up on day 1?">Day 1 tools</button>
+                        <button class="btn btn-sm btn-outline-secondary quick-q" data-q="How do I access project repositories?">Repo access</button>
+                        <button class="btn btn-sm btn-outline-secondary quick-q" data-q="Who should I meet in my first week?">First week meetings</button>
+                        <button class="btn btn-sm btn-outline-secondary quick-q" data-q="What training courses are required?">Required training</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.onboarding-check').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            const key = this.dataset.key;
+            const label = this.nextElementSibling;
+
+            fetch('{{ path("app_onboarding_toggle") }}', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({key: key})
+            })
+            .then(r => r.json())
+            .then(data => {
+                label.classList.toggle('text-decoration-line-through', cb.checked);
+                label.classList.toggle('text-muted', cb.checked);
+                document.getElementById('progress-bar').style.width = data.progress + '%';
+                document.getElementById('progress-text').textContent =
+                    data.checked + ' / ' + data.total + ' (' + data.progress + '%)';
+
+                if (data.progress >= 100) {
+                    document.getElementById('progress-bar').classList.add('bg-success');
+                }
+            });
+        });
+    });
+
+    function askAI(question) {
+        if (!question.trim()) return;
+        const btn = document.getElementById('ai-ask');
+        const box = document.getElementById('ai-answer');
+        const txt = document.getElementById('ai-answer-text');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Thinking...';
+        box.classList.add('d-none');
+
+        fetch('{{ path("app_onboarding_ask") }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({question: question})
+        })
+        .then(r => r.json())
+        .then(data => {
+            txt.textContent = data.answer || data.error || 'No response.';
+            box.classList.remove('d-none');
+        })
+        .catch(() => {
+            txt.textContent = 'Failed to get a response. Try again later.';
+            box.classList.remove('d-none');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send"></i> Ask';
+        });
+    }
+
+    document.getElementById('ai-ask').addEventListener('click', function() {
+        askAI(document.getElementById('ai-question').value);
+    });
+
+    document.querySelectorAll('.quick-q').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.getElementById('ai-question').value = this.dataset.q;
+            askAI(this.dataset.q);
+        });
+    });
+});
+</script>
+{% endblock %}

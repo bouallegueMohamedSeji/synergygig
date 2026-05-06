@@ -1,0 +1,51 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Notification{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:700px">
+    <div style="padding:1.5rem">
+        <div style="display:flex;align-items:flex-start;gap:1rem;margin-bottom:1.5rem">
+            <div style="width:40px;height:40px;border-radius:50%;background:rgba(44,102,110,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                {% set icon_map = {
+                    'MESSAGE': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary,#2C666E)" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+                    'VOICE_CALL': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary,#2C666E)" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+                    'VIDEO_CALL': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary,#2C666E)" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>',
+                    'TASK': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary,#2C666E)" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+                    'SUCCESS': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38A169" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+                    'WARNING': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D69E2E" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+                    'ERROR': '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E53E3E" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+                } %}
+                {{ icon_map[notification.type] ?? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary,#2C666E)" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' }}
+            </div>
+            <div style="flex:1">
+                <h3 style="margin:0 0 0.25rem;color:var(--text-primary)">{{ notification.title }}</h3>
+                <p style="margin:0;color:var(--text-secondary);font-size:0.9rem;line-height:1.6">{{ notification.body }}</p>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:1rem;align-items:center;font-size:0.8rem;color:var(--text-muted);margin-bottom:1.5rem">
+            <span>{{ notification.createdAt|date('M d, Y H:i') }}</span>
+            <span class="badge {{ notification.isRead ? 'badge--success' : 'badge--warning' }}">
+                {{ notification.isRead ? 'Read' : 'Unread' }}
+            </span>
+            {% if notification.type %}
+                <span class="badge">{{ notification.type }}</span>
+            {% endif %}
+        </div>
+
+        <div style="display:flex;gap:0.5rem">
+            {% if not notification.isRead %}
+            <form method="post" action="{{ path('app_notification_read', {id: notification.id}) }}">
+                <button type="submit" class="btn btn-primary btn-sm">Mark as Read</button>
+            </form>
+            {% endif %}
+            <form method="post" action="{{ path('app_notification_delete', {id: notification.id}) }}">
+                <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ notification.id) }}">
+                <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+            </form>
+            <a href="{{ path('app_notification_index') }}" class="btn btn-ghost btn-sm">Back to Notifications</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

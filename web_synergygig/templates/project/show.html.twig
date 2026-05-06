@@ -1,0 +1,1164 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}{{ project.name }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_project_kanban', {id: project.id}) }}" class="btn btn-primary btn-sm">📋 Kanban Board</a>
+    {% if is_granted('ROLE_ADMIN') or (project.owner and project.owner.id == app.user.id) %}
+    <a href="{{ path('app_project_edit', {id: project.id}) }}" class="btn btn-ghost btn-sm">Edit</a>
+    {% endif %}
+    <a href="{{ path('app_project_index') }}" class="btn btn-ghost btn-sm">Back</a>
+{% endblock %}
+
+{% block stylesheets %}
+{{ parent() }}
+<style>
+.intel-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    align-items: end;
+}
+.intel-actions {
+    display: flex;
+    gap: .55rem;
+    flex-wrap: wrap;
+}
+.intel-status {
+    margin-top: .9rem;
+    font-size: .84rem;
+    color: var(--text-muted);
+}
+.intel-empty {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px dashed var(--glass-border);
+    border-radius: 10px;
+    color: var(--text-muted);
+    background: rgba(255,255,255,.015);
+}
+.intel-panels {
+    margin-top: 1rem;
+    display: grid;
+    gap: 1rem;
+}
+.intel-panel {
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    background: rgba(255,255,255,.02);
+    padding: 1rem;
+}
+.intel-risk-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .8rem;
+    flex-wrap: wrap;
+}
+.intel-score {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+}
+.intel-score__ring {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: conic-gradient(var(--accent-blue) 0deg, rgba(255,255,255,.1) 0deg);
+    position: relative;
+}
+.intel-score__ring::after {
+    content: '';
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    border: 1px solid var(--glass-border);
+    position: absolute;
+}
+.intel-score__value {
+    position: relative;
+    z-index: 1;
+    font-weight: 700;
+    font-size: .95rem;
+}
+.intel-score__meta small {
+    color: var(--text-muted);
+    display: block;
+    line-height: 1.2;
+}
+.intel-level {
+    font-weight: 700;
+    padding: .24rem .65rem;
+    border-radius: 999px;
+    font-size: .74rem;
+    letter-spacing: .4px;
+}
+.intel-level--low { background: rgba(63,185,80,.14); color: var(--color-success); }
+.intel-level--medium { background: rgba(210,153,34,.15); color: var(--color-warning); }
+.intel-level--high { background: rgba(248,81,73,.15); color: var(--color-danger); }
+.intel-grid {
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: .65rem;
+}
+.intel-mini {
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: .7rem;
+    background: rgba(255,255,255,.015);
+}
+.intel-mini__label {
+    font-size: .72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+.intel-mini__value {
+    margin-top: .2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+.intel-signals {
+    margin-top: 1rem;
+    display: grid;
+    gap: .55rem;
+}
+.intel-signal {
+    display: grid;
+    grid-template-columns: 160px 1fr 32px;
+    gap: .6rem;
+    align-items: center;
+}
+.intel-signal__name {
+    color: var(--text-secondary);
+    font-size: .82rem;
+}
+.intel-signal__bar {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.08);
+    overflow: hidden;
+}
+.intel-signal__fill {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+}
+.intel-signal__value {
+    font-size: .78rem;
+    color: var(--text-muted);
+    text-align: right;
+}
+.intel-reco {
+    margin-top: 1rem;
+}
+.intel-reco ul {
+    list-style: none;
+    display: grid;
+    gap: .45rem;
+    padding: 0;
+    margin: .5rem 0 0;
+}
+.intel-reco li {
+    border-left: 3px solid var(--accent-blue);
+    background: rgba(88,166,255,.08);
+    color: var(--text-secondary);
+    padding: .45rem .6rem;
+    border-radius: 8px;
+    font-size: .84rem;
+}
+.intel-kv {
+    margin-top: .8rem;
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    row-gap: .4rem;
+    column-gap: .6rem;
+    font-size: .84rem;
+}
+.intel-kv dt { color: var(--text-muted); }
+.intel-kv dd { margin: 0; color: var(--text-primary); }
+.intel-debug {
+    margin-top: .9rem;
+}
+.intel-debug summary {
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: .82rem;
+}
+.intel-debug pre {
+    margin-top: .5rem;
+    max-height: 260px;
+    overflow: auto;
+    background: rgba(0,0,0,.24);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: .75rem;
+    font-size: .75rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+}
+@media (max-width: 820px) {
+    .intel-signal {
+        grid-template-columns: 1fr;
+        gap: .3rem;
+    }
+    .intel-signal__value {
+        text-align: left;
+    }
+    .intel-kv {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bento-grid bento-grid--stats">
+    <div class="card card--glow-blue">
+        <div class="card-body" style="text-align:center">
+            <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Status</div>
+            {% set sc = {'PLANNING': 'blue', 'IN_PROGRESS': 'orange', 'ON_HOLD': 'purple', 'COMPLETED': 'green', 'CANCELLED': 'red'} %}
+            <span class="badge badge--{{ sc[project.status] ?? 'blue' }}" style="font-size:0.85rem">{{ project.status ?? 'N/A' }}</span>
+        </div>
+    </div>
+    <div class="card card--glow-green">
+        <div class="card-body" style="text-align:center">
+            <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Owner</div>
+            {% if project.owner %}
+                <div class="avatar" style="margin:0 auto 0.5rem">{{ project.owner.firstName|first }}{{ project.owner.lastName|first }}</div>
+                <div style="font-weight:600">{{ project.owner.firstName }} {{ project.owner.lastName }}</div>
+            {% else %}<div class="text-muted">—</div>{% endif %}
+        </div>
+    </div>
+    <div class="card card--glow-purple">
+        <div class="card-body" style="text-align:center">
+            <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Department</div>
+            <div style="font-size:1.1rem;font-weight:600">{{ project.department ? project.department.name : '—' }}</div>
+        </div>
+    </div>
+    <div class="card card--glow-orange">
+        <div class="card-body" style="text-align:center">
+            <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Tasks</div>
+            <div style="font-size:1.5rem;font-weight:700">{{ tasks|length }}</div>
+        </div>
+    </div>
+</div>
+
+{% if project.description %}
+<div class="card" style="margin-top:1.5rem">
+    <div class="card-header"><h3>Description</h3></div>
+    <div class="card-body"><p>{{ project.description }}</p></div>
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:1.5rem">
+    <div class="card-header"><h3>Details</h3></div>
+    <div class="card-body">
+        <table class="table">
+            <tr><td class="text-muted" style="width:180px">Start Date</td><td>{{ project.startDate ? project.startDate|date('M d, Y') : '—' }}</td></tr>
+            <tr><td class="text-muted">Deadline</td><td>{{ project.deadline ? project.deadline|date('M d, Y') : '—' }}</td></tr>
+            <tr><td class="text-muted">Created</td><td>{{ project.createdAt ? project.createdAt|date('M d, Y H:i') : '—' }}</td></tr>
+        </table>
+    </div>
+</div>
+
+<div class="card" style="margin-top:1.5rem" id="project-intelligence">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
+        <h3>Project Intelligence APIs</h3>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <span class="badge badge--blue">Delivery Health</span>
+            <span class="badge badge--orange">Review Bottlenecks</span>
+            <span class="badge badge--purple">Capacity Trend</span>
+            <span class="badge badge--green">Google Calendar (Preview)</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="intel-controls">
+            <div>
+                <label class="text-muted" style="display:block;margin-bottom:.35rem">Window (days)</label>
+                <input id="riskDays" class="form-control" type="number" min="1" max="90" value="30">
+            </div>
+            <div>
+                <label class="text-muted" style="display:block;margin-bottom:.35rem">Milestone Task</label>
+                <select id="calendarMilestone" class="form-control form-select">
+                    {% for t in tasks %}
+                        <option value="{{ t.id }}">#{{ t.id }} - {{ t.title }}</option>
+                    {% else %}
+                        <option value="0">No tasks available</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="intel-actions">
+                <button id="btnRiskForecast" class="btn btn-primary btn-sm" type="button">Load Risk Forecast</button>
+                <button id="btnCalendarPreview" class="btn btn-ghost btn-sm" type="button">Preview Calendar Sync</button>
+            </div>
+        </div>
+
+        <div id="intelligenceStatus" class="intel-status">Ready to run delivery intelligence.</div>
+
+        <div id="intelEmpty" class="intel-empty">
+            Run one of the actions above to load a structured preview.
+        </div>
+
+        <div class="intel-panels">
+            <section id="intelRiskPanel" class="intel-panel" style="display:none">
+                <div class="intel-risk-head">
+                    <div class="intel-score">
+                        <div class="intel-score__ring" id="intelScoreRing">
+                            <span class="intel-score__value" id="intelScoreValue">0</span>
+                        </div>
+                        <div class="intel-score__meta">
+                            <strong id="intelModel" style="display:block;color:var(--text-primary)">Delivery Health</strong>
+                            <small id="intelWindowMeta">Window: 30 days</small>
+                            <small id="intelGeneratedAt">Generated: -</small>
+                        </div>
+                    </div>
+                    <span id="intelLevel" class="intel-level intel-level--low">LOW</span>
+                </div>
+
+                <div class="intel-grid">
+                    <div class="intel-mini"><div class="intel-mini__label">Total Tasks</div><div class="intel-mini__value" id="mTotal">0</div></div>
+                    <div class="intel-mini"><div class="intel-mini__label">Completion</div><div class="intel-mini__value" id="mCompletion">0%</div></div>
+                    <div class="intel-mini"><div class="intel-mini__label">Overdue</div><div class="intel-mini__value" id="mOverdue">0</div></div>
+                    <div class="intel-mini"><div class="intel-mini__label">In Review</div><div class="intel-mini__value" id="mReview">0</div></div>
+                </div>
+
+                <div class="intel-signals" id="intelSignals"></div>
+
+                <div class="intel-reco">
+                    <strong style="font-size:.88rem;color:var(--text-primary)">Recommendations</strong>
+                    <ul id="intelRecoList"></ul>
+                </div>
+            </section>
+
+            <section id="intelCalendarPanel" class="intel-panel" style="display:none">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:.8rem;flex-wrap:wrap">
+                    <strong style="color:var(--text-primary)">Calendar Sync Preview</strong>
+                    <span class="badge badge--green" id="intelCalStatus">DRY_RUN</span>
+                </div>
+                <dl class="intel-kv" style="margin-top:1rem">
+                    <dt>Provider</dt><dd id="calProvider">-</dd>
+                    <dt>Title</dt><dd id="calTitle">-</dd>
+                    <dt>Start</dt><dd id="calStart">-</dd>
+                    <dt>End</dt><dd id="calEnd">-</dd>
+                    <dt>Timezone</dt><dd id="calTimezone">-</dd>
+                    <dt>Attendees</dt><dd id="calAttendees">-</dd>
+                    <dt>Message</dt><dd id="calMessage">-</dd>
+                </dl>
+            </section>
+        </div>
+
+        <details class="intel-debug">
+            <summary>Show raw JSON (debug)</summary>
+            <pre id="intelligenceOutput">No data loaded yet.</pre>
+        </details>
+    </div>
+</div>
+
+{# ── GitHub Issues Panel (Project Manager / Admin only) ── #}
+{% if is_granted('ROLE_ADMIN') or (project.owner and project.owner.id == app.user.id) %}
+<div class="card" style="margin-top:1.5rem" id="github-panel">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+        <h3>🐙 GitHub Issues</h3>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+            <input id="githubRepoInput" type="text" class="form-control form-control-sm"
+                   placeholder="owner/repo"
+                   value="{{ project.githubRepo ?? '' }}"
+                   style="width:200px"
+                   title="Link a GitHub repository (format: owner/repo)">
+            <button id="btnGithubLinkRepo" class="btn btn-ghost btn-sm" type="button">🔗 Link Repo</button>
+            <button id="btnGithubListIssues" class="btn btn-ghost btn-sm" type="button">📋 List Issues</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="githubStatus" style="display:none;margin-bottom:.75rem;font-weight:600"></div>
+        <div id="githubIssuesBox" style="display:none">
+            <table class="table table-sm" style="font-size:.85rem">
+                <thead><tr><th>#</th><th>Title</th><th>State</th><th>Link</th></tr></thead>
+                <tbody id="githubIssuesList"></tbody>
+            </table>
+        </div>
+        <div style="margin-top:1rem">
+            <h5 style="font-size:.9rem;font-weight:700;margin-bottom:.5rem">Push Task to GitHub Issue</h5>
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+                <select id="githubTaskSelect" class="form-control form-control-sm" style="max-width:300px">
+                    <option value="">-- select a task --</option>
+                    {% for task in tasks %}
+                        <option value="{{ task.id }}"
+                            {% if task.githubIssueNumber %}data-issue="{{ task.githubIssueNumber }}" data-url="{{ task.githubIssueUrl }}"{% endif %}>
+                            #{{ task.id }} {{ task.title|e }}{% if task.githubIssueNumber %} ✅ (GH #{{ task.githubIssueNumber }}){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+                <button id="btnGithubCreateIssue" class="btn btn-primary btn-sm" type="button">➕ Create Issue</button>
+                <button id="btnGithubCloseIssue" class="btn btn-ghost btn-sm" type="button">✔ Close Issue</button>
+                <a id="githubIssueLink" href="#" target="_blank" style="display:none;font-size:.8rem">🔗 View Issue</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# ── AI Toolkit (Project Manager / Admin only) ── #}
+{% if is_granted('ROLE_ADMIN') or (project.owner and project.owner.id == app.user.id) %}
+<div class="card" style="margin-top:1.5rem" id="ai-toolkit">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+        <h3>🤖 AI Toolkit</h3>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <button id="btnAiGenerateTasks" class="btn btn-primary btn-sm" type="button">✨ Generate Tasks</button>
+            <button id="btnAiSprintPlan" class="btn btn-ghost btn-sm" type="button">📋 Sprint Plan</button>
+            <button id="btnAiMeetingPrep" class="btn btn-ghost btn-sm" type="button">📝 Meeting Agenda</button>
+            <button id="btnAiMeetingSummarize" class="btn btn-ghost btn-sm" type="button">🎙 Summarize Notes</button>
+            <button id="btnAiDecision" class="btn btn-ghost btn-sm" type="button">⚖ Decision Helper</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <p class="text-muted" style="font-size:.85rem;margin-bottom:1rem">
+            AI features powered by Z.AI / Groq. Task generation adds tasks to this project. Sprint plan recommends scope based on your task list.
+        </p>
+
+        {# Sprint Plan params row (hidden by default) #}
+        <div id="sprintParamsRow" style="display:none;gap:1rem;align-items:flex-end;margin-bottom:1rem;flex-wrap:wrap" class="intel-controls">
+            <div>
+                <label class="text-muted" style="display:block;margin-bottom:.35rem">Sprint duration (days)</label>
+                <input id="aiSprintDays" class="form-control" type="number" min="1" max="60" value="10" style="max-width:120px">
+            </div>
+            <button id="btnAiSprintRun" class="btn btn-primary btn-sm" type="button">Run Sprint Plan</button>
+        </div>
+
+        {# Meeting summarize textarea (hidden by default) #}
+        <div id="meetingSummarizeRow" style="display:none;margin-bottom:1rem">
+            <textarea id="meetingNotesInput" class="form-control" rows="5" placeholder="Paste meeting notes or transcript here..."></textarea>
+            <button id="btnAiSummarizeRun" class="btn btn-primary btn-sm" type="button" style="margin-top:.5rem">Summarize</button>
+        </div>
+
+        {# Decision Helper form (hidden by default) #}
+        <div id="decisionHelperRow" style="display:none;margin-bottom:1rem">
+            <div style="display:grid;gap:.75rem">
+                <div>
+                    <label class="text-muted" style="display:block;margin-bottom:.3rem">Decision Question</label>
+                    <input id="decisionQuestion" class="form-control" type="text" placeholder="What decision do you need help with?">
+                </div>
+                <div>
+                    <label class="text-muted" style="display:block;margin-bottom:.3rem">Options (one per line)</label>
+                    <textarea id="decisionOptions" class="form-control" rows="3" placeholder="Option A&#10;Option B&#10;Option C"></textarea>
+                </div>
+                <div>
+                    <label class="text-muted" style="display:block;margin-bottom:.3rem">Criteria (one per line)</label>
+                    <textarea id="decisionCriteria" class="form-control" rows="2" placeholder="Cost&#10;Time&#10;Quality"></textarea>
+                </div>
+                <button id="btnDecisionRun" class="btn btn-primary btn-sm" type="button">Analyze Decision</button>
+            </div>
+        </div>
+
+        <div id="aiToolkitStatus" class="intel-status" style="display:none"></div>
+
+        {# Result display area #}
+        <div id="aiToolkitResult" style="display:none;margin-top:1rem">
+            <div id="aiToolkitResultContent" style="
+                background:rgba(0,0,0,.18);
+                border:1px solid var(--glass-border);
+                border-radius:10px;
+                padding:1rem;
+                font-size:.86rem;
+                line-height:1.6;
+                color:var(--text-secondary);
+                white-space:pre-wrap;
+                max-height:480px;
+                overflow-y:auto;
+            "></div>
+        </div>
+
+        {# Generated tasks list (shown after generate) #}
+        <div id="aiGeneratedTasks" style="display:none;margin-top:1rem">
+            <strong style="color:var(--text-primary);font-size:.9rem">Generated Tasks</strong>
+            <ul id="aiGeneratedTasksList" style="list-style:none;padding:0;margin:.6rem 0 0;display:grid;gap:.4rem"></ul>
+        </div>
+
+        {# Sprint plan table (shown after sprint plan) #}
+        <div id="aiSprintResult" style="display:none;margin-top:1rem">
+            <div id="aiSprintStats" style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.75rem"></div>
+            <div class="table-wrap"><table class="table" id="aiSprintTable">
+                <thead><tr><th>Task</th><th>Points</th><th>In Sprint?</th><th>Reason</th></tr></thead>
+                <tbody id="aiSprintTableBody"></tbody>
+            </table></div>
+            <div id="aiSprintWarnings" style="display:none;margin-top:.75rem;padding:.75rem;border-radius:8px;background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.25);color:var(--color-danger);font-size:.84rem"></div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:1.5rem">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+        <h3>Tasks</h3>
+        {% if is_granted('ROLE_ADMIN') or (project.owner and project.owner.id == app.user.id) %}
+        <a href="{{ path('app_task_new') }}" class="btn btn-primary btn-sm">+ Add Task</a>
+        {% endif %}
+    </div>
+    {% if tasks|length > 0 %}
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+                <tr><th>Title</th><th>Assignee</th><th>Status</th><th>Priority</th><th>Due</th></tr>
+            </thead>
+            <tbody>
+                {% for t in tasks %}
+                <tr>
+                    <td><a href="{{ path('app_task_show', {id: t.id}) }}" style="color:var(--accent-blue)">{{ t.title }}</a></td>
+                    <td>{% if t.assignedTo %}{{ t.assignedTo.firstName }} {{ t.assignedTo.lastName }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    <td>
+                        {% set tsc = {'TODO': 'blue', 'IN_PROGRESS': 'orange', 'DONE': 'green'} %}
+                        <span class="badge badge--{{ tsc[t.status] ?? 'blue' }}">{{ t.status ?? 'N/A' }}</span>
+                    </td>
+                    <td>
+                        {% set pc = {'LOW': 'green', 'MEDIUM': 'blue', 'HIGH': 'orange'} %}
+                        <span class="badge badge--{{ pc[t.priority] ?? 'blue' }}">{{ t.priority ?? '—' }}</span>
+                    </td>
+                    <td>{{ t.dueDate ? t.dueDate|date('M d, Y') : '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card-body"><p class="text-muted">No tasks for this project yet.</p></div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+(function () {
+    const statusEl = document.getElementById('intelligenceStatus');
+    const outputEl = document.getElementById('intelligenceOutput');
+    const btnRisk = document.getElementById('btnRiskForecast');
+    const btnCalendar = document.getElementById('btnCalendarPreview');
+
+    if (!statusEl || !outputEl || !btnRisk || !btnCalendar) {
+        return;
+    }
+
+    const riskDaysEl = document.getElementById('riskDays');
+    const milestoneEl = document.getElementById('calendarMilestone');
+    const intelEmpty = document.getElementById('intelEmpty');
+    const riskPanel = document.getElementById('intelRiskPanel');
+    const calendarPanel = document.getElementById('intelCalendarPanel');
+
+    const scoreRing = document.getElementById('intelScoreRing');
+    const scoreValue = document.getElementById('intelScoreValue');
+    const intelLevel = document.getElementById('intelLevel');
+    const intelModel = document.getElementById('intelModel');
+    const intelWindowMeta = document.getElementById('intelWindowMeta');
+    const intelGeneratedAt = document.getElementById('intelGeneratedAt');
+    const intelSignals = document.getElementById('intelSignals');
+    const intelRecoList = document.getElementById('intelRecoList');
+
+    const mTotal = document.getElementById('mTotal');
+    const mCompletion = document.getElementById('mCompletion');
+    const mOverdue = document.getElementById('mOverdue');
+    const mReview = document.getElementById('mReview');
+
+    const calStatus = document.getElementById('intelCalStatus');
+    const calProvider = document.getElementById('calProvider');
+    const calTitle = document.getElementById('calTitle');
+    const calStart = document.getElementById('calStart');
+    const calEnd = document.getElementById('calEnd');
+    const calTimezone = document.getElementById('calTimezone');
+    const calAttendees = document.getElementById('calAttendees');
+    const calMessage = document.getElementById('calMessage');
+
+    const riskBaseUrl = '{{ path('app_project_risk_forecast', {id: project.id}) }}';
+    const calendarBasePattern = '{{ path('app_project_calendar_preview', {id: project.id, milestoneId: 0}) }}';
+
+    function setBusy(message) {
+        statusEl.textContent = message;
+    }
+
+    function printJson(obj) {
+        outputEl.textContent = JSON.stringify(obj, null, 2);
+    }
+
+    function safe(value, fallback) {
+        return value === null || value === undefined || value === '' ? fallback : value;
+    }
+
+    function prettyLabel(raw) {
+        return String(raw || '')
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+    }
+
+    function toLocalDateTime(value) {
+        if (!value) {
+            return '-';
+        }
+        try {
+            return new Date(value).toLocaleString();
+        } catch (_) {
+            return String(value);
+        }
+    }
+
+    function renderSignalBars(signals) {
+        intelSignals.innerHTML = '';
+        Object.entries(signals || {}).forEach(function (entry) {
+            const key = entry[0];
+            const value = Number(entry[1] || 0);
+            const row = document.createElement('div');
+            row.className = 'intel-signal';
+            row.innerHTML =
+                '<span class="intel-signal__name">' + prettyLabel(key) + '</span>' +
+                '<div class="intel-signal__bar"><div class="intel-signal__fill" style="width:' + Math.min(100, Math.max(0, value * 5)) + '%"></div></div>' +
+                '<span class="intel-signal__value">' + value + '</span>';
+            intelSignals.appendChild(row);
+        });
+    }
+
+    function renderRecommendations(recommendations) {
+        intelRecoList.innerHTML = '';
+        const list = Array.isArray(recommendations) ? recommendations : [];
+        if (!list.length) {
+            const li = document.createElement('li');
+            li.textContent = 'No recommendations.';
+            intelRecoList.appendChild(li);
+            return;
+        }
+
+        list.forEach(function (text) {
+            const li = document.createElement('li');
+            li.textContent = text;
+            intelRecoList.appendChild(li);
+        });
+    }
+
+    function setLevelBadge(level) {
+        const normalized = String(level || 'LOW').toUpperCase();
+        intelLevel.textContent = normalized;
+        intelLevel.className = 'intel-level ' + (
+            normalized === 'HIGH' ? 'intel-level--high' :
+            normalized === 'MEDIUM' ? 'intel-level--medium' : 'intel-level--low'
+        );
+    }
+
+    function renderRisk(payload) {
+        const score = Number(payload.risk_score || 0);
+        const windowDays = Number(payload.window_days || 30);
+        const stats = payload.task_stats || {};
+
+        intelEmpty.style.display = 'none';
+        riskPanel.style.display = 'block';
+
+        scoreValue.textContent = String(score);
+        scoreRing.style.background = 'conic-gradient(var(--accent-blue) ' + Math.max(0, Math.min(100, score)) * 3.6 + 'deg, rgba(255,255,255,.1) 0deg)';
+        setLevelBadge(payload.risk_level);
+
+        intelModel.textContent = prettyLabel(payload.intelligence_model || 'delivery-health-v1');
+        intelWindowMeta.textContent = 'Window: ' + windowDays + ' days';
+        intelGeneratedAt.textContent = 'Generated: ' + toLocalDateTime(payload.generated_at);
+
+        mTotal.textContent = String(safe(stats.total_tasks, 0));
+        mCompletion.textContent = String(safe(stats.completion_percent, 0)) + '%';
+        mOverdue.textContent = String(safe(stats.overdue_tasks, 0));
+        mReview.textContent = String(safe(stats.in_review_tasks, 0));
+
+        renderSignalBars(payload.signals || {});
+        renderRecommendations(payload.recommendations || []);
+    }
+
+    function renderCalendar(payload) {
+        intelEmpty.style.display = 'none';
+        calendarPanel.style.display = 'block';
+
+        const eventPayload = payload.event_payload || {};
+        const attendees = Array.isArray(eventPayload.attendees) ? eventPayload.attendees : [];
+
+        calStatus.textContent = String(safe(payload.sync_status, 'UNKNOWN'));
+        calProvider.textContent = String(safe(payload.provider, '-'));
+        calTitle.textContent = String(safe(eventPayload.title, '-'));
+        calStart.textContent = toLocalDateTime(eventPayload.start_at);
+        calEnd.textContent = toLocalDateTime(eventPayload.end_at);
+        calTimezone.textContent = String(safe(eventPayload.timezone, '-'));
+        calAttendees.textContent = attendees.length ? attendees.join(', ') : 'None';
+        calMessage.textContent = String(safe(payload.message, '-'));
+    }
+
+    async function readJsonResponse(response) {
+        const text = await response.text();
+        try {
+            return text ? JSON.parse(text) : {};
+        } catch (_) {
+            return { message: text || 'Unexpected response.' };
+        }
+    }
+
+    btnRisk.addEventListener('click', async function () {
+        const days = Number((riskDaysEl && riskDaysEl.value) || 30);
+
+        setBusy('Loading project risk forecast...');
+        outputEl.textContent = 'Loading...';
+
+        const url = new URL(riskBaseUrl, window.location.origin);
+        url.searchParams.set('days', String(days > 0 ? days : 30));
+
+        try {
+            btnRisk.disabled = true;
+            const response = await fetch(url.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const payload = await readJsonResponse(response);
+            if (!response.ok) {
+                throw new Error(payload.message || 'Failed to load risk forecast.');
+            }
+
+            setBusy('Risk forecast loaded successfully.');
+            renderRisk(payload);
+            printJson(payload);
+        } catch (error) {
+            setBusy('Risk forecast failed.');
+            printJson({ error: error.message });
+        } finally {
+            btnRisk.disabled = false;
+        }
+    });
+
+    btnCalendar.addEventListener('click', async function () {
+        const milestoneId = Number((milestoneEl && milestoneEl.value) || 0);
+        if (!milestoneId) {
+            setBusy('No milestone task available for calendar preview.');
+            printJson({ error: 'Create at least one task in this project to preview calendar sync.' });
+            return;
+        }
+
+        setBusy('Generating calendar sync preview...');
+        outputEl.textContent = 'Generating...';
+
+        const url = calendarBasePattern.replace(/\/0$/, '/' + milestoneId);
+        const body = {
+            provider: 'google_calendar',
+            title: 'Milestone #' + milestoneId + ' review',
+            description: 'Generated from project intelligence panel',
+            dry_run: true
+        };
+
+        try {
+            btnCalendar.disabled = true;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(body)
+            });
+            const payload = await readJsonResponse(response);
+            if (!response.ok) {
+                throw new Error(payload.message || 'Failed to generate calendar sync preview.');
+            }
+
+            setBusy('Calendar sync preview generated.');
+            renderCalendar(payload);
+            printJson(payload);
+        } catch (error) {
+            setBusy('Calendar sync preview failed.');
+            printJson({ error: error.message });
+        } finally {
+            btnCalendar.disabled = false;
+        }
+    });
+})();
+</script>
+
+<script>
+// ── GitHub Issues Integration ───────────────────────────────
+(function () {
+    const projectId = {{ project.id }};
+    const baseUrl = '/projects/' + projectId;
+
+    const statusEl    = document.getElementById('githubStatus');
+    const issuesBox   = document.getElementById('githubIssuesBox');
+    const issuesList  = document.getElementById('githubIssuesList');
+    const repoInput   = document.getElementById('githubRepoInput');
+    const taskSelect  = document.getElementById('githubTaskSelect');
+    const issueLink   = document.getElementById('githubIssueLink');
+
+    if (!statusEl) return; // panel not rendered (no permission)
+
+    function setStatus(msg, color) {
+        statusEl.textContent = msg;
+        statusEl.style.color = color || 'inherit';
+        statusEl.style.display = 'block';
+    }
+
+    function updateTaskOption(taskId, issueNumber, issueUrl) {
+        const opt = taskSelect.querySelector('option[value="' + taskId + '"]');
+        if (opt) {
+            opt.dataset.issue = issueNumber;
+            opt.dataset.url   = issueUrl;
+            opt.textContent   = opt.textContent.replace(/ ✅.*$/, '') + ' ✅ (GH #' + issueNumber + ')';
+        }
+    }
+
+    taskSelect?.addEventListener('change', function () {
+        const opt = this.options[this.selectedIndex];
+        const url = opt?.dataset?.url;
+        if (url) {
+            issueLink.href = url;
+            issueLink.style.display = 'inline';
+        } else {
+            issueLink.style.display = 'none';
+        }
+    });
+
+    document.getElementById('btnGithubLinkRepo')?.addEventListener('click', async function () {
+        const repo = repoInput.value.trim();
+        if (!repo) { setStatus('Enter a repo in owner/repo format.', 'var(--color-danger)'); return; }
+        this.disabled = true;
+        setStatus('Linking repo…', 'var(--color-primary)');
+        try {
+            const resp = await fetch(baseUrl + '/github/set-repo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ repo }),
+            });
+            const data = await resp.json();
+            if (data.success) {
+                setStatus('✅ Repo linked: ' + data.repo, 'var(--color-success)');
+            } else {
+                setStatus('❌ ' + (data.error || 'Failed to link repo.'), 'var(--color-danger)');
+            }
+        } catch (e) {
+            setStatus('❌ ' + e.message, 'var(--color-danger)');
+        } finally {
+            this.disabled = false;
+        }
+    });
+
+    document.getElementById('btnGithubListIssues')?.addEventListener('click', async function () {
+        this.disabled = true;
+        issuesBox.style.display = 'none';
+        setStatus('Loading issues…', 'var(--color-primary)');
+        try {
+            const resp = await fetch(baseUrl + '/github/issues');
+            const data = await resp.json();
+            if (data.error) { setStatus('❌ ' + data.error, 'var(--color-danger)'); return; }
+            issuesList.innerHTML = '';
+            if (!data.issues?.length) {
+                setStatus('No open issues found.', 'inherit');
+                return;
+            }
+            data.issues.forEach(issue => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>#${issue.number}</td><td>${issue.title}</td><td>${issue.state}</td><td><a href="${issue.html_url}" target="_blank">View</a></td>`;
+                issuesList.appendChild(tr);
+            });
+            issuesBox.style.display = 'block';
+            setStatus('Showing ' + data.issues.length + ' issue(s).', 'inherit');
+        } catch (e) {
+            setStatus('❌ ' + e.message, 'var(--color-danger)');
+        } finally {
+            this.disabled = false;
+        }
+    });
+
+    document.getElementById('btnGithubCreateIssue')?.addEventListener('click', async function () {
+        const taskId = taskSelect.value;
+        if (!taskId) { setStatus('Select a task first.', 'var(--color-danger)'); return; }
+        this.disabled = true;
+        setStatus('Creating GitHub issue…', 'var(--color-primary)');
+        try {
+            const resp = await fetch(baseUrl + '/tasks/' + taskId + '/github/create-issue', { method: 'POST' });
+            const data = await resp.json();
+            if (data.success) {
+                setStatus('✅ Issue #' + data.issue_number + ' created.', 'var(--color-success)');
+                updateTaskOption(taskId, data.issue_number, data.issue_url);
+                issueLink.href = data.issue_url;
+                issueLink.style.display = 'inline';
+            } else {
+                setStatus('❌ ' + (data.error || 'Failed.'), 'var(--color-danger)');
+            }
+        } catch (e) {
+            setStatus('❌ ' + e.message, 'var(--color-danger)');
+        } finally {
+            this.disabled = false;
+        }
+    });
+
+    document.getElementById('btnGithubCloseIssue')?.addEventListener('click', async function () {
+        const taskId = taskSelect.value;
+        if (!taskId) { setStatus('Select a task first.', 'var(--color-danger)'); return; }
+        const opt = taskSelect.options[taskSelect.selectedIndex];
+        if (!opt.dataset.issue) { setStatus('This task has no linked GitHub issue.', 'var(--color-danger)'); return; }
+        this.disabled = true;
+        setStatus('Closing GitHub issue…', 'var(--color-primary)');
+        try {
+            const resp = await fetch(baseUrl + '/tasks/' + taskId + '/github/close-issue', { method: 'POST' });
+            const data = await resp.json();
+            if (data.success) {
+                setStatus('✅ Issue closed.', 'var(--color-success)');
+            } else {
+                setStatus('❌ ' + (data.error || 'Failed.'), 'var(--color-danger)');
+            }
+        } catch (e) {
+            setStatus('❌ ' + e.message, 'var(--color-danger)');
+        } finally {
+            this.disabled = false;
+        }
+    });
+})();
+</script>
+
+<script>
+// ── AI Toolkit ─────────────────────────────────────────────
+(function () {
+    const projectId = {{ project.id }};
+    const baseUrl = '/projects/' + projectId;
+
+    const statusEl    = document.getElementById('aiToolkitStatus');
+    const resultBox   = document.getElementById('aiToolkitResult');
+    const resultContent = document.getElementById('aiToolkitResultContent');
+    const generatedBox  = document.getElementById('aiGeneratedTasks');
+    const generatedList = document.getElementById('aiGeneratedTasksList');
+    const sprintBox     = document.getElementById('aiSprintResult');
+    const sprintStats   = document.getElementById('aiSprintStats');
+    const sprintBody    = document.getElementById('aiSprintTableBody');
+    const sprintWarnings = document.getElementById('aiSprintWarnings');
+    const sprintParamsRow  = document.getElementById('sprintParamsRow');
+    const summarizeRow     = document.getElementById('meetingSummarizeRow');
+    const decisionRow      = document.getElementById('decisionHelperRow');
+
+    if (!statusEl) return; // AI toolkit not rendered (no permission)
+
+    function showStatus(msg, color) {
+        statusEl.style.display = 'block';
+        statusEl.textContent = msg;
+        statusEl.style.color = color || 'var(--text-muted)';
+    }
+
+    function hideAll() {
+        resultBox.style.display = 'none';
+        generatedBox.style.display = 'none';
+        sprintBox.style.display = 'none';
+        sprintParamsRow.style.display = 'none';
+        summarizeRow.style.display = 'none';
+        decisionRow.style.display = 'none';
+    }
+
+    function showTextResult(text) {
+        resultContent.textContent = text;
+        resultBox.style.display = 'block';
+    }
+
+    async function aiPost(path, body) {
+        const csrfToken = document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || '';
+        const response = await fetch(baseUrl + path, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(body)
+        });
+        const text = await response.text();
+        let data;
+        try { data = JSON.parse(text); } catch (_) { data = { error: text || 'Unexpected response.' }; }
+        if (!response.ok) throw new Error(data.error || data.message || 'Request failed.');
+        return data;
+    }
+
+    // ── Generate Tasks ─────────────────────────────────────
+    const btnGenerate = document.getElementById('btnAiGenerateTasks');
+    if (btnGenerate) {
+        btnGenerate.addEventListener('click', async function () {
+            hideAll();
+            showStatus('🤖 Generating tasks from project description...', 'var(--accent-blue)');
+            btnGenerate.disabled = true;
+            btnGenerate.textContent = '⏳ Generating...';
+            try {
+                const data = await aiPost('/ai/generate-tasks', {});
+                showStatus('✅ ' + data.count + ' tasks generated and added to the project!', 'var(--color-success)');
+
+                generatedList.innerHTML = '';
+                (data.tasks || []).forEach(function (t) {
+                    const li = document.createElement('li');
+                    li.style.cssText = 'padding:.45rem .65rem;border-radius:8px;background:rgba(88,166,255,.07);border-left:3px solid var(--accent-blue);display:flex;gap:.6rem;align-items:center';
+                    const badge = {'HIGH':'badge--orange','MEDIUM':'badge--blue','LOW':'badge--green'}[t.priority] || 'badge--blue';
+                    li.innerHTML = '<span class="badge ' + badge + '" style="font-size:.7rem;flex-shrink:0">' + t.priority + '</span>'
+                        + '<span style="color:var(--text-primary);font-weight:600">' + t.title + '</span>';
+                    generatedList.appendChild(li);
+                });
+                generatedBox.style.display = 'block';
+
+                // Refresh page after short delay so task table updates
+                setTimeout(function () { location.reload(); }, 2500);
+            } catch (err) {
+                showStatus('❌ ' + err.message, 'var(--color-danger)');
+            } finally {
+                btnGenerate.disabled = false;
+                btnGenerate.textContent = '✨ Generate Tasks';
+            }
+        });
+    }
+
+    // ── Sprint Plan ─────────────────────────────────────────
+    const btnSprint = document.getElementById('btnAiSprintPlan');
+    if (btnSprint) {
+        btnSprint.addEventListener('click', function () {
+            hideAll();
+            sprintParamsRow.style.display = 'flex';
+        });
+    }
+
+    const btnSprintRun = document.getElementById('btnAiSprintRun');
+    if (btnSprintRun) {
+        btnSprintRun.addEventListener('click', async function () {
+            const days = parseInt(document.getElementById('aiSprintDays').value) || 10;
+            showStatus('📋 Planning sprint...', 'var(--accent-blue)');
+            btnSprintRun.disabled = true;
+            btnSprintRun.textContent = '⏳ Planning...';
+            try {
+                const data = await aiPost('/ai/sprint-plan', { sprint_days: days });
+                showStatus('✅ Sprint plan ready!', 'var(--color-success)');
+
+                // Stats row
+                const utilization = data.capacity_points > 0 ? Math.round(data.total_points * 100 / data.capacity_points) : 0;
+                sprintStats.innerHTML = [
+                    ['Total Points', data.total_points || 0, '#2C666E'],
+                    ['Capacity', data.capacity_points || 0, '#07393C'],
+                    ['Utilization', utilization + '%', utilization > 90 ? 'var(--color-danger)' : utilization > 70 ? '#2C666E' : 'var(--color-success)']
+                ].map(function (s) {
+                    return '<div style="background:rgba(255,255,255,.03);border:1px solid var(--glass-border);border-radius:10px;padding:.65rem 1.1rem;min-width:110px;text-align:center">'
+                        + '<div style="font-size:1.35rem;font-weight:700;color:var(--text-primary)">' + s[1] + '</div>'
+                        + '<div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px">' + s[0] + '</div>'
+                        + '</div>';
+                }).join('');
+
+                // Table rows
+                const recIds = new Set((data.recommended_ids || []).map(Number));
+                sprintBody.innerHTML = '';
+                (data.tasks || []).forEach(function (t) {
+                    const inSprint = recIds.has(Number(t.id));
+                    const pts = t.points || 0;
+                    const ptsColor = pts >= 8 ? 'var(--color-danger)' : pts >= 5 ? 'var(--color-warning)' : 'var(--color-success)';
+                    const row = document.createElement('tr');
+                    row.innerHTML = '<td>' + (t.title || 'Task #' + t.id) + '</td>'
+                        + '<td style="color:' + ptsColor + ';font-weight:700">' + pts + '</td>'
+                        + '<td><span class="badge ' + (inSprint ? 'badge--green' : 'badge--blue') + '">' + (inSprint ? '✓ Yes' : '✗ No') + '</span></td>'
+                        + '<td style="color:var(--text-muted);font-size:.82rem">' + (t.reason || '') + '</td>';
+                    sprintBody.appendChild(row);
+                });
+
+                // Warnings
+                const warnings = data.warnings || [];
+                if (warnings.length) {
+                    sprintWarnings.innerHTML = '<strong>⚠ Warnings</strong><br>' + warnings.map(function (w) { return '• ' + w; }).join('<br>');
+                    sprintWarnings.style.display = 'block';
+                } else {
+                    sprintWarnings.style.display = 'none';
+                }
+                sprintBox.style.display = 'block';
+
+            } catch (err) {
+                showStatus('❌ ' + err.message, 'var(--color-danger)');
+            } finally {
+                btnSprintRun.disabled = false;
+                btnSprintRun.textContent = 'Run Sprint Plan';
+            }
+        });
+    }
+
+    // ── Meeting Agenda ──────────────────────────────────────
+    const btnMeetingPrep = document.getElementById('btnAiMeetingPrep');
+    if (btnMeetingPrep) {
+        btnMeetingPrep.addEventListener('click', async function () {
+            hideAll();
+            showStatus('📝 Preparing meeting agenda...', 'var(--accent-blue)');
+            btnMeetingPrep.disabled = true;
+            btnMeetingPrep.textContent = '⏳ Preparing...';
+            try {
+                const data = await aiPost('/ai/meeting', { mode: 'prepare' });
+                showStatus('✅ Meeting agenda ready!', 'var(--color-success)');
+                showTextResult(data.result || '');
+            } catch (err) {
+                showStatus('❌ ' + err.message, 'var(--color-danger)');
+            } finally {
+                btnMeetingPrep.disabled = false;
+                btnMeetingPrep.textContent = '📝 Meeting Agenda';
+            }
+        });
+    }
+
+    // ── Summarize Meeting Notes ─────────────────────────────
+    const btnSummarize = document.getElementById('btnAiMeetingSummarize');
+    if (btnSummarize) {
+        btnSummarize.addEventListener('click', function () {
+            hideAll();
+            summarizeRow.style.display = 'block';
+        });
+    }
+
+    const btnSummarizeRun = document.getElementById('btnAiSummarizeRun');
+    if (btnSummarizeRun) {
+        btnSummarizeRun.addEventListener('click', async function () {
+            const notes = document.getElementById('meetingNotesInput').value.trim();
+            if (notes.length < 10) {
+                showStatus('Please paste some meeting notes first.', 'var(--color-warning)');
+                return;
+            }
+            showStatus('🎙 Summarizing meeting notes...', 'var(--accent-blue)');
+            btnSummarizeRun.disabled = true;
+            btnSummarizeRun.textContent = '⏳ Summarizing...';
+            try {
+                const data = await aiPost('/ai/meeting', { mode: 'summarize', notes: notes });
+                showStatus('✅ Summary ready!', 'var(--color-success)');
+                showTextResult(data.result || '');
+            } catch (err) {
+                showStatus('❌ ' + err.message, 'var(--color-danger)');
+            } finally {
+                btnSummarizeRun.disabled = false;
+                btnSummarizeRun.textContent = 'Summarize';
+            }
+        });
+    }
+
+    // ── Decision Helper ─────────────────────────────────────
+    const btnDecision = document.getElementById('btnAiDecision');
+    if (btnDecision) {
+        btnDecision.addEventListener('click', function () {
+            hideAll();
+            decisionRow.style.display = 'block';
+        });
+    }
+
+    const btnDecisionRun = document.getElementById('btnDecisionRun');
+    if (btnDecisionRun) {
+        btnDecisionRun.addEventListener('click', async function () {
+            const question = document.getElementById('decisionQuestion').value.trim();
+            const options  = document.getElementById('decisionOptions').value.trim();
+            const criteria = document.getElementById('decisionCriteria').value.trim();
+            if (question.length < 5) {
+                showStatus('Please enter a decision question.', 'var(--color-warning)');
+                return;
+            }
+            showStatus('⚖ Analyzing decision...', 'var(--accent-blue)');
+            btnDecisionRun.disabled = true;
+            btnDecisionRun.textContent = '⏳ Analyzing...';
+            try {
+                const data = await aiPost('/ai/decision', { question, options, criteria });
+                showStatus('✅ Decision analysis ready!', 'var(--color-success)');
+                showTextResult(data.result || '');
+            } catch (err) {
+                showStatus('❌ ' + err.message, 'var(--color-danger)');
+            } finally {
+                btnDecisionRun.disabled = false;
+                btnDecisionRun.textContent = 'Analyze Decision';
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}

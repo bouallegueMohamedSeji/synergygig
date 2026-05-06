@@ -1,0 +1,383 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Dashboard | SynergyGig{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+    <p class="text-muted" style="margin-bottom:var(--space-xl)">Overview of your workspace</p>
+
+    {# ── Top 4 Stat Cards (ADMIN/HR only) ── #}
+    {% if is_granted('ROLE_HR') %}
+    <div class="bento-grid bento-grid--stats" style="margin-bottom:var(--space-xl)">
+        <a href="{{ path('app_user_index') }}" class="card card--glow-blue" style="text-decoration:none;color:inherit">
+            <div class="card-header">
+                <span class="card-title">Total Users</span>
+                <div class="card-icon card-icon--blue">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
+            </div>
+            <div class="card-value">{{ stats.users }}</div>
+            <div class="card-footer"><span class="text-muted" style="font-size:.8125rem">All registered accounts</span></div>
+        </a>
+
+        <a href="{{ path('app_user_index') }}" class="card card--glow-purple" style="text-decoration:none;color:inherit">
+            <div class="card-header">
+                <span class="card-title">Employees</span>
+                <div class="card-icon card-icon--purple">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                </div>
+            </div>
+            <div class="card-value">{{ stats.employees }}</div>
+            <div class="card-footer"><span class="text-muted" style="font-size:.8125rem">Employees &amp; project managers</span></div>
+        </a>
+
+        <a href="{{ path('app_user_index') }}" class="card card--glow-green" style="text-decoration:none;color:inherit">
+            <div class="card-header">
+                <span class="card-title">Gig Workers</span>
+                <div class="card-icon card-icon--green">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+            </div>
+            <div class="card-value">{{ stats.gig_workers }}</div>
+            <div class="card-footer"><span class="text-muted" style="font-size:.8125rem">Freelance contributors</span></div>
+        </a>
+
+        <a href="{{ path('app_interview_index') }}" class="card card--glow-orange" style="text-decoration:none;color:inherit">
+            <div class="card-header">
+                <span class="card-title">Interviews</span>
+                <div class="card-icon card-icon--orange">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </div>
+            </div>
+            <div class="card-value">{{ stats.interviews }}</div>
+            <div class="card-footer">
+                <span class="text-muted" style="font-size:.8125rem">{{ stats.interviews }} pending</span>
+                <br><span style="font-size:.75rem;color:var(--accent-primary)">Click to view calendar →</span>
+            </div>
+        </a>
+    </div>
+    {% endif %}
+
+    {# ── Weather + Account Row ── #}
+    <div class="bento-grid bento-grid--weather" style="margin-bottom:var(--space-xl)">
+        {# Weather Card #}
+        <div class="card" style="padding:var(--space-xl)">
+            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:var(--space-lg)">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="1.5"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                <div>
+                    <div style="font-weight:600;color:var(--text-primary)">Weather</div>
+                    <div class="text-muted" style="font-size:.75rem">Local Weather</div>
+                </div>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:.5rem;margin-bottom:var(--space-md)">
+                <span style="font-size:2.5rem;font-weight:700;color:var(--text-primary);font-family:var(--font-heading)">17°C</span>
+                <span style="color:var(--accent-primary);font-weight:500">Cloudy</span>
+            </div>
+            <div style="display:flex;gap:1.5rem;margin-bottom:var(--space-sm)">
+                <span class="text-muted" style="font-size:.8125rem">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--accent-blue)" stroke="none" style="vertical-align:middle;margin-right:3px"><circle cx="12" cy="12" r="10"/></svg>
+                    46%
+                </span>
+                <span class="text-muted" style="font-size:.8125rem">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="vertical-align:middle;margin-right:3px"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/></svg>
+                    6 km/h
+                </span>
+            </div>
+            <a href="#" class="text-muted" style="font-size:.75rem">Click for details →</a>
+        </div>
+
+        {# Your Account Card #}
+        <div class="card" style="padding:var(--space-xl);border-left:3px solid var(--accent-primary)">
+            <div style="font-weight:600;color:var(--text-primary);margin-bottom:2px">Your Account</div>
+            <div class="text-muted" style="font-size:.75rem;margin-bottom:var(--space-lg)">Account information</div>
+            <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:var(--space-lg)">
+                <div class="avatar avatar--lg" style="background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary))">{{ app.user.firstName|first|upper }}{{ app.user.lastName|first|upper }}</div>
+                <div>
+                    <div style="font-weight:600;color:var(--text-primary)">{{ app.user.firstName }} {{ app.user.lastName }}</div>
+                    <div class="text-muted" style="font-size:.8125rem">{{ app.user.email }}</div>
+                </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-sm) 0;border-top:1px solid var(--border-primary)">
+                <span class="text-muted" style="font-size:.875rem">Role</span>
+                <span class="badge badge--blue">{{ app.user.role ?? 'EMPLOYEE' }}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-sm) 0;border-top:1px solid var(--border-primary)">
+                <span class="text-muted" style="font-size:.875rem">Member since</span>
+                <span style="color:var(--text-primary);font-size:.875rem">{{ app.user.createdAt ? app.user.createdAt|date('M d, Y') : 'N/A' }}</span>
+            </div>
+        </div>
+    </div>
+
+    {# ── Daily Inspiration ── #}
+    <div class="card" style="margin-bottom:var(--space-xl);padding:var(--space-xl)">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+            <div>
+                <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:var(--space-md)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--color-warning)" stroke="none"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/></svg>
+                    <strong style="color:var(--accent-primary)">Daily Inspiration</strong>
+                </div>
+                <p style="font-style:italic;font-size:1.125rem;color:var(--text-primary);margin:0 0 var(--space-sm)">"{{ quote.text }}"</p>
+                <p class="text-muted" style="margin:0;font-size:.875rem">— {{ quote.author }}</p>
+            </div>
+            <div style="opacity:.4">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+            </div>
+        </div>
+    </div>
+
+    {# ── Platform Overview (ADMIN/HR only) ── #}
+    {% if is_granted('ROLE_HR') %}
+    <div class="card" style="margin-bottom:var(--space-xl);padding:0;overflow:hidden">
+        <div style="padding:var(--space-lg) var(--space-xl);border-bottom:1px solid var(--border-primary)">
+            <div style="font-weight:600;color:var(--accent-primary)">Platform Overview</div>
+            <div class="text-muted" style="font-size:.75rem">System-wide statistics and activity</div>
+        </div>
+        {% set overview = [
+            { label: 'Chat Rooms', value: stats.chat_rooms },
+            { label: 'Total Messages', value: stats.messages },
+            { label: 'Pending Interviews', value: stats.interviews },
+            { label: 'Active Projects', value: stats.projects },
+            { label: 'Total Offers', value: stats.offers },
+            { label: 'Open Offers', value: stats.offers_open },
+            { label: 'Draft Offers', value: stats.offers_draft },
+            { label: 'Contracts', value: stats.contracts },
+            { label: 'Total Applications', value: stats.applications },
+            { label: 'Pending Applications', value: stats.apps_pending },
+            { label: 'Accepted Applications', value: stats.apps_accepted },
+            { label: 'Active Tasks', value: stats.tasks },
+            { label: 'Training Courses', value: stats.training },
+            { label: 'Departments', value: stats.departments },
+            { label: 'Pending Leaves', value: stats.pending_leaves },
+            { label: 'Pending Payroll', value: stats.pending_payroll },
+        ] %}
+        {% for item in overview %}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:.75rem var(--space-xl);{% if not loop.last %}border-bottom:1px solid var(--border-primary);{% endif %}">
+            <span style="color:var(--accent-primary);font-size:.875rem">{{ item.label }}</span>
+            <span style="color:var(--text-primary);font-weight:600">{{ item.value }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    {# ── Charts Row 1 ── #}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-lg);margin-bottom:var(--space-lg)">
+        <div class="card" style="padding:var(--space-lg)">
+            <div style="font-weight:600;color:var(--text-primary);margin-bottom:var(--space-md)">Tasks by Status</div>
+            <div style="height:220px"><canvas id="taskChart"></canvas></div>
+        </div>
+        <div class="card" style="padding:var(--space-lg)">
+            <div style="font-weight:600;color:var(--text-primary);margin-bottom:var(--space-md)">Leave Requests</div>
+            <div style="height:220px"><canvas id="leaveChart"></canvas></div>
+        </div>
+        <div class="card" style="padding:var(--space-lg)">
+            <div style="font-weight:600;color:var(--text-primary);margin-bottom:var(--space-md)">Users by Role</div>
+            <div style="height:220px"><canvas id="roleChart"></canvas></div>
+        </div>
+    </div>
+
+    {# ── Charts Row 2: Offers & Applications ── #}
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-lg);margin-bottom:var(--space-lg)">
+        <div class="card" style="padding:var(--space-lg)">
+            <div style="font-weight:600;color:var(--text-primary);margin-bottom:var(--space-md)">Offers by Status</div>
+            <div style="height:220px"><canvas id="offerChart"></canvas></div>
+        </div>
+        <div class="card" style="padding:var(--space-lg)">
+            <div style="font-weight:600;color:var(--text-primary);margin-bottom:var(--space-md)">Applications by Status</div>
+            <div style="height:220px"><canvas id="appChart"></canvas></div>
+        </div>
+    </div>
+
+    {# ── Charts Row 3: Department Distribution ── #}
+    {% if deptChart|length > 0 %}
+    <div style="display:grid;grid-template-columns:1fr 2fr;gap:var(--space-lg);margin-bottom:var(--space-xl)">
+        <div class="card" style="padding:var(--space-lg)">
+            <div style="font-weight:600;color:var(--text-primary);margin-bottom:var(--space-md)">Department Headcount</div>
+            <div style="height:220px"><canvas id="deptChart"></canvas></div>
+        </div>
+        <div class="card" style="padding:var(--space-lg)">
+            <div style="font-weight:600;color:var(--text-primary);margin-bottom:var(--space-md)">Employees per Department</div>
+            <div style="display:flex;flex-direction:column;gap:.75rem;justify-content:center;height:220px;overflow:auto">
+            {% for deptName, count in deptChart %}
+                <div style="display:flex;align-items:center;gap:1rem">
+                    <span style="flex:1;font-size:.875rem;color:var(--text-primary)">{{ deptName }}</span>
+                    <div style="flex:3;background:var(--bg-secondary);border-radius:6px;height:10px;overflow:hidden">
+                        {% set total = deptChart|reduce((carry, v) => carry + v, 0) %}
+                        <div style="width:{{ total > 0 ? (count / total * 100)|round : 0 }}%;height:100%;background:var(--accent-primary);border-radius:6px"></div>
+                    </div>
+                    <span class="badge badge--blue" style="min-width:2rem;text-align:center">{{ count }}</span>
+                </div>
+            {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── Two-Column Recent Tables ── #}
+    <div class="bento-grid bento-grid--2col">
+        <div class="card">
+            <div class="card-header">
+                <h3 style="margin:0;font-size:1rem">Recent Employees</h3>
+                {% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_user_index') }}" class="btn btn-ghost btn-sm">View All</a>{% endif %}
+            </div>
+            {% if recent_users is not empty %}
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+                        <tbody>
+                            {% for user in recent_users %}
+                            <tr>
+                                <td>
+                                    <div style="display:flex;align-items:center;gap:var(--space-sm)">
+                                        <div class="avatar avatar--sm">{{ user.first_name|first|upper }}{{ user.last_name|first|upper }}</div>
+                                        {{ user.first_name }} {{ user.last_name }}
+                                    </div>
+                                </td>
+                                <td class="text-muted">{{ user.email }}</td>
+                                <td><span class="badge badge--blue">{{ user.role ?? 'Employee' }}</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state"><h3>No employees yet</h3></div>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 style="margin:0;font-size:1rem">Departments</h3>
+                {% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_department_index') }}" class="btn btn-ghost btn-sm">View All</a>{% endif %}
+            </div>
+            {% if recent_departments is not empty %}
+                <div class="table-wrapper">
+                    <table class="table">
+                        <thead><tr><th>Name</th><th>Manager</th><th>Budget</th></tr></thead>
+                        <tbody>
+                            {% for dept in recent_departments %}
+                            <tr>
+                                <td><strong>{{ dept.name }}</strong></td>
+                                <td class="text-muted">{% if dept.manager %}{{ dept.manager.first_name }} {{ dept.manager.last_name }}{% else %}—{% endif %}</td>
+                                <td>{% if dept.allocated_budget %}<span class="badge badge--green">${{ dept.allocated_budget|number_format(0,'.', ',') }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state"><h3>No departments yet</h3></div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}{# end ROLE_HR platform overview, charts, tables #}
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+{% if is_granted('ROLE_HR') %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const doughnutOpts = {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, pointStyle: 'circle', font: { size: 11 } } }
+        },
+        cutout: '55%'
+    };
+
+    new Chart(document.getElementById('taskChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['To Do', 'In Progress', 'In Review', 'Done'],
+            datasets: [{
+                data: [{{ taskChart.TODO }}, {{ taskChart.IN_PROGRESS }}, {{ taskChart.IN_REVIEW }}, {{ taskChart.DONE }}],
+                backgroundColor: ['#6366f1', '#f59e0b', '#3b82f6', '#10b981'],
+                borderWidth: 0
+            }]
+        },
+        options: doughnutOpts
+    });
+
+    new Chart(document.getElementById('leaveChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending', 'Approved', 'Rejected'],
+            datasets: [{
+                data: [{{ leaveChart.PENDING }}, {{ leaveChart.APPROVED }}, {{ leaveChart.REJECTED }}],
+                backgroundColor: ['#f59e0b', '#10b981', '#ef4444'],
+                borderWidth: 0
+            }]
+        },
+        options: doughnutOpts
+    });
+
+    new Chart(document.getElementById('roleChart'), {
+        type: 'bar',
+        data: {
+            labels: ['Admin', 'HR Manager', 'Project Owner', 'Employee', 'Gig Worker'],
+            datasets: [{
+                label: 'Users',
+                data: [{{ roleChart.ADMIN }}, {{ roleChart.HR_MANAGER }}, {{ roleChart.PROJECT_OWNER }}, {{ roleChart.EMPLOYEE }}, {{ roleChart.GIG_WORKER }}],
+                backgroundColor: ['#ef4444', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b'],
+                borderRadius: 6,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: 'rgba(255,255,255,.06)' } },
+                x: { ticks: { font: { size: 11 } }, grid: { display: false } }
+            }
+        }
+    });
+
+    // Offers by status doughnut
+    new Chart(document.getElementById('offerChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Draft', 'Open', 'Closed', 'Cancelled'],
+            datasets: [{
+                data: [{{ offerChart.DRAFT }}, {{ offerChart.OPEN }}, {{ offerChart.CLOSED }}, {{ offerChart.CANCELLED }}],
+                backgroundColor: ['#3b82f6', '#10b981', '#ef4444', '#f59e0b']
+            }]
+        },
+        options: doughnutOpts
+    });
+
+    // Applications by status doughnut
+    new Chart(document.getElementById('appChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending', 'Reviewed', 'Accepted', 'Rejected'],
+            datasets: [{
+                data: [{{ appChart.PENDING }}, {{ appChart.REVIEWED }}, {{ appChart.ACCEPTED }}, {{ appChart.REJECTED }}],
+                backgroundColor: ['#f59e0b', '#3b82f6', '#10b981', '#ef4444']
+            }]
+        },
+        options: doughnutOpts
+    });
+
+    // Department headcount doughnut
+    {% if deptChart|length > 0 %}
+    new Chart(document.getElementById('deptChart'), {
+        type: 'doughnut',
+        data: {
+            labels: [{% for deptName, count in deptChart %}'{{ deptName|e('js') }}'{% if not loop.last %},{% endif %}{% endfor %}],
+            datasets: [{
+                data: [{% for deptName, count in deptChart %}{{ count }}{% if not loop.last %},{% endif %}{% endfor %}],
+                backgroundColor: ['#2C666E', '#90DDF0', '#f59e0b', '#ef4444', '#10b981', '#8b5cf6', '#3b82f6', '#ec4899'],
+                borderWidth: 0
+            }]
+        },
+        options: doughnutOpts
+    });
+    {% endif %}
+});
+</script>
+{% endif %}
+{% endblock %}

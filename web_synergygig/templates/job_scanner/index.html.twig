@@ -1,0 +1,510 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Job Scanner | SynergyGig{% endblock %}
+{% block page_title %}Job Scanner{% endblock %}
+
+{% block content %}
+<style>
+/* ── Job Scanner Module ── */
+.js-module { max-width:1100px; margin:0 auto; }
+
+/* Search bar */
+.js-search-row {
+    display:flex; gap:0.75rem; align-items:stretch; margin-bottom:1rem;
+}
+.js-search-field {
+    flex:1; padding:0.65rem 1rem; border:2px solid var(--accent); border-radius:8px;
+    background:var(--bg-card); color:var(--text-primary); font-size:1rem;
+    outline:none; transition:border-color 0.2s, box-shadow 0.2s;
+}
+.js-search-field:focus {
+    border-color:var(--accent-blue); box-shadow:0 0 0 3px rgba(99,102,241,0.15);
+}
+.js-source-combo {
+    width:130px; padding:0.65rem 0.75rem; border:1px solid var(--border); border-radius:8px;
+    background:var(--bg-card); color:var(--text-primary); font-size:0.9rem; cursor:pointer;
+}
+.js-search-btn {
+    padding:0.65rem 1.5rem; border:none; border-radius:8px;
+    background:var(--accent); color:#fff; font-size:0.95rem; font-weight:600;
+    cursor:pointer; display:flex; align-items:center; gap:0.4rem; white-space:nowrap;
+    transition:background 0.2s, transform 0.1s;
+}
+.js-search-btn:hover { filter:brightness(1.1); }
+.js-search-btn:active { transform:scale(0.97); }
+.js-search-btn:disabled { opacity:0.6; cursor:not-allowed; }
+
+/* Filter bar */
+.js-filter-row {
+    display:flex; gap:0.75rem; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap;
+}
+.js-filter-label { font-weight:600; color:var(--text-secondary); font-size:0.85rem; }
+.js-filter-combo {
+    padding:0.45rem 0.75rem; border:1px solid var(--border); border-radius:8px;
+    background:var(--bg-card); color:var(--text-primary); font-size:0.85rem; cursor:pointer;
+}
+.js-filter-field {
+    padding:0.45rem 0.75rem; border:1px solid var(--border); border-radius:8px;
+    background:var(--bg-card); color:var(--text-primary); font-size:0.85rem; width:200px;
+}
+.js-reset-btn {
+    margin-left:auto; padding:0.4rem 1rem; border:1px solid var(--border); border-radius:8px;
+    background:transparent; color:var(--text-secondary); font-size:0.85rem; cursor:pointer;
+    transition:background 0.2s;
+}
+.js-reset-btn:hover { background:var(--bg-secondary); }
+
+/* Header status */
+.js-header-status {
+    font-size:0.85rem; color:var(--accent-blue); font-weight:500;
+}
+
+/* ── State containers ── */
+.js-content-area { min-height:400px; position:relative; }
+
+/* Empty state */
+.js-empty-state {
+    text-align:center; padding:4rem 2rem; color:var(--text-secondary);
+}
+.js-empty-icon { font-size:3rem; opacity:0.5; margin-bottom:1rem; }
+.js-empty-title { font-size:1.1rem; font-weight:600; color:var(--text-primary); margin-bottom:0.5rem; }
+.js-empty-subtitle { font-size:0.9rem; color:var(--text-muted); }
+
+/* Loading state with radar */
+.js-loading-state {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:3rem 2rem; min-height:350px;
+}
+.js-loading-text {
+    margin-top:1.25rem; font-size:0.95rem; color:var(--text-secondary);
+    animation:js-pulse 2s ease-in-out infinite;
+}
+@keyframes js-pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+
+/* ── Radar animation (CSS-only, matching Java) ── */
+.js-radar {
+    position:relative; width:180px; height:180px;
+}
+.js-radar-bg {
+    position:absolute; inset:0; border-radius:50%;
+    background:radial-gradient(circle, rgba(13,14,18,0.95) 0%, rgba(13,14,18,1) 100%);
+    border:1.8px solid var(--accent, #2C666E);
+    box-shadow:0 0 12px rgba(44,102,110,0.35);
+}
+/* Rings */
+.js-radar-ring {
+    position:absolute; border-radius:50%; border:0.8px dashed rgba(30,74,80,0.6);
+}
+.js-radar-ring--mid {
+    width:66%; height:66%; top:17%; left:17%;
+}
+.js-radar-ring--inner {
+    width:33%; height:33%; top:33.5%; left:33.5%;
+}
+/* Crosshair lines */
+.js-radar::after, .js-radar::before {
+    content:''; position:absolute; background:rgba(26,61,66,0.5);
+}
+.js-radar::after { width:calc(100% - 8px); height:0.6px; top:50%; left:4px; transform:translateY(-50%); }
+.js-radar::before { width:0.6px; height:calc(100% - 8px); top:4px; left:50%; transform:translateX(-50%); }
+/* Center dot */
+.js-radar-dot {
+    position:absolute; width:8px; height:8px; border-radius:50%;
+    background:var(--accent-glow, #90DDF0); top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    box-shadow:0 0 10px var(--accent-glow, #90DDF0);
+    z-index:3;
+}
+/* Sweep arm container (rotates) */
+.js-radar-sweep {
+    position:absolute; inset:0; border-radius:50%;
+    animation:js-radar-spin 3s linear infinite;
+    z-index:2;
+}
+@keyframes js-radar-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+/* Sweep cone */
+.js-radar-sweep::before {
+    content:''; position:absolute;
+    top:50%; left:50%; width:50%; height:50%;
+    transform-origin:0 0; transform:rotate(-25deg);
+    background:conic-gradient(from 0deg, rgba(44,102,110,0.35) 0deg, transparent 55deg);
+    filter:blur(12px);
+    border-radius:0 100% 0 0;
+}
+/* Sweep edge line */
+.js-radar-sweep::after {
+    content:''; position:absolute;
+    top:50%; left:50%; width:calc(50% - 3px); height:1.5px;
+    background:var(--accent-glow, #90DDF0);
+    transform-origin:0 50%;
+    border-radius:1px;
+}
+
+/* ── Result cards ── */
+.js-results-list { display:flex; flex-direction:column; gap:0.75rem; }
+.js-job-card {
+    background:var(--bg-card); border:1px solid var(--glass-border); border-radius:10px;
+    padding:1rem 1.25rem; transition:border-color 0.2s, box-shadow 0.2s; cursor:pointer;
+}
+.js-job-card:hover {
+    border-color:var(--accent); box-shadow:0 2px 12px rgba(99,102,241,0.1);
+}
+.js-job-title { font-weight:600; font-size:1rem; color:var(--text-primary); }
+.js-meta-row { display:flex; gap:1rem; flex-wrap:wrap; margin-top:0.35rem; font-size:0.82rem; color:var(--text-secondary); }
+.js-meta-muted { opacity:0.5; }
+.js-snippet { font-size:0.82rem; color:var(--text-muted); margin-top:0.35rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.js-card-actions { display:flex; justify-content:flex-end; margin-top:0.5rem; }
+.js-open-btn {
+    padding:0.3rem 0.8rem; border:1px solid var(--accent); border-radius:6px;
+    background:transparent; color:var(--accent); font-size:0.8rem; cursor:pointer;
+    transition:background 0.2s;
+}
+.js-open-btn:hover { background:var(--accent); color:#fff; }
+
+/* Source badges */
+.js-badge {
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:0.15rem 0.5rem; border-radius:4px; font-size:0.7rem; font-weight:700;
+    min-width:28px; text-align:center;
+}
+.js-badge-linkedin { background:rgba(10,102,194,0.2); color:#0A66C2; }
+.js-badge-reddit { background:rgba(255,69,0,0.15); color:#FF4500; }
+.js-badge-rss { background:rgba(255,165,0,0.15); color:#FFA500; }
+.js-badge-jobtype {
+    display:inline-flex; padding:0.1rem 0.4rem; border-radius:4px;
+    font-size:0.7rem; font-weight:500; background:rgba(99,102,241,0.12); color:var(--accent);
+}
+
+/* Results count */
+.js-results-header {
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;
+}
+.js-results-count { font-size:0.9rem; font-weight:600; color:var(--text-primary); }
+
+/* Match score badges */
+.js-match-badge {
+    display:inline-flex; align-items:center; padding:0.15rem 0.55rem;
+    border-radius:999px; font-size:0.72rem; font-weight:700; letter-spacing:0.3px;
+    margin-left:auto; flex-shrink:0;
+}
+.js-match-excellent { background:rgba(34,197,94,0.18); color:#22c55e; border:1px solid rgba(34,197,94,0.35); }
+.js-match-good      { background:rgba(99,102,241,0.18); color:#6366f1; border:1px solid rgba(99,102,241,0.35); }
+.js-match-fair      { background:rgba(234,179,8,0.18);  color:#ca8a04; border:1px solid rgba(234,179,8,0.35); }
+.js-match-low       { background:rgba(239,68,68,0.15);  color:#ef4444; border:1px solid rgba(239,68,68,0.3); }
+</style>
+
+<div class="js-module">
+    {# ── Search bar ── #}
+    <div class="js-search-row">
+        <input type="text" id="jsSearch" class="js-search-field"
+               placeholder="Enter job title (e.g. Software Engineer, Data Analyst...)" autofocus>
+        <select id="jsSource" class="js-source-combo">
+            <option value="all">All</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="reddit">Reddit</option>
+            <option value="rss">RSS</option>
+        </select>
+        <button id="jsSearchBtn" class="js-search-btn">🔎 Search</button>
+    </div>
+
+    {# ── Filter bar ── #}
+    <div class="js-filter-row">
+        <span class="js-filter-label">Filters:</span>
+        <select id="jsJobType" class="js-filter-combo">
+            <option>All Types</option>
+            <option>Full-time</option>
+            <option>Part-time</option>
+            <option>Contract</option>
+            <option>Internship</option>
+            <option>Freelance</option>
+            <option>Temporary</option>
+        </select>
+        <select id="jsDatePosted" class="js-filter-combo">
+            <option>Any time</option>
+            <option>Past 24 hours</option>
+            <option>Past week</option>
+            <option>Past month</option>
+        </select>
+        <input type="text" id="jsLocation" class="js-filter-field" placeholder="📍 Location (optional)">
+        <button id="jsResetBtn" class="js-reset-btn">Reset</button>
+    </div>
+
+    {# ── Content area (empty / loading / results) ── #}
+    <div class="js-content-area">
+
+        {# Empty state (default) #}
+        <div id="jsEmpty" class="js-empty-state">
+            <div class="js-empty-icon">🌐</div>
+            <div class="js-empty-title">Search for jobs across the web</div>
+            <div class="js-empty-subtitle">Type a job title above and click Search to find the latest postings</div>
+        </div>
+
+        {# Loading state with radar animation #}
+        <div id="jsLoading" class="js-loading-state" style="display:none">
+            <div class="js-radar">
+                <div class="js-radar-bg"></div>
+                <div class="js-radar-ring js-radar-ring--mid"></div>
+                <div class="js-radar-ring js-radar-ring--inner"></div>
+                <div class="js-radar-dot"></div>
+                <div class="js-radar-sweep"></div>
+            </div>
+            <div id="jsLoadingLabel" class="js-loading-text">Searching...</div>
+        </div>
+
+        {# Results #}
+        <div id="jsResults" style="display:none">
+            <div class="js-results-header">
+                <div id="jsResultsCount" class="js-results-count"></div>
+                <span id="jsHeaderStatus" class="js-header-status"></span>
+            </div>
+            <div id="jsResultsList" class="js-results-list"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// User skills text passed from server
+const USER_SKILLS_TEXT = {{ userSkillsText|json_encode|raw }};
+
+// Skill categories — mirrors Java CvJobMatchService
+const SKILL_CATS = {
+    'Java':           ['java','spring','spring boot','hibernate','maven','gradle','jvm','javafx','junit'],
+    'Python':         ['python','django','flask','fastapi','pandas','numpy','scikit','tensorflow','pytorch','keras'],
+    'JavaScript':     ['javascript','typescript','node','nodejs','react','vue','angular','next.js','webpack','babel'],
+    'PHP':            ['php','symfony','laravel','wordpress','composer','doctrine','twig','psr'],
+    'C#/.NET':        ['c#','.net','asp.net','blazor','entity framework','nuget','dotnet'],
+    'C/C++':          ['c++','embedded','stl','cmake','opencv','boost','qt'],
+    'Mobile':         ['android','ios','swift','kotlin','flutter','react native','xamarin','mobile'],
+    'Database':       ['sql','mysql','postgresql','mongodb','redis','sqlite','oracle','nosql','database','jdbc','orm'],
+    'Cloud/DevOps':   ['aws','azure','gcp','docker','kubernetes','ci/cd','jenkins','gitlab','github actions','terraform','devops','cloud'],
+    'Web Frontend':   ['html','css','scss','sass','bootstrap','tailwind','responsive','ui','ux','figma','design'],
+    'Security':       ['security','oauth','jwt','ssl','tls','penetration','cybersecurity','firewall','encryption','owasp'],
+    'Data Science':   ['data science','machine learning','deep learning','nlp','computer vision','ai','neural','model','dataset','analytics'],
+    'Testing':        ['testing','unit test','integration test','selenium','jest','pytest','tdd','bdd','qa','quality assurance'],
+    'Agile/PM':       ['agile','scrum','kanban','jira','confluence','sprint','backlog','project management'],
+    'Linux/Systems':  ['linux','unix','bash','shell','kernel','server','networking','tcp','http'],
+    'Version Control':['git','github','gitlab','bitbucket','svn','version control'],
+    'API':            ['microservices','rest','graphql','api','soap','grpc','rabbitmq','kafka','message queue'],
+    'HR':             ['hr','human resources','recruitment','payroll','onboarding','performance review','employee','talent','hiring'],
+    'Finance':        ['finance','accounting','budget','invoice','erp','sap','quickbooks','audit','tax','excel'],
+    'Communication':  ['communication','teamwork','leadership','presentation','negotiation','english','french','arabic'],
+    'Ruby/Go/Rust':   ['ruby','rails','golang','go','rust','elixir','erlang'],
+    'Big Data':       ['scala','kotlin','akka','spark','flink','hadoop','big data'],
+    'BI/Low-code':    ['power bi','tableau','looker','salesforce','crm','low-code','no-code','zapier','n8n'],
+    'Research':       ['research','thesis','publication','academic','laboratory','experiment','paper'],
+    'Soft Skills':    ['problem solving','critical thinking','adaptability','creativity','time management','collaboration','mentoring']
+};
+
+function scoreJob(cvText, jobTitle, jobSnippet) {
+    const cv  = (cvText || '').toLowerCase();
+    const job = (jobTitle + ' ' + jobSnippet).toLowerCase();
+    let matched = 0, total = 0;
+    for (const cat in SKILL_CATS) {
+        const kws = SKILL_CATS[cat];
+        const inJob = kws.some(k => job.includes(k));
+        if (!inJob) continue;
+        total++;
+        if (kws.some(k => cv.includes(k))) matched++;
+    }
+    if (total === 0) return null;
+    const score = Math.round((matched / total) * 100);
+    let label;
+    if (score >= 70) label = 'Excellent';
+    else if (score >= 50) label = 'Good';
+    else if (score >= 30) label = 'Fair';
+    else label = 'Low';
+    return { score, label };
+}
+
+(function(){
+    const searchField  = document.getElementById('jsSearch');
+    const sourceCombo  = document.getElementById('jsSource');
+    const searchBtn    = document.getElementById('jsSearchBtn');
+    const jobTypeCombo = document.getElementById('jsJobType');
+    const datePosted   = document.getElementById('jsDatePosted');
+    const locationField= document.getElementById('jsLocation');
+    const resetBtn     = document.getElementById('jsResetBtn');
+
+    const emptyState   = document.getElementById('jsEmpty');
+    const loadingState = document.getElementById('jsLoading');
+    const loadingLabel = document.getElementById('jsLoadingLabel');
+    const resultsDiv   = document.getElementById('jsResults');
+    const resultsList  = document.getElementById('jsResultsList');
+    const resultsCount = document.getElementById('jsResultsCount');
+    const headerStatus = document.getElementById('jsHeaderStatus');
+
+    let searching = false;
+
+    function showState(state) {
+        emptyState.style.display   = state === 'empty'   ? '' : 'none';
+        loadingState.style.display = state === 'loading'  ? '' : 'none';
+        resultsDiv.style.display   = state === 'results'  ? '' : 'none';
+    }
+
+    // Search on Enter key
+    searchField.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+    });
+    searchBtn.addEventListener('click', doSearch);
+
+    // Reset
+    resetBtn.addEventListener('click', function() {
+        searchField.value = '';
+        sourceCombo.value = 'all';
+        jobTypeCombo.selectedIndex = 0;
+        datePosted.selectedIndex = 0;
+        locationField.value = '';
+        showState('empty');
+        // Restore empty text
+        document.querySelector('.js-empty-title').textContent = 'Search for jobs across the web';
+        document.querySelector('.js-empty-subtitle').textContent = 'Type a job title above and click Search to find the latest postings';
+        document.querySelector('.js-empty-icon').textContent = '🌐';
+        headerStatus.textContent = '';
+    });
+
+    async function doSearch() {
+        const query = searchField.value.trim();
+        if (!query) {
+            searchField.style.borderColor = '#ff4444';
+            searchField.focus();
+            return;
+        }
+        searchField.style.borderColor = '';
+        if (searching) return;
+        searching = true;
+
+        const sourceName = sourceCombo.options[sourceCombo.selectedIndex].text;
+        showState('loading');
+        loadingLabel.textContent = 'Searching ' + sourceName + ' for "' + query + '"...';
+        searchBtn.disabled = true;
+        searchBtn.textContent = 'Searching...';
+
+        try {
+            const resp = await fetch('{{ path("app_job_scanner_scan") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query:      query,
+                    source:     sourceCombo.value,
+                    jobType:    jobTypeCombo.value,
+                    datePosted: datePosted.value,
+                    location:   locationField.value.trim()
+                })
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                showState('empty');
+                document.querySelector('.js-empty-icon').textContent = '⚠️';
+                document.querySelector('.js-empty-title').textContent = 'Search failed';
+                document.querySelector('.js-empty-subtitle').textContent = data.error;
+                headerStatus.textContent = 'Error';
+            } else if (!data.results || data.results.length === 0) {
+                showState('empty');
+                document.querySelector('.js-empty-icon').textContent = '🔍';
+                document.querySelector('.js-empty-title').textContent = 'No jobs found for "' + query + '"';
+                document.querySelector('.js-empty-subtitle').textContent = 'Try a different keyword or source';
+                headerStatus.textContent = 'No results found';
+            } else {
+                buildCards(data.results);
+                const count = data.count || data.results.length;
+                resultsCount.textContent = count + ' job' + (count > 1 ? 's' : '') + ' found';
+                headerStatus.textContent = count + ' result' + (count > 1 ? 's' : '');
+                showState('results');
+            }
+        } catch (e) {
+            showState('empty');
+            document.querySelector('.js-empty-icon').textContent = '⚠️';
+            document.querySelector('.js-empty-title').textContent = 'Connection failed';
+            document.querySelector('.js-empty-subtitle').textContent = e.message || 'Network error';
+            headerStatus.textContent = 'Error';
+        } finally {
+            searching = false;
+            searchBtn.disabled = false;
+            searchBtn.textContent = '🔎 Search';
+        }
+    }
+
+    function buildCards(jobs) {
+        resultsList.innerHTML = '';
+        jobs.forEach(function(job) {
+            const source   = job.source   || '';
+            const title    = job.title    || 'Untitled';
+            const company  = job.company  || '';
+            const location = job.location || '';
+            const url      = job.url      || '';
+            const postedAt = job.postedAt || '';
+            const snippet  = job.snippet  || '';
+            const jobType  = job.jobType  || '';
+
+            const card = document.createElement('div');
+            card.className = 'js-job-card';
+            if (url) { card.onclick = function() { window.open(url, '_blank'); }; }
+
+            // Row 1: badges + title
+            let badgeHtml = '';
+            if (source) {
+                let bClass, bText;
+                switch(source) {
+                    case 'LinkedIn': bClass='js-badge-linkedin'; bText='in'; break;
+                    case 'Reddit':   bClass='js-badge-reddit';   bText='r/'; break;
+                    default:         bClass='js-badge-rss';      bText=source; break;
+                }
+                badgeHtml += '<span class="js-badge ' + bClass + '">' + bText + '</span> ';
+            }
+            if (jobType && jobType !== 'all') {
+                badgeHtml += '<span class="js-badge-jobtype">' + esc(jobType) + '</span> ';
+            }
+
+            // Row 2: meta
+            let metaHtml = '';
+            if (company) metaHtml += '<span>🏢 ' + esc(company) + '</span>';
+            const loc = (!location || location.toLowerCase() === 'not specified') ? 'Not specified' : location;
+            metaHtml += '<span' + (loc === 'Not specified' ? ' class="js-meta-muted"' : '') + '>📍 ' + esc(loc) + '</span>';
+            if (postedAt) metaHtml += '<span>🕐 ' + formatTimeAgo(postedAt) + '</span>';
+
+            // Match score badge
+            let matchBadgeHtml = '';
+            if (USER_SKILLS_TEXT) {
+                const ms = scoreJob(USER_SKILLS_TEXT, title, snippet);
+                if (ms) {
+                    const cls = 'js-match-' + ms.label.toLowerCase();
+                    matchBadgeHtml = '<span class="js-match-badge ' + cls + '">' + ms.score + '% — ' + ms.label + '</span>';
+                }
+            }
+
+            card.innerHTML =
+                '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">'
+                    + badgeHtml
+                    + '<span class="js-job-title">' + esc(title) + '</span>'
+                    + matchBadgeHtml
+                + '</div>'
+                + '<div class="js-meta-row">' + metaHtml + '</div>'
+                + (snippet ? '<div class="js-snippet">' + esc(snippet) + '</div>' : '')
+                + (url ? '<div class="js-card-actions"><button class="js-open-btn" onclick="event.stopPropagation();window.open(\'' + esc(url) + '\',\'_blank\')">Open →</button></div>' : '');
+
+            resultsList.appendChild(card);
+        });
+    }
+
+    function formatTimeAgo(dateStr) {
+        try {
+            const posted = new Date(dateStr.substring(0, 10));
+            const now = new Date();
+            const days = Math.floor((now - posted) / 86400000);
+            if (days === 0) return 'Today';
+            if (days === 1) return 'Yesterday';
+            if (days < 7) return days + ' days ago';
+            if (days < 30) return Math.floor(days/7) + ' week' + (Math.floor(days/7) > 1 ? 's' : '') + ' ago';
+            return posted.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        } catch(e) { return dateStr; }
+    }
+
+    function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+})();
+</script>
+{% endblock %}

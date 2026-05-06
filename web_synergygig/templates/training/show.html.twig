@@ -1,0 +1,259 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Course: {{ course.title }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_training_edit', {id: course.id}) }}" class="btn btn-primary btn-sm">Edit</a>
+    <a href="{{ path('app_training_index') }}" class="btn btn-ghost btn-sm">Back</a>
+{% endblock %}
+
+{% block content %}
+{# Stat cards #}
+<div class="bento-grid" style="grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem">
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Status</div>
+        {% set sc = {'DRAFT': 'blue', 'ACTIVE': 'green', 'ARCHIVED': 'orange'} %}
+        <span class="badge badge--{{ sc[course.status] ?? 'blue' }}">{{ course.status ?? 'N/A' }}</span>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Category</div>
+        <span class="badge badge--blue">{{ course.category ?? '—' }}</span>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Difficulty</div>
+        {% set dc = {'BEGINNER': 'green', 'INTERMEDIATE': 'orange', 'ADVANCED': 'red'} %}
+        <span class="badge badge--{{ dc[course.difficulty] ?? 'blue' }}">{{ course.difficulty ?? '—' }}</span>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Enrollments</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--accent-blue)">{{ enrollments|length }}</div>
+    </div>
+</div>
+
+{# Description #}
+{% if course.description %}
+<div class="card" style="margin-bottom:1.5rem">
+    <div class="card__header"><h4>Description</h4></div>
+    <div class="card__body"><p style="white-space:pre-wrap">{{ course.description }}</p></div>
+</div>
+{% endif %}
+
+{# Details table #}
+<div class="card" style="margin-bottom:1.5rem">
+    <div class="card__header"><h4>Details</h4></div>
+    <div class="table-wrap">
+        <table class="table">
+            <tr><td class="text-muted" style="width:200px">Instructor</td><td>{{ course.instructorName ?? '—' }}</td></tr>
+            <tr><td class="text-muted">Duration</td><td>{{ course.durationHours ? course.durationHours ~ ' hours' : '—' }}</td></tr>
+            <tr><td class="text-muted">Max Participants</td><td>{{ course.maxParticipants ?? '—' }}</td></tr>
+            <tr><td class="text-muted">Quiz Timer</td><td>{{ course.quizTimerSeconds ? course.quizTimerSeconds ~ 's per question' : 'Default (based on difficulty)' }}</td></tr>
+            <tr><td class="text-muted">Start Date</td><td>{{ course.startDate ? course.startDate|date('M d, Y') : '—' }}</td></tr>
+            <tr><td class="text-muted">End Date</td><td>{{ course.endDate ? course.endDate|date('M d, Y') : '—' }}</td></tr>
+            <tr><td class="text-muted">Created</td><td>{{ course.createdAt ? course.createdAt|date('M d, Y H:i') : '—' }}</td></tr>
+        </table>
+    </div>
+</div>
+
+{# ── Quiz section ── #}
+<div class="card" style="margin-bottom:1.5rem">
+    <div class="card__header"><h4>🧠 Course Quiz</h4></div>
+    <div class="card__body" style="text-align:center">
+        <p style="color:var(--text-secondary);margin-bottom:1rem">Test your knowledge with a timed quiz. You need 70% to pass and earn a certificate.</p>
+        <div style="display:flex;justify-content:center;gap:2rem;margin-bottom:1.5rem;font-size:0.85rem;color:var(--text-muted)">
+            <span>📝 5 questions</span>
+            <span>⏱ {{ course.quizTimerSeconds ?? 'Auto' }}s per question</span>
+            <span>🎯 Pass: 70%</span>
+            <span>🏆 Certificate on pass</span>
+        </div>
+        <a href="{{ path('app_training_quiz', {id: course.id}) }}" class="btn btn-primary" style="font-size:1rem;padding:0.75rem 2rem">
+            📝 Start Quiz
+        </a>
+        {% if enrollment %}
+        <a href="{{ path('app_training_quiz_ai', {id: course.id}) }}" class="btn btn-outline" style="font-size:1rem;padding:0.75rem 2rem;margin-left:.75rem" title="AI generates custom questions for this course">
+            🤖 AI Quiz
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+{# Enrollments sub-table #}
+{% if enrollments|length > 0 %}
+<div class="card" style="margin-bottom:1.5rem">
+    <div class="card__header"><h4>Enrollments</h4></div>
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Score</th>
+                    <th>Enrolled At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in enrollments %}
+                <tr>
+                    <td>
+                        {% if e.user %}
+                            <div style="display:flex;align-items:center;gap:0.5rem">
+                                <div class="avatar avatar--sm">{{ e.user.firstName|first }}{{ e.user.lastName|first }}</div>
+                                {{ e.user.firstName }} {{ e.user.lastName }}
+                            </div>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% set es = {'ENROLLED': 'blue', 'IN_PROGRESS': 'orange', 'COMPLETED': 'green', 'DROPPED': 'red'} %}
+                        <span class="badge badge--{{ es[e.status] ?? 'blue' }}">{{ e.status ?? '—' }}</span>
+                    </td>
+                    <td>
+                        {% if e.progress is not null %}
+                            <div style="display:flex;align-items:center;gap:0.5rem">
+                                <div style="flex:1;height:6px;background:var(--glass-border);border-radius:3px;overflow:hidden;max-width:80px">
+                                    <div style="height:100%;background:var(--accent-blue);border-radius:3px;width:{{ e.progress }}%"></div>
+                                </div>
+                                <span style="font-size:0.8rem;color:var(--text-muted)">{{ e.progress }}%</span>
+                            </div>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if e.score is not null %}
+                            <span style="font-weight:600;{% if e.score >= 70 %}color:var(--color-success){% else %}color:var(--color-danger){% endif %}">{{ e.score|number_format(0) }}%</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>{{ e.enrolledAt ? e.enrolledAt|date('M d, Y H:i') : '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{# ── Certificates section ── #}
+{% if certificates|length > 0 %}
+<div class="card" style="margin-bottom:1.5rem">
+    <div class="card__header"><h4>🏆 Certificates</h4></div>
+    <div class="card__body">
+        {% for cert in certificates %}
+        {% set isSigned = cert.signatureData or cert.signedAt %}
+        <div style="padding:1.25rem;background:var(--bg-secondary);border-radius:var(--radius-md);margin-bottom:1rem;border:1px solid var(--glass-border)">
+            <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:1rem">
+                <div>
+                    <div style="font-size:0.75rem;color:var(--text-muted)">Certificate Number</div>
+                    <div style="font-weight:700;color:var(--accent-blue);font-family:monospace">{{ cert.certificateNumber }}</div>
+                </div>
+                <div style="text-align:right">
+                    <div style="font-size:0.75rem;color:var(--text-muted)">Issued</div>
+                    <div style="font-weight:600;color:var(--text-primary)">{{ cert.issuedAt|date('M d, Y') }}</div>
+                </div>
+            </div>
+
+            {% if cert.user %}
+            <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1rem">
+                Awarded to: <strong>{{ cert.user.firstName }} {{ cert.user.lastName }}</strong>
+            </div>
+            {% endif %}
+
+            {# Signature display or sign form #}
+            {% if isSigned %}
+                <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--glass-border)">
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem">Signature</div>
+                    {% if cert.signatureData %}
+                        <div style="background:#fff;display:inline-block;padding:0.5rem;border-radius:var(--radius-sm)">
+                            <img src="{{ cert.signatureData }}" alt="Signature" style="max-width:300px;max-height:100px">
+                        </div>
+                    {% else %}
+                        <div style="display:inline-block;padding:0.65rem 0.9rem;background:#fff;border-radius:var(--radius-sm);border:1px solid var(--glass-border)">
+                            <span style="font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:1.35rem;color:var(--text-primary)">{{ cert.user ? cert.user.firstName ~ ' ' ~ cert.user.lastName : 'Authorized Signatory' }}</span>
+                        </div>
+                    {% endif %}
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem">
+                        {{ cert.signatureData ? 'Signed' : 'Auto-signed' }} {{ cert.signedAt ? cert.signedAt|date('M d, Y \\a\\t H:i') : '' }}
+                    </div>
+                </div>
+            {% else %}
+                <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--glass-border)">
+                    <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.75rem">Sign this certificate:</div>
+                    <form method="post" action="{{ path('app_training_certificate_sign', {id: cert.id}) }}" id="certSignForm_{{ cert.id }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('certsign' ~ cert.id) }}">
+                        <input type="hidden" name="signature_data" id="certSigInput_{{ cert.id }}">
+
+                        <div style="position:relative;border:2px dashed var(--glass-border);border-radius:var(--radius-md);background:#fff;margin-bottom:0.75rem;display:inline-block">
+                            <canvas id="certSigCanvas_{{ cert.id }}" width="400" height="120" style="display:block;cursor:crosshair"></canvas>
+                        </div>
+
+                        <div style="display:flex;gap:0.5rem">
+                            <button type="button" class="btn btn-ghost btn-sm cert-clear-btn" data-cert-id="{{ cert.id }}">Clear</button>
+                            <button type="submit" class="btn btn-primary btn-sm">✍️ Sign Certificate</button>
+                        </div>
+                    </form>
+                </div>
+            {% endif %}
+
+            <div style="display:flex;gap:0.5rem;margin-top:1rem">
+                <a href="{{ path('app_training_certificate_pdf', {id: cert.id}) }}" class="btn btn-ghost btn-sm" target="_blank">📄 Download PDF</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{# Delete #}
+<div style="margin-top:2rem">
+    <form method="post" action="{{ path('app_training_delete', {id: course.id}) }}" onsubmit="return confirm('Delete this course?')">
+        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ course.id) }}">
+        <button class="btn btn-danger btn-sm">Delete Course</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+(function(){
+    // Certificate signature canvases
+    document.querySelectorAll('canvas[id^="certSigCanvas_"]').forEach(function(canvas) {
+        var certId = canvas.id.replace('certSigCanvas_', '');
+        var ctx = canvas.getContext('2d');
+        var drawing = false;
+        var hasDrawn = false;
+
+        function getPos(e) {
+            var r = canvas.getBoundingClientRect();
+            var sx = canvas.width / r.width;
+            var sy = canvas.height / r.height;
+            if (e.touches) return { x: (e.touches[0].clientX - r.left) * sx, y: (e.touches[0].clientY - r.top) * sy };
+            return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
+        }
+
+        function startDraw(e) { e.preventDefault(); drawing = true; hasDrawn = true; var p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }
+        function draw(e) { if (!drawing) return; e.preventDefault(); var p = getPos(e); ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#111'; ctx.lineTo(p.x, p.y); ctx.stroke(); }
+        function stopDraw() { drawing = false; }
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('mouseleave', stopDraw);
+        canvas.addEventListener('touchstart', startDraw, {passive: false});
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        canvas.addEventListener('touchend', stopDraw);
+
+        var form = document.getElementById('certSignForm_' + certId);
+        form.addEventListener('submit', function(e) {
+            if (!hasDrawn) { e.preventDefault(); alert('Please draw your signature first.'); return; }
+            document.getElementById('certSigInput_' + certId).value = canvas.toDataURL('image/png');
+        });
+    });
+
+    document.querySelectorAll('.cert-clear-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var certId = this.dataset.certId;
+            var canvas = document.getElementById('certSigCanvas_' + certId);
+            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        });
+    });
+})();
+</script>
+{% endblock %}

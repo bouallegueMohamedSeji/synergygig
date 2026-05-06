@@ -1,0 +1,123 @@
+/* ============================================
+   SynergyGig Design Tokens
+   Inspired by: Aceternity, UIverse, shadcn
+   Pure CSS — Zero JavaScript
+   ============================================ */
+
+:root {
+    /* ── Color Palette (matches Java SynergyGig) ── */
+    --bg-primary: #0A090C;
+    --bg-secondary: #0F0E11;
+    --bg-tertiary: #14131A;
+    --bg-elevated: #1C1B22;
+    --bg-surface: rgba(15, 14, 17, 0.8);
+
+    /* Glass */
+    --glass-bg: rgba(10, 9, 12, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass-border-hover: rgba(255, 255, 255, 0.12);
+    --glass-blur: 20px;
+
+    /* Accent — Teal/Cyan (Java theme) */
+    --accent-blue: #90DDF0;
+    --accent-purple: #2C666E;
+    --accent-gradient: linear-gradient(135deg, #07393C 0%, #2C666E 100%);
+    --accent-glow-blue: rgba(144, 221, 240, 0.15);
+    --accent-glow-purple: rgba(44, 102, 110, 0.15);
+
+    /* Semantic */
+    --color-success: #10b981;
+    --color-warning: #FBBF24;
+    --color-danger: #dc2626;
+    --color-info: #90DDF0;
+
+    /* Text */
+    --text-primary: #F0EDEE;
+    --text-secondary: #9E9EA8;
+    --text-muted: #6B6B78;
+    --text-link: #90DDF0;
+
+    /* ── Typography ── */
+    --font-heading: 'Outfit', system-ui, sans-serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+    /* ── Spacing ── */
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+    --space-2xl: 3rem;
+    --space-3xl: 4rem;
+
+    /* ── Radius ── */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-full: 9999px;
+
+    /* ── Shadows ── */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px var(--accent-glow-blue);
+
+    /* ── Layout ── */
+    --sidebar-width: 270px;
+    --sidebar-collapsed: 72px;
+    --header-height: 64px;
+    --content-max: 1400px;
+
+    /* ── Transitions ── */
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --duration-fast: 150ms;
+    --duration-normal: 250ms;
+    --duration-slow: 400ms;
+}
+
+/* ============================================
+   Light Theme (Rose/Burgundy — matches Java)
+   Activate via data-theme="light" on <html>
+   ============================================ */
+:root[data-theme="light"] {
+    /* ── Color Palette ── */
+    --bg-primary: #F0EDED;
+    --bg-secondary: #FFFFFF;
+    --bg-tertiary: #F5F0F1;
+    --bg-elevated: #FFFFFF;
+    --bg-surface: rgba(255, 255, 255, 0.85);
+
+    /* Glass */
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-border-hover: rgba(0, 0, 0, 0.15);
+    --glass-blur: 20px;
+
+    /* Accent — Burgundy/Rose (Java light theme) */
+    --accent-blue: #613039;
+    --accent-purple: #DE95A2;
+    --accent-gradient: linear-gradient(135deg, #330B11 0%, #613039 100%);
+    --accent-glow-blue: rgba(97, 48, 57, 0.12);
+    --accent-glow-purple: rgba(222, 149, 162, 0.12);
+
+    /* Semantic */
+    --color-success: #059669;
+    --color-warning: #D97706;
+    --color-danger: #dc2626;
+    --color-info: #613039;
+
+    /* Text */
+    --text-primary: #0D0A0B;
+    --text-secondary: #4A3F42;
+    --text-muted: #8A7C7F;
+    --text-link: #613039;
+
+    /* Shadows (lighter) */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
+    --shadow-glow: 0 0 20px rgba(97, 48, 57, 0.12);
+}

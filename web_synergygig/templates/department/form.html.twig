@@ -1,0 +1,70 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}{{ is_edit ? 'Edit' : 'New' }} Department | SynergyGig{% endblock %}
+
+{% block page_title %}{{ is_edit ? 'Edit Department' : 'New Department' }}{% endblock %}
+
+{% block breadcrumb %}
+    <nav class="breadcrumb">
+        <a href="{{ path('app_dashboard') }}">Home</a>
+        <span class="sep">/</span>
+        <a href="{{ path('app_department_index') }}">Departments</a>
+        <span class="sep">/</span>
+        <span>{{ is_edit ? 'Edit' : 'New' }}</span>
+    </nav>
+{% endblock %}
+
+{% block content %}
+    <div style="max-width: 640px;">
+        <div class="card">
+            {{ form_start(form, {'attr': {'novalidate': 'novalidate'}}) }}
+
+            <div class="form-group">
+                {{ form_label(form.name) }}
+                {{ form_widget(form.name) }}
+                {% if form.name.vars.errors|length > 0 %}
+                    {% for error in form.name.vars.errors %}
+                        <div class="form-error">{{ error.message }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.description) }}
+                {{ form_widget(form.description) }}
+                {% if form.description.vars.errors|length > 0 %}
+                    {% for error in form.description.vars.errors %}
+                        <div class="form-error">{{ error.message }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.manager) }}
+                {{ form_widget(form.manager) }}
+                <div class="form-hint">Select the department head.</div>
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.allocated_budget) }}
+                {{ form_widget(form.allocated_budget) }}
+                {% if form.allocated_budget.vars.errors|length > 0 %}
+                    {% for error in form.allocated_budget.vars.errors %}
+                        <div class="form-error">{{ error.message }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <hr class="divider">
+
+            <div style="display: flex; gap: var(--space-sm); justify-content: flex-end;">
+                <a href="{{ path('app_department_index') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    {{ is_edit ? 'Save Changes' : 'Create Department' }}
+                </button>
+            </div>
+
+            {{ form_end(form) }}
+        </div>
+    </div>
+{% endblock %}

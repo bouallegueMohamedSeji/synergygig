@@ -1,0 +1,55 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}{{ interview is defined and interview.id ? 'Edit Interview' : 'Schedule Interview' }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:800px">
+    <div class="card__header">
+        <h3>{{ interview is defined and interview.id ? 'Edit Interview' : 'Schedule Interview' }}</h3>
+    </div>
+    <div class="card__body">
+        {{ form_start(form, {'attr': {'class': 'form', 'novalidate': 'novalidate'}}) }}
+
+        <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="form-group">
+                {{ form_label(form.organizer) }}
+                {{ form_widget(form.organizer, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.organizer) }}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.candidate) }}
+                {{ form_widget(form.candidate, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.candidate) }}
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.date_time) }}
+                {{ form_widget(form.date_time, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.date_time) }}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.offer) }}
+                {{ form_widget(form.offer, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.offer) }}
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.meet_link) }}
+                {{ form_widget(form.meet_link, {'attr': {'class': 'form-control', 'placeholder': 'https://meet.google.com/...'}}) }}
+                {{ form_errors(form.meet_link) }}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.status) }}
+                {{ form_widget(form.status, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.status) }}
+            </div>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;margin-top:1.5rem">
+            <button type="submit" class="btn btn-primary">Save Interview</button>
+            <a href="{{ path('app_interview_index') }}" class="btn btn-ghost">Cancel</a>
+        </div>
+        {{ form_end(form) }}
+    </div>
+</div>
+{% endblock %}

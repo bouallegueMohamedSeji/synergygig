@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Certificate of Completion — {{ cert.course.title }}</title>
+    <style>
+        @page {
+            size: 11in 8.5in landscape;
+            margin: 0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            background: #FCF9F2;
+            width: 11in;
+            height: 8.5in;
+        }
+
+        /* Outer border wrapper */
+        .cert-wrapper {
+            position: relative;
+            width: 10.5in;
+            height: 8in;
+            margin: 0.25in auto;
+            border: 14px solid #2C666E;
+            background: #FCF9F2;
+            overflow: hidden;
+        }
+
+        /* Inner gold border */
+        .cert-inner-border {
+            position: absolute;
+            top: 16px; left: 16px; right: 16px; bottom: 16px;
+            border: 3px solid #B49932;
+        }
+
+        /* Corner ornaments */
+        .c-tl, .c-tr, .c-bl, .c-br {
+            position: absolute;
+            width: 36px;
+            height: 36px;
+        }
+        .c-tl { top: 22px; left: 22px; border-top: 3px solid #B49932; border-left: 3px solid #B49932; }
+        .c-tr { top: 22px; right: 22px; border-top: 3px solid #B49932; border-right: 3px solid #B49932; }
+        .c-bl { bottom: 22px; left: 22px; border-bottom: 3px solid #B49932; border-left: 3px solid #B49932; }
+        .c-br { bottom: 22px; right: 22px; border-bottom: 3px solid #B49932; border-right: 3px solid #B49932; }
+
+        /* Content area */
+        .cert-content {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            padding: 0.5in 0.85in 0.4in;
+            text-align: center;
+        }
+
+        .cert-logo {
+            font-size: 11pt;
+            font-weight: 700;
+            letter-spacing: 0.35em;
+            color: #2C666E;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .cert-divider {
+            width: 80px;
+            height: 2px;
+            background: #B49932;
+            margin: 6px auto 10px;
+        }
+
+        .cert-title {
+            font-size: 28pt;
+            color: #1a1a1a;
+            font-weight: 400;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
+        }
+
+        .cert-presented {
+            font-size: 8pt;
+            color: #777;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin: 10px 0 5px;
+        }
+
+        .cert-name {
+            font-size: 22pt;
+            color: #1a1a1a;
+            font-weight: 700;
+            border-bottom: 2px solid #B49932;
+            display: inline-block;
+            padding-bottom: 4px;
+            margin-bottom: 10px;
+            letter-spacing: 0.02em;
+        }
+
+        .cert-body {
+            font-size: 9pt;
+            color: #555;
+            font-style: italic;
+            margin-bottom: 3px;
+        }
+
+        .cert-course {
+            font-size: 15pt;
+            color: #2C666E;
+            font-weight: 700;
+            margin: 2px 0 6px;
+        }
+
+        .cert-meta {
+            font-size: 7.5pt;
+            color: #888;
+        }
+
+        /* Footer — table-based, positioned at bottom */
+        .cert-footer {
+            position: absolute;
+            bottom: 0.45in;
+            left: 0.85in;
+            right: 0.85in;
+        }
+
+        .cert-footer table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .cert-footer td {
+            width: 33.3%;
+            text-align: center;
+            vertical-align: bottom;
+            padding: 0 10px;
+        }
+
+        .sig-line {
+            width: 190px;
+            height: 1px;
+            background: #2C666E;
+            margin: 0 auto 5px;
+        }
+
+        .sig-label {
+            font-size: 6.5pt;
+            color: #666;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .sig-img {
+            max-height: 50px;
+            max-width: 190px;
+            display: block;
+            margin: 0 auto 4px;
+        }
+
+        .sig-awaiting {
+            font-size: 7pt;
+            color: #ccc;
+            font-style: italic;
+            margin-bottom: 4px;
+            height: 50px;
+            line-height: 50px;
+        }
+
+        .sig-auto {
+            height: 50px;
+            line-height: 50px;
+            font-size: 16pt;
+            color: #2C666E;
+            font-style: italic;
+            margin-bottom: 4px;
+        }
+
+        .sig-date {
+            font-size: 11pt;
+            color: #444;
+            font-weight: 600;
+            margin-bottom: 4px;
+            height: 50px;
+            line-height: 50px;
+        }
+
+        .seal-ring {
+            width: 72px;
+            height: 72px;
+            border: 3px double #B49932;
+            border-radius: 50%;
+            margin: 0 auto 5px;
+        }
+
+        .seal-inner {
+            width: 72px;
+            height: 72px;
+            line-height: 72px;
+            text-align: center;
+            font-size: 22pt;
+            color: #B49932;
+        }
+
+        .cert-number {
+            font-size: 6pt;
+            color: #aaa;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.06em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="cert-wrapper">
+    <div class="cert-inner-border"></div>
+    <div class="c-tl"></div>
+    <div class="c-tr"></div>
+    <div class="c-bl"></div>
+    <div class="c-br"></div>
+
+    <div class="cert-content">
+        <div class="cert-logo">SynergyGig</div>
+        <div class="cert-divider"></div>
+        <div class="cert-title">Certificate of Completion</div>
+
+        <div class="cert-presented">This certificate is proudly presented to</div>
+        <div class="cert-name">{{ cert.user.firstName }} {{ cert.user.lastName }}</div>
+
+        <p class="cert-body">has successfully completed the course</p>
+        <div class="cert-course">{{ cert.course.title }}</div>
+
+        <div class="cert-meta">
+            {% if cert.course.category %}{{ cert.course.category|replace({'_': ' '})|title }}{% endif %}
+            {% if cert.course.durationHours %}&nbsp;&middot;&nbsp;{{ cert.course.durationHours }} Hours{% endif %}
+            &nbsp;&middot;&nbsp;Issued {{ cert.issuedAt ? cert.issuedAt|date('F j, Y') : 'N/A' }}
+        </div>
+
+        <div class="cert-footer">
+            <table>
+                <tr>
+                    {# Left: Authorized signatory #}
+                    <td>
+                        {% if cert.signatureData %}
+                            <img class="sig-img" src="{{ cert.signatureData }}" alt="Signature">
+                        {% elseif cert.signedAt %}
+                            <div class="sig-auto">{{ signerName ?? cert.user.firstName ~ ' ' ~ cert.user.lastName }}</div>
+                        {% else %}
+                            <div class="sig-awaiting">Awaiting signature</div>
+                        {% endif %}
+                        <div class="sig-line"></div>
+                        <div class="sig-label">{{ signerName ?? 'Authorized Signatory' }}</div>
+                    </td>
+
+                    {# Center: Seal #}
+                    <td>
+                        <div class="seal-ring">
+                            <div class="seal-inner">&#9733;</div>
+                        </div>
+                        <div class="cert-number">{{ cert.certificateNumber }}</div>
+                    </td>
+
+                    {# Right: Date #}
+                    <td>
+                        <div class="sig-date">{{ cert.issuedAt ? cert.issuedAt|date('M j, Y') : '&mdash;' }}</div>
+                        <div class="sig-line"></div>
+                        <div class="sig-label">Date of Issue</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

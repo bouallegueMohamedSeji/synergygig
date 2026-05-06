@@ -1,0 +1,79 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Application #{{ application.id }}{% endblock %}
+
+{% block header_actions %}
+    {% if is_granted('ROLE_HR') %}
+        <a href="{{ path('app_application_index') }}" class="btn btn-ghost btn-sm">Back to Applications</a>
+    {% else %}
+        <a href="{{ path('app_my_applications') }}" class="btn btn-ghost btn-sm">Back to My Applications</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+{# Stat cards #}
+<div class="bento-grid" style="grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem">
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Status</div>
+        {% set sc = {'PENDING': 'orange', 'REVIEWED': 'blue', 'SHORTLISTED': 'purple', 'ACCEPTED': 'green', 'REJECTED': 'red', 'WITHDRAWN': 'red'} %}
+        <span class="badge badge--{{ sc[application.status] ?? 'blue' }}">{{ application.status ?? 'N/A' }}</span>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Applicant</div>
+        <div style="font-weight:600;color:var(--text-primary)">{% if application.applicant %}{{ application.applicant.firstName }} {{ application.applicant.lastName }}{% else %}—{% endif %}</div>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Offer</div>
+        <div style="font-weight:600;color:var(--accent-blue)">{{ application.offer ? application.offer.title : '—' }}</div>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">AI Score</div>
+        <div style="font-size:1.5rem;font-weight:700;{% if application.aiScore is not null and application.aiScore >= 70 %}color:var(--color-success){% elseif application.aiScore is not null and application.aiScore >= 40 %}color:var(--color-warning){% else %}color:var(--color-danger){% endif %}">{{ application.aiScore is not null ? application.aiScore ~ '%' : '—' }}</div>
+    </div>
+</div>
+
+{# Cover Letter #}
+{% if application.coverLetter %}
+<div class="card" style="margin-bottom:1.5rem">
+    <div class="card__header"><h4>Cover Letter</h4></div>
+    <div class="card__body"><p style="white-space:pre-wrap">{{ application.coverLetter }}</p></div>
+</div>
+{% endif %}
+
+{# AI Feedback #}
+{% if application.aiFeedback %}
+<div class="card" style="margin-bottom:1.5rem">
+    <div class="card__header"><h4>AI Feedback</h4></div>
+    <div class="card__body"><p style="white-space:pre-wrap">{{ application.aiFeedback }}</p></div>
+</div>
+{% endif %}
+
+{# Details #}
+<div class="card">
+    <div class="card__header"><h4>Details</h4></div>
+    <div class="table-wrap">
+        <table class="table">
+            <tr><td class="text-muted" style="width:200px">Applied At</td><td>{{ application.appliedAt ? application.appliedAt|date('M d, Y H:i') : '—' }}</td></tr>
+            <tr><td class="text-muted">Reviewed At</td><td>{{ application.reviewedAt ? application.reviewedAt|date('M d, Y H:i') : '—' }}</td></tr>
+        </table>
+    </div>
+</div>
+
+{# Accept / Reject actions for HR #}
+{% if is_granted('ROLE_HR') and (application.status == 'PENDING' or application.status == 'REVIEWED') %}
+<div class="card" style="margin-top:1.5rem;padding:1.25rem;display:flex;align-items:center;gap:1rem;border-left:3px solid var(--accent-blue)">
+    <div style="flex:1">
+        <strong>Review this application</strong>
+        <div class="text-muted" style="font-size:.85rem">Accept (auto-schedules interview) or reject this candidate.</div>
+    </div>
+    <form method="post" action="{{ path('app_application_accept', {id: application.id}) }}" style="display:inline" onsubmit="event.preventDefault();showConfirm(this,{type:'success',title:'Accept Application',message:'Accept this application? An interview will be scheduled automatically.',okText:'Accept'});return false">
+        <input type="hidden" name="_token" value="{{ csrf_token('accept' ~ application.id) }}">
+        <button type="submit" class="btn btn-primary btn-sm">Accept</button>
+    </form>
+    <form method="post" action="{{ path('app_application_reject', {id: application.id}) }}" style="display:inline" onsubmit="event.preventDefault();showConfirm(this,{type:'danger',title:'Reject Application',message:'Are you sure you want to reject this application?',okText:'Reject'});return false">
+        <input type="hidden" name="_token" value="{{ csrf_token('reject' ~ application.id) }}">
+        <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

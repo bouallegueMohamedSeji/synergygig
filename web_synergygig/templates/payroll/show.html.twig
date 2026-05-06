@@ -1,0 +1,83 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Payroll #{{ payroll.id }}{% endblock %}
+
+{% block header_actions %}
+    {% if is_granted('ROLE_HR') %}
+    <a href="{{ path('app_export_payroll_pdf', {id: payroll.id}) }}" class="btn btn-ghost btn-sm" target="_blank">🖨️ PDF</a>
+    <a href="{{ path('app_payroll_edit', {id: payroll.id}) }}" class="btn btn-primary btn-sm">Edit</a>
+    {% elseif payroll.user and payroll.user.id == app.user.id %}
+    <a href="{{ path('app_export_payroll_pdf', {id: payroll.id}) }}" class="btn btn-primary btn-sm" target="_blank">📄 Download Payslip</a>
+    <a href="{{ path('app_payroll_mine') }}" class="btn btn-ghost btn-sm">My Payrolls</a>
+    {% endif %}
+    <a href="{{ path('app_payroll_index') }}" class="btn btn-ghost btn-sm">Back</a>
+{% endblock %}
+
+{% block content %}
+{% set months = {1:'January',2:'February',3:'March',4:'April',5:'May',6:'June',7:'July',8:'August',9:'September',10:'October',11:'November',12:'December'} %}
+
+{# Stat cards #}
+<div class="bento-grid" style="grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem">
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Employee</div>
+        <div style="font-weight:600;color:var(--text-primary)">{% if payroll.user %}{{ payroll.user.firstName }} {{ payroll.user.lastName }}{% else %}—{% endif %}</div>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Period</div>
+        <div style="font-weight:600;color:var(--text-primary)">{{ months[payroll.month] ?? payroll.month }} {{ payroll.year }}</div>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Net Salary</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--accent-blue)">{{ payroll.netSalary ? payroll.netSalary|number_format(2) : '—' }}</div>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Status</div>
+        {% set sc = {'PENDING': 'blue', 'PAID': 'green', 'CANCELLED': 'red'} %}
+        <span class="badge badge--{{ sc[payroll.status] ?? 'blue' }}">{{ payroll.status ?? 'N/A' }}</span>
+    </div>
+</div>
+
+{# Salary breakdown #}
+<div class="card" style="margin-bottom:1.5rem">
+    <div class="card__header"><h4>Salary Breakdown</h4></div>
+    <div class="table-wrap">
+        <table class="table">
+            <tr><td class="text-muted" style="width:200px">Base Salary</td><td style="font-weight:600">{{ payroll.baseSalary ? payroll.baseSalary|number_format(2) : '—' }}</td></tr>
+            <tr><td class="text-muted">Bonus</td><td style="color:var(--color-success);font-weight:600">{{ payroll.bonus ? '+' ~ payroll.bonus|number_format(2) : '0.00' }}</td></tr>
+            <tr><td class="text-muted">Deductions</td><td style="color:var(--color-danger);font-weight:600">{{ payroll.deductions ? '-' ~ payroll.deductions|number_format(2) : '0.00' }}</td></tr>
+            <tr style="border-top:2px solid var(--border-primary)"><td class="text-muted" style="font-weight:700">Net Salary</td><td style="font-size:1.125rem;font-weight:700;color:var(--accent-blue)">{{ payroll.netSalary ? payroll.netSalary|number_format(2) : '—' }}</td></tr>
+        </table>
+    </div>
+</div>
+
+{# Details #}
+<div class="card">
+    <div class="card__header"><h4>Additional Details</h4></div>
+    <div class="table-wrap">
+        <table class="table">
+            <tr><td class="text-muted" style="width:200px">Total Hours Worked</td><td>{{ payroll.totalHoursWorked ? payroll.totalHoursWorked|number_format(2) ~ ' hrs' : '—' }}</td></tr>
+            <tr><td class="text-muted">Hourly Rate</td><td>{{ payroll.hourlyRate ? payroll.hourlyRate|number_format(2) ~ ' /hr' : '—' }}</td></tr>
+            <tr><td class="text-muted">Generated At</td><td>{{ payroll.generatedAt ? payroll.generatedAt|date('M d, Y H:i') : '—' }}</td></tr>
+        </table>
+    </div>
+</div>
+
+{# Actions #}
+{% if is_granted('ROLE_HR') %}
+<div style="margin-top:2rem;display:flex;gap:1rem;flex-wrap:wrap">
+    {% if payroll.status != 'PAID' %}
+    <form method="post" action="{{ path('app_payroll_mark_paid', {id: payroll.id}) }}" onsubmit="return confirm('Mark this payroll as paid?')">
+        <input type="hidden" name="_token" value="{{ csrf_token('pay' ~ payroll.id) }}">
+        <button class="btn btn-primary btn-sm" style="padding:0.5rem 1.25rem">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:0.4rem"><polyline points="20 6 9 17 4 12"/></svg>
+            Mark as Paid
+        </button>
+    </form>
+    {% endif %}
+    <form method="post" action="{{ path('app_payroll_delete', {id: payroll.id}) }}" onsubmit="return confirm('Delete this payroll record?')">
+        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ payroll.id) }}">
+        <button class="btn btn-danger btn-sm">Delete Payroll</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

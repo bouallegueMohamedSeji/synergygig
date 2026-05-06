@@ -1,0 +1,76 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Projects{% endblock %}
+
+{% block header_actions %}
+    {% if is_granted('ROLE_PROJECT_OWNER') %}
+    <a href="{{ path('app_project_new') }}" class="btn btn-primary btn-sm">+ New Project</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    {% if pagination.totalItemCount > 0 %}
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Owner</th>
+                    <th>Department</th>
+                    <th>Status</th>
+                    <th>Deadline</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pagination %}
+                <tr>
+                    <td class="text-muted">{{ p.id }}</td>
+                    <td><a href="{{ path('app_project_show', {id: p.id}) }}" style="color:var(--accent-blue);font-weight:600">{{ p.name }}</a></td>
+                    <td>
+                        {% if p.owner %}
+                            <div style="display:flex;align-items:center;gap:0.5rem">
+                                <div class="avatar avatar--sm">{{ p.owner.firstName|first }}{{ p.owner.lastName|first }}</div>
+                                {{ p.owner.firstName }} {{ p.owner.lastName }}
+                            </div>
+                        {% else %}<span class="text-muted">—</span>{% endif %}
+                    </td>
+                    <td>{{ p.department ? p.department.name : '—' }}</td>
+                    <td>
+                        {% set sc = {'PLANNING': 'blue', 'IN_PROGRESS': 'orange', 'ON_HOLD': 'purple', 'COMPLETED': 'green', 'CANCELLED': 'red'} %}
+                        <span class="badge badge--{{ sc[p.status] ?? 'blue' }}">{{ p.status ?? 'N/A' }}</span>
+                    </td>
+                    <td>{{ p.deadline ? p.deadline|date('M d, Y') : '—' }}</td>
+                    <td>
+                        <details class="crud-actions-menu">
+                            <summary class="btn btn-ghost btn-sm" title="Actions"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></summary>
+                            <div class="crud-actions-dropdown">
+                                <a href="{{ path('app_project_show', {id: p.id}) }}" class="crud-action-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> View</a>
+                                <a href="{{ path('app_project_show', {id: p.id}) }}#project-intelligence" class="crud-action-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20"/><path d="M2 12h20"/><circle cx="12" cy="12" r="3"/></svg> Intelligence</a>
+                                {% if is_granted('ROLE_ADMIN') or (p.owner and p.owner.id == app.user.id) %}
+                                <a href="{{ path('app_project_edit', {id: p.id}) }}" class="crud-action-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit</a>
+                                <form method="post" action="{{ path('app_project_delete', {id: p.id}) }}" onsubmit="return confirm('Delete this project?')">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ p.id) }}">
+                                    <button type="submit" class="crud-action-item crud-action-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Delete</button>
+                                </form>
+                                {% endif %}
+                                </form>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include 'components/_pagination.html.twig' with {pagination: pagination} %}
+    {% else %}
+    <div style="text-align:center;padding:3rem">
+        <p class="text-muted">No projects yet.</p>
+        <a href="{{ path('app_project_new') }}" class="btn btn-primary" style="margin-top:1rem">+ Create Project</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

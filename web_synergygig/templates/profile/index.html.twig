@@ -1,0 +1,294 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}My Profile | SynergyGig{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_profile_edit') }}" class="btn btn-primary btn-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Edit Profile
+    </a>
+{% endblock %}
+
+{% block content %}
+<p class="text-muted" style="margin-bottom:var(--space-xl)">Manage your personal information and account settings</p>
+
+{% if user %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-xl);margin-bottom:var(--space-xl)">
+    {# ── Profile Card ── #}
+    <div class="card" style="text-align:center;padding:var(--space-2xl)">
+        <div style="font-weight:600;color:var(--text-primary);font-size:1rem;margin-bottom:2px;text-align:left">Profile</div>
+        <div class="text-muted" style="font-size:.75rem;margin-bottom:var(--space-xl);text-align:left">Your identity at a glance</div>
+
+        {# Avatar with ring #}
+        <div style="display:inline-block;padding:3px;border-radius:50%;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));margin-bottom:var(--space-md)">
+            {% if user.avatar_path %}
+                <img src="{{ asset('uploads/avatars/' ~ user.avatar_path) }}" alt="{{ user.firstName }}"
+                     style="width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid var(--bg-primary);display:block">
+            {% else %}
+                <div class="avatar" style="width:96px;height:96px;font-size:2.5rem;border:3px solid var(--bg-primary)">{{ user.firstName|first|upper }}{{ user.lastName|first|upper }}</div>
+            {% endif %}
+        </div>
+
+        <div class="text-muted" style="font-size:.8125rem;margin-bottom:var(--space-md)">{{ user.avatar_path ? '100' : '71' }}% profile complete</div>
+
+        <div style="margin-bottom:var(--space-lg)">
+            <a href="{{ path('app_profile_edit') }}" class="btn btn-secondary btn-sm">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                {{ user.avatar_path ? 'Change Photo' : 'Upload Photo' }}
+            </a>
+        </div>
+
+        <div style="font-weight:600;color:var(--text-primary);font-size:1.125rem">{{ user.firstName }} {{ user.lastName }}</div>
+        <div class="text-muted" style="font-size:.875rem;margin-bottom:var(--space-sm)">{{ user.email }}</div>
+        {% set rc = { 'ADMIN': 'red', 'HR': 'purple', 'MANAGER': 'blue', 'EMPLOYEE': 'green', 'FREELANCER': 'orange' } %}
+        <span class="badge badge--{{ rc[user.role] ?? 'blue' }}">{{ user.role ?? 'EMPLOYEE' }}</span>
+    </div>
+
+    {# ── Account Details ── #}
+    <div class="card" style="padding:var(--space-xl)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-lg)">
+            <div>
+                <div style="font-weight:600;color:var(--accent-primary)">Account Details</div>
+                <div class="text-muted" style="font-size:.75rem">Your account information</div>
+            </div>
+            <a href="{{ path('app_profile_edit') }}" class="btn btn-ghost btn-sm">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </a>
+        </div>
+
+        {% set fields = [
+            { icon: 'user', label: 'First Name', value: user.firstName },
+            { icon: 'user', label: 'Last Name', value: user.lastName },
+            { icon: 'mail', label: 'Email Address', value: user.email },
+            { icon: 'shield', label: 'Role', value: user.role ?? 'EMPLOYEE' },
+            { icon: 'calendar', label: 'Member Since', value: user.createdAt ? user.createdAt|date('F d, Y') : '—' },
+        ] %}
+
+        {% for field in fields %}
+        <div style="padding:var(--space-md) 0;{% if not loop.last %}border-bottom:1px solid var(--border-primary);{% endif %}">
+            <div class="text-muted" style="font-size:.75rem;margin-bottom:4px;display:flex;align-items:center;gap:.35rem">
+                {% if field.icon == 'user' %}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                {% elseif field.icon == 'mail' %}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                {% elseif field.icon == 'shield' %}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                {% elseif field.icon == 'calendar' %}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                {% endif %}
+                {{ field.label }}
+            </div>
+            <div style="color:var(--text-primary);font-weight:500">{{ field.value }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if is_granted('ROLE_GIG_WORKER') %}
+{# ── Email Verification (Hunter.io) ── #}
+<div class="card" style="padding:var(--space-xl);margin-bottom:var(--space-xl)">
+    <div style="font-weight:600;color:var(--text-primary);margin-bottom:2px">📧 Email Verification</div>
+    <div class="text-muted" style="font-size:.75rem;margin-bottom:var(--space-lg)">Verify any email address before reaching out — powered by Hunter.io</div>
+
+    <div style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-md)">
+        <input type="email" id="hunterEmail" class="form-control" placeholder="Enter email to verify..." style="flex:1">
+        <button id="hunterVerifyBtn" class="btn btn-primary btn-sm" onclick="verifyEmailHunter()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Verify
+        </button>
+    </div>
+
+    <div id="hunterResult" style="display:none">
+        <div style="padding:var(--space-md);background:var(--bg-secondary);border-radius:var(--radius-md);border:1px solid var(--border-primary)">
+            <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:var(--space-sm)">
+                <span id="hunterStatusBadge" class="badge"></span>
+                <span id="hunterEmail2" style="font-weight:600;color:var(--text-primary)"></span>
+                <span id="hunterScore" style="margin-left:auto;font-size:0.8rem;font-weight:700"></span>
+            </div>
+            <div id="hunterDetails" style="display:grid;grid-template-columns:1fr 1fr;gap:0.3rem 1rem;font-size:0.8rem;color:var(--text-secondary)"></div>
+        </div>
+    </div>
+    <div id="hunterError" style="display:none;padding:var(--space-sm);background:rgba(239,68,68,0.1);border-radius:var(--radius-sm);color:#ef4444;font-size:0.85rem;margin-top:var(--space-sm)"></div>
+</div>
+
+<script>
+async function verifyEmailHunter() {
+    const input = document.getElementById('hunterEmail');
+    const email = input.value.trim();
+    if (!email) { input.style.borderColor='#ff4444'; return; }
+    input.style.borderColor='';
+
+    const btn = document.getElementById('hunterVerifyBtn');
+    btn.disabled = true; btn.textContent = 'Verifying...';
+    document.getElementById('hunterResult').style.display = 'none';
+    document.getElementById('hunterError').style.display = 'none';
+
+    try {
+        const resp = await fetch('{{ path("app_verify_email_hunter") }}', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ email: email })
+        });
+        const data = await resp.json();
+        if (data.error) {
+            document.getElementById('hunterError').textContent = data.error;
+            document.getElementById('hunterError').style.display = '';
+        } else {
+            const colors = { deliverable:'green', risky:'orange', undeliverable:'red', unknown:'blue' };
+            const bc = colors[data.result] || 'blue';
+            document.getElementById('hunterStatusBadge').className = 'badge badge--' + bc;
+            document.getElementById('hunterStatusBadge').textContent = (data.result || 'unknown').toUpperCase();
+            document.getElementById('hunterEmail2').textContent = data.email;
+            document.getElementById('hunterScore').textContent = 'Score: ' + data.score + '/100';
+            document.getElementById('hunterScore').style.color = data.score >= 70 ? '#10b981' : data.score >= 40 ? '#f59e0b' : '#ef4444';
+
+            const checks = [
+                ['MX Records', data.mx_records],
+                ['SMTP Server', data.smtp_server],
+                ['SMTP Check', data.smtp_check],
+                ['Accept All', data.accept_all],
+                ['Disposable', data.disposable],
+                ['Webmail', data.webmail],
+                ['Block', data.block],
+            ];
+            document.getElementById('hunterDetails').innerHTML = checks.map(function(c) {
+                return '<span>' + c[0] + ': ' + (c[1] ? '✅' : '❌') + '</span>';
+            }).join('');
+            document.getElementById('hunterResult').style.display = '';
+        }
+    } catch(e) {
+        document.getElementById('hunterError').textContent = 'Network error';
+        document.getElementById('hunterError').style.display = '';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Verify';
+    }
+}
+</script>
+{% endif %}
+
+{# ── CV / Resume ── #}
+<div class="card" style="padding:var(--space-xl);margin-bottom:var(--space-xl)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-sm)">
+        <div>
+            <div style="font-weight:600;color:var(--text-primary);margin-bottom:2px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-3px;margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                CV / Resume
+            </div>
+            <div class="text-muted" style="font-size:.75rem">Upload your CV to get compatibility scores on job listings</div>
+        </div>
+        {% if user.cvPath %}
+            <span class="badge badge--green">Uploaded</span>
+        {% else %}
+            <span class="badge badge--red">Not uploaded</span>
+        {% endif %}
+    </div>
+
+    {% if user.cvPath %}
+    <div style="display:flex;align-items:center;gap:var(--space-md);padding:var(--space-md);background:var(--bg-secondary);border-radius:var(--radius-md);border:1px solid var(--border-primary);margin-bottom:var(--space-md)">
+        <div style="width:36px;height:36px;border-radius:8px;background:rgba(239,68,68,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div style="flex:1;min-width:0">
+            <div style="font-weight:500;color:var(--text-primary);font-size:.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ user.cvOriginalName }}</div>
+            <div class="text-muted" style="font-size:.75rem">Uploaded {{ user.cvUploadedAt ? user.cvUploadedAt|date('M d, Y') : '' }}</div>
+        </div>
+        <a href="{{ path('app_profile_cv_download') }}" class="btn btn-ghost btn-sm">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+        </a>
+        <form method="post" action="{{ path('app_profile_cv_delete') }}" style="display:inline">
+            <input type="hidden" name="_token" value="{{ csrf_token('cv-delete') }}">
+            <button type="submit" class="btn btn-ghost btn-sm" style="color:#ef4444" onclick="return confirm('Remove your CV?')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                Remove
+            </button>
+        </form>
+    </div>
+    {% if user.cvSkillsText %}
+    <div style="font-size:.75rem;color:var(--text-muted);margin-bottom:var(--space-md)">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Skills extracted — job compatibility scoring is active
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {# Upload form #}
+    <form method="post" action="{{ path('app_profile_upload_cv') }}" enctype="multipart/form-data" id="cvUploadForm">
+        <input type="hidden" name="_token" value="{{ csrf_token('cv-upload') }}">
+        <div id="cvDropZone" style="border:2px dashed var(--border-primary);border-radius:var(--radius-md);padding:var(--space-xl) var(--space-md);text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative">
+            <input type="file" name="cv_file" id="cvFileInput" accept=".pdf,.doc,.docx" style="position:absolute;inset:0;opacity:0;cursor:pointer">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin-bottom:8px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <div id="cvDropLabel" style="font-size:.875rem;color:var(--text-secondary)">{{ user.cvPath ? 'Drop a new CV to replace' : 'Drop your CV here or click to browse' }}</div>
+            <div style="font-size:.75rem;color:var(--text-muted);margin-top:4px">PDF, DOC or DOCX · max 10 MB</div>
+        </div>
+
+        <div style="margin-top:var(--space-md)">
+            <label style="font-size:.8rem;color:var(--text-secondary);display:block;margin-bottom:4px">
+                Skills / keywords (optional — helps with job matching if PDF parsing is unavailable)
+            </label>
+            <textarea name="cv_skills_manual" class="form-control" rows="2"
+                placeholder="e.g. PHP, Symfony, MySQL, Docker, React, Python..."
+                style="font-size:.85rem;resize:vertical">{{ user.cvSkillsText }}</textarea>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;margin-top:var(--space-md)">
+            <button type="submit" class="btn btn-primary btn-sm" id="cvUploadBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                {{ user.cvPath ? 'Replace CV' : 'Upload CV' }}
+            </button>
+        </div>
+    </form>
+</div>
+<script>
+(function(){
+    const dz = document.getElementById('cvDropZone');
+    const fi = document.getElementById('cvFileInput');
+    const lb = document.getElementById('cvDropLabel');
+    if (!dz) return;
+    ['dragover','dragenter'].forEach(e => dz.addEventListener(e, ev => { ev.preventDefault(); dz.style.borderColor='var(--accent-primary)'; dz.style.background='rgba(99,102,241,.04)'; }));
+    ['dragleave','dragend','drop'].forEach(e => dz.addEventListener(e, () => { dz.style.borderColor=''; dz.style.background=''; }));
+    fi.addEventListener('change', () => {
+        if (fi.files[0]) { lb.textContent = fi.files[0].name; lb.style.color='var(--accent-primary)'; }
+    });
+})();
+</script>
+
+{# ── Biometric Authentication (matching Java) ── #}
+<div class="card" style="padding:var(--space-xl)">
+    <div style="font-weight:600;color:var(--text-primary);margin-bottom:2px">Biometric Authentication</div>
+    <div class="text-muted" style="font-size:.75rem;margin-bottom:var(--space-lg)">Use your face to log in securely</div>
+
+    <div style="display:flex;align-items:center;gap:var(--space-lg);margin-bottom:var(--space-lg)">
+        <div style="width:40px;height:40px;border-radius:var(--radius-md);border:1px solid var(--border-primary);display:flex;align-items:center;justify-content:center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </div>
+        <div style="flex:1">
+            <div style="font-weight:500;color:var(--text-primary)">
+                {% if user.faceEncoding %}Face ID enrolled{% else %}Face ID not enrolled{% endif %}
+            </div>
+            <div class="text-muted" style="font-size:.8125rem">
+                {% if user.faceEncoding %}Your face is registered for secure login{% else %}Enroll your face for biometric login{% endif %}
+            </div>
+        </div>
+        <span class="badge badge--{{ user.faceEncoding ? 'green' : 'red' }}">{{ user.faceEncoding ? 'ON' : 'OFF' }}</span>
+    </div>
+
+    <div style="display:flex;gap:var(--space-sm)">
+        <a href="{{ path('app_face_enroll') }}" class="btn btn-primary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            {{ user.faceEncoding ? 'Re-enroll Face' : 'Enroll Face' }}
+        </a>
+        {% if user.faceEncoding %}
+            <form method="post" action="{{ path('app_face_remove') }}" style="display:inline">
+                <input type="hidden" name="_token" value="{{ csrf_token('face_remove') }}">
+                <button type="submit" class="btn btn-ghost btn-sm" onclick="return confirm('Remove Face ID?')">Remove</button>
+            </form>
+        {% endif %}
+        <a href="{{ path('app_face_enroll') }}" class="btn btn-secondary btn-sm" style="margin-left:auto">Test Setup</a>
+    </div>
+</div>
+{% else %}
+<div class="card"><div class="empty-state"><h3>No user data available</h3></div></div>
+{% endif %}
+{% endblock %}

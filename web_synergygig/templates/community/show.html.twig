@@ -1,0 +1,274 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Post by {{ post.author ? post.author.firstName ~ ' ' ~ post.author.lastName : 'Unknown' }}{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/community.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="community-layout">
+    {% include 'community/_sidebar.html.twig' %}
+
+    <main class="community-main">
+        {# ── Back Link ── #}
+        <a href="{{ path('app_community_index') }}" class="back-link" style="display:inline-flex;align-items:center;gap:.4rem;color:#8E8E99;font-size:.85rem;margin-bottom:1rem;text-decoration:none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Back to Feed
+        </a>
+
+        {# ── Flash Messages ── #}
+        {% for type, messages in app.flashes %}
+            {% for msg in messages %}
+                <div class="flash-toast" data-type="{{ type }}">{{ msg|raw }}</div>
+            {% endfor %}
+        {% endfor %}
+
+        {# ── Post Card ── #}
+        <article class="post-card" data-post-id="{{ post.id }}">
+            <div class="post-header">
+                <div class="post-avatar">{{ post.author ? post.author.firstName|first|upper : '?' }}</div>
+                <div class="post-meta">
+                    <strong class="post-author">{{ post.author ? post.author.firstName ~ ' ' ~ post.author.lastName : 'Unknown' }}</strong>
+                    <span class="post-time">
+                        {{ post.createdAt ? post.createdAt|date('M d, Y \\a\\t H:i') : '' }}
+                        {% if post.group %} · {{ post.group.name }}{% endif %}
+                    </span>
+                    {% if post.visibility and post.visibility != 'PUBLIC' %}
+                        <span class="post-badge">{{ post.visibility }}</span>
+                    {% endif %}
+                </div>
+                {% if app.user and post.author and app.user.id == post.author.id %}
+                <details class="post-menu-details">
+                    <summary class="btn-dots" title="Post actions">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                    </summary>
+                    <div class="dropdown-menu">
+                        <button type="button" class="dropdown-item" onclick="var f=this.parentElement.querySelector('.edit-form-inline');f.classList.toggle('show')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            Edit Post
+                        </button>
+                        <div class="edit-form-inline">
+                            <form action="{{ path('app_community_edit', {id: post.id}) }}" method="post" enctype="multipart/form-data">
+                                <input type="hidden" name="_token" value="{{ csrf_token('edit-post-' ~ post.id) }}">
+                                <textarea name="content" rows="4">{{ post.content }}</textarea>
+                                <div style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem;flex-wrap:wrap">
+                                    <label class="composer-tool-btn" style="margin:0">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                        <span class="composer-file-label">Image</span>
+                                        <input type="file" name="media" accept="image/*,video/mp4,video/webm" style="display:none"
+                                            onchange="var lbl=this.parentElement.querySelector('.composer-file-label');if(this.files.length){lbl.textContent=this.files[0].name.length>14?this.files[0].name.substring(0,11)+'...':this.files[0].name;this.parentElement.style.borderColor='#2C666E';this.parentElement.style.color='#90DDF0'}else{lbl.textContent='Image';this.parentElement.style.borderColor='';this.parentElement.style.color=''}">
+                                    </label>
+                                    {% if post.image_base64 %}
+                                    <label style="display:flex;align-items:center;gap:.3rem;color:#8E8E99;font-size:.75rem;cursor:pointer">
+                                        <input type="checkbox" name="remove_media" value="1"> Remove media
+                                    </label>
+                                    {% endif %}
+                                    <div style="margin-left:auto;display:flex;gap:.5rem">
+                                        <button type="submit" class="btn-publish">Save</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <hr style="border-color:#2A2A3C;margin:.5rem 0">
+                        <form action="{{ path('app_community_delete', {id: post.id}) }}" method="post" onsubmit="return confirm('Delete this post?')">
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete-post-' ~ post.id) }}">
+                            <button type="submit" class="dropdown-item dropdown-danger">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                Delete Post
+                            </button>
+                        </form>
+                    </div>
+                </details>
+                {% endif %}
+            </div>
+
+            <div class="post-content" id="post-content-{{ post.id }}">
+                <p>{{ post.content|nl2br }}</p>
+                {% if post.image_base64 %}
+                <div class="post-media">
+                    {% if post.image_base64 starts with 'data:video' %}
+                        <video src="{{ post.image_base64 }}" controls class="post-media-content"></video>
+                    {% else %}
+                        <img src="{{ post.image_base64 }}" alt="Post media" class="post-media-content" loading="lazy">
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            {# ── Reaction Pills + Picker (Twemoji) ── #}
+            <div class="reactions-strip">
+                {% for type, info in emojiMap %}
+                    {% set count = reactions.counts[type]|default(0) %}
+                    {% if count > 0 %}
+                    <form method="post" action="{{ path('app_community_react', {id: post.id}) }}" style="display:inline">
+                        <input type="hidden" name="type" value="{{ type }}">
+                        <button type="submit" class="reaction-pill {{ reactions.userReaction == type ? 'active' : '' }}">
+                            <img src="{{ twemojiCdn }}{{ info.hex }}.png" alt="{{ info.label }}" class="twemoji-icon"> {{ count }}
+                        </button>
+                    </form>
+                    {% endif %}
+                {% endfor %}
+                <details class="reaction-picker-details">
+                    <summary class="reaction-add" title="Add reaction">+</summary>
+                    <div class="reaction-picker">
+                        {% for key, info in emojiMap %}
+                            <form method="post" action="{{ path('app_community_react', {id: post.id}) }}" class="react-emoji-form" style="display:inline">
+                                <input type="hidden" name="type" value="{{ key }}">
+                                <button type="submit" class="reaction-emoji" title="{{ key }}">
+                                    <img src="{{ twemojiCdn }}{{ info.hex }}.png" alt="{{ info.label }}" class="twemoji-icon-lg">
+                                </button>
+                            </form>
+                        {% endfor %}
+                    </div>
+                </details>
+            </div>
+
+            {# ── Engagement Bar ── #}
+            <div class="engagement-bar">
+                <span class="engagement-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    {{ totalComments }} Comments
+                </span>
+                <details class="share-details">
+                    <summary class="engagement-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                        Share
+                    </summary>
+                    <div class="share-dropdown">
+                        <a href="https://www.facebook.com/sharer/sharer.php?u={{ url('app_community_show', {id: post.id})|url_encode }}" target="_blank" rel="noopener" class="share-option">
+                            <span class="share-icon" style="background:#1877F2">f</span>
+                            <span>Facebook</span>
+                        </a>
+                        <a href="https://twitter.com/intent/tweet?url={{ url('app_community_show', {id: post.id})|url_encode }}&text={{ post.content|slice(0,100)|url_encode }}" target="_blank" rel="noopener" class="share-option">
+                            <span class="share-icon" style="background:#1DA1F2">𝕏</span>
+                            <span>Twitter</span>
+                        </a>
+                        <span class="share-option share-url-row">
+                            <span class="share-icon" style="background:#2C666E">🔗</span>
+                            <input type="text" readonly value="{{ url('app_community_show', {id: post.id}) }}" class="share-url-input" title="Select and copy">
+                        </span>
+                    </div>
+                </details>
+                <form method="post" action="{{ path('app_community_bookmark', {id: post.id}) }}" style="display:inline">
+                    <button type="submit" class="engagement-btn btn-save {{ isBookmarked ? 'saved' : '' }}">
+                        <svg class="bookmark-icon" width="16" height="16" viewBox="0 0 24 24" fill="{{ isBookmarked ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                        <span class="bookmark-label">{{ isBookmarked ? 'Saved' : 'Save' }}</span>
+                    </button>
+                </form>
+            </div>
+        </article>
+
+        {# ── Comments Section ── #}
+        <div class="comments-section">
+            <h3 class="comments-title">Comments ({{ totalComments }})</h3>
+
+            {# Add comment #}
+            {% if app.user %}
+            <div class="comment-form-row">
+                <div class="comment-form-avatar">{{ app.user.firstName|first|upper }}</div>
+                <form action="{{ path('app_community_comment', {id: post.id}) }}" method="post" class="comment-form-inline" novalidate>
+                    <input type="text" name="content" class="comment-input" placeholder="Write a comment..." autocomplete="off">
+                    <button type="submit" class="comment-send-btn" title="Send">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+
+            {# Top-level comments #}
+            {% for comment in topComments %}
+            <div class="comment-row" id="comment-{{ comment.id }}">
+                <div class="comment-avatar">{{ comment.author ? comment.author.firstName|first|upper : '?' }}</div>
+                <div class="comment-body">
+                    <div class="comment-header">
+                        <strong>{{ comment.author ? comment.author.firstName ~ ' ' ~ comment.author.lastName : 'Unknown' }}</strong>
+                        <span class="comment-time">{{ comment.createdAt ? comment.createdAt|date('M d \\a\\t H:i') : '' }}</span>
+                        {% if app.user and comment.author and app.user.id == comment.author.id %}
+                        <div style="margin-left:auto;display:flex;gap:.25rem;align-items:center">
+                            <button type="button" class="comment-edit-btn" onclick="var f=this.closest('.comment-body').querySelector('.comment-edit-form');f.style.display=f.style.display==='none'?'flex':'none'" title="Edit">✎</button>
+                            <form action="{{ path('app_community_comment_delete', {id: comment.id}) }}" method="post" onsubmit="return confirm('Delete this comment?')">
+                                <input type="hidden" name="_token" value="{{ csrf_token('delete-comment-' ~ comment.id) }}">
+                                <button type="submit" class="comment-delete-btn">&times;</button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <p class="comment-text" id="comment-text-{{ comment.id }}">{{ comment.content }}</p>
+                    {% if app.user and comment.author and app.user.id == comment.author.id %}
+                    <form action="{{ path('app_community_comment_edit', {id: comment.id}) }}" method="post" class="comment-edit-form comment-form-inline" style="display:none;margin-top:.25rem" novalidate>
+                        <input type="hidden" name="_token" value="{{ csrf_token('edit-comment-' ~ comment.id) }}">
+                        <input type="text" name="content" class="comment-input" value="{{ comment.content }}" autocomplete="off">
+                        <button type="submit" class="comment-send-btn" title="Save">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                        </button>
+                        <button type="button" class="comment-send-btn" title="Cancel" onclick="this.closest('.comment-edit-form').style.display='none'" style="color:#8E8E99">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {# Reply toggle - <details> #}
+                    {% if app.user %}
+                    <details class="reply-details">
+                        <summary class="comment-reply-btn">Reply</summary>
+                        <form action="{{ path('app_community_comment', {id: post.id}) }}" method="post" class="comment-form-inline" style="margin-top:.5rem" novalidate>
+                            <input type="hidden" name="parent_id" value="{{ comment.id }}">
+                            <input type="text" name="content" class="comment-input" placeholder="Reply to {{ comment.author ? comment.author.firstName : 'user' }}..." autocomplete="off">
+                            <button type="submit" class="comment-send-btn" title="Send">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                            </button>
+                        </form>
+                    </details>
+                    {% endif %}
+
+                    {# Replies (threaded) #}
+                    {% if replies[comment.id] is defined %}
+                    <div class="comment-replies">
+                        {% for reply in replies[comment.id] %}
+                        <div class="comment-row comment-reply">
+                            <div class="comment-avatar comment-avatar-sm">{{ reply.author ? reply.author.firstName|first|upper : '?' }}</div>
+                            <div class="comment-body">
+                                <div class="comment-header">
+                                    <strong>{{ reply.author ? reply.author.firstName ~ ' ' ~ reply.author.lastName : 'Unknown' }}</strong>
+                                    <span class="comment-time">{{ reply.createdAt ? reply.createdAt|date('M d \\a\\t H:i') : '' }}</span>
+                                    {% if app.user and reply.author and app.user.id == reply.author.id %}
+                                    <div style="margin-left:auto;display:flex;gap:.25rem;align-items:center">
+                                        <button type="button" class="comment-edit-btn" onclick="var f=this.closest('.comment-body').querySelector('.comment-edit-form');f.style.display=f.style.display==='none'?'flex':'none'" title="Edit">✎</button>
+                                        <form action="{{ path('app_community_comment_delete', {id: reply.id}) }}" method="post" onsubmit="return confirm('Delete this reply?')">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('delete-comment-' ~ reply.id) }}">
+                                            <button type="submit" class="comment-delete-btn">&times;</button>
+                                        </form>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <p class="comment-text">{{ reply.content }}</p>
+                                {% if app.user and reply.author and app.user.id == reply.author.id %}
+                                <form action="{{ path('app_community_comment_edit', {id: reply.id}) }}" method="post" class="comment-edit-form comment-form-inline" style="display:none;margin-top:.25rem" novalidate>
+                                    <input type="hidden" name="_token" value="{{ csrf_token('edit-comment-' ~ reply.id) }}">
+                                    <input type="text" name="content" class="comment-input" value="{{ reply.content }}" autocomplete="off">
+                                    <button type="submit" class="comment-send-btn" title="Save">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </button>
+                                    <button type="button" class="comment-send-btn" title="Cancel" onclick="this.closest('.comment-edit-form').style.display='none'" style="color:#8E8E99">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+                <div class="empty-state" style="padding:2rem">
+                    <p style="color:#8E8E99">No comments yet. Be the first!</p>
+                </div>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+{% endblock %}

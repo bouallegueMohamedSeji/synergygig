@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Payslip — {{ payroll.user ? payroll.user.firstName ~ ' ' ~ payroll.user.lastName : 'Employee' }} — {{ payroll.month }}/{{ payroll.year }}</title>
+    <style>
+        @media print {
+            body { margin: 0; background: #fff !important; color: #0a090c !important; }
+            .no-print { display: none !important; }
+            .payslip-wrapper { box-shadow: none !important; border: 1px solid #ddd !important; }
+            .header-bar { background: #2C666E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; min-height: 100vh; padding: 2rem 1rem; color: #1e293b; }
+
+        .no-print-bar { text-align: center; margin-bottom: 1.5rem; }
+        .btn-action { display: inline-block; padding: .6rem 1.6rem; border: none; border-radius: 8px; cursor: pointer; font-size: .9rem; font-weight: 600; margin: 0 .35rem; }
+        .btn-print { background: #2C666E; color: #fff; }
+        .btn-back { background: #e2e8f0; color: #1e293b; text-decoration: none; }
+
+        .payslip-wrapper { max-width: 760px; margin: 0 auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.12); }
+
+        .header-bar { background: #2C666E; color: #fff; padding: 1.75rem 2rem; display: flex; justify-content: space-between; align-items: flex-start; }
+        .header-bar h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -.5px; }
+        .header-bar .sub { font-size: .8rem; opacity: .75; margin-top: .25rem; }
+        .header-meta { text-align: right; font-size: .82rem; opacity: .9; line-height: 1.8; }
+        .header-meta strong { display: block; font-size: 1rem; }
+
+        .status-strip { padding: .5rem 2rem; font-size: .78rem; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
+        .status-paid { background: #dcfce7; color: #16a34a; }
+        .status-pending { background: #fef9c3; color: #854d0e; }
+        .status-other { background: #e0f2fe; color: #0369a1; }
+
+        .body-pad { padding: 1.75rem 2rem; }
+        .section-title { font-size: .72rem; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #64748b; margin-bottom: .75rem; padding-bottom: .4rem; border-bottom: 1px solid #e2e8f0; }
+
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem 1.5rem; margin-bottom: 1.75rem; }
+        .info-row { display: flex; flex-direction: column; }
+        .info-label { font-size: .72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .4px; }
+        .info-value { font-size: .9rem; font-weight: 600; color: #0f172a; margin-top: .1rem; }
+
+        .earnings-table { width: 100%; border-collapse: collapse; margin-bottom: 1.75rem; font-size: .88rem; }
+        .earnings-table th { background: #f8fafc; padding: .55rem 1rem; text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; color: #64748b; border-bottom: 2px solid #e2e8f0; }
+        .earnings-table td { padding: .65rem 1rem; border-bottom: 1px solid #f1f5f9; color: #334155; }
+        .earnings-table tr:last-child td { border-bottom: none; }
+        .earnings-table .text-right { text-align: right; }
+        .earnings-table .positive { color: #16a34a; font-weight: 600; }
+        .earnings-table .negative { color: #dc2626; font-weight: 600; }
+
+        .net-band { background: #2C666E; color: #fff; padding: 1.1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .net-band .label { font-size: .82rem; opacity: .85; }
+        .net-band .amount { font-size: 1.6rem; font-weight: 700; letter-spacing: -.5px; }
+
+        .footer-note { padding: 1rem 2rem; font-size: .72rem; color: #94a3b8; text-align: center; border-top: 1px solid #f1f5f9; }
+    </style>
+</head>
+<body>
+    <div class="no-print no-print-bar">
+        <button class="btn-action btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+        <a href="javascript:history.back()" class="btn-action btn-back">← Back</a>
+    </div>
+
+    <div class="payslip-wrapper">
+        {# Header #}
+        <div class="header-bar">
+            <div>
+                <h1>SynergyGig</h1>
+                <div class="sub">Pay Slip / Fiche de Paie</div>
+            </div>
+            <div class="header-meta">
+                <strong>{{ (payroll.year ~ '-' ~ ('%02d'|format(payroll.month)) ~ '-01')|date('F Y') }}</strong>
+                Period: {{ payroll.month }}/{{ payroll.year }}<br>
+                Generated: {{ payroll.generatedAt ? payroll.generatedAt|date('d M Y') : 'N/A' }}<br>
+                Ref: #{{ payroll.id }}
+            </div>
+        </div>
+
+        {# Status strip #}
+        <div class="status-strip {% if payroll.status == 'PAID' %}status-paid{% elseif payroll.status == 'PENDING' %}status-pending{% else %}status-other{% endif %}">
+            {{ payroll.status }}
+        </div>
+
+        <div class="body-pad">
+            {# Employee info #}
+            <div class="section-title">Employee Information</div>
+            <div class="info-grid">
+                <div class="info-row">
+                    <span class="info-label">Full Name</span>
+                    <span class="info-value">{{ payroll.user ? payroll.user.firstName ~ ' ' ~ payroll.user.lastName : 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email</span>
+                    <span class="info-value">{{ payroll.user ? payroll.user.email : 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Department</span>
+                    <span class="info-value">{{ payroll.user and payroll.user.department ? payroll.user.department.name : '—' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Role</span>
+                    <span class="info-value">{{ payroll.user ? payroll.user.role : '—' }}</span>
+                </div>
+            </div>
+
+            {# Earnings & deductions #}
+            <div class="section-title">Earnings &amp; Deductions</div>
+            <table class="earnings-table">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th class="text-right">Amount (DA)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Base Salary</td><td class="text-right">{{ payroll.baseSalary|number_format(2, '.', ',') }}</td></tr>
+                    <tr><td>Hours Worked</td><td class="text-right">{{ payroll.totalHoursWorked|number_format(2) }} h @ {{ payroll.hourlyRate|number_format(2) }}/h</td></tr>
+                    <tr><td class="positive">Bonus</td><td class="text-right positive">+ {{ payroll.bonus|number_format(2, '.', ',') }}</td></tr>
+                    <tr><td class="negative">Deductions</td><td class="text-right negative">− {{ payroll.deductions|number_format(2, '.', ',') }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        {# Net salary band #}
+        <div class="net-band">
+            <div class="label">Net Salary / Salaire Net</div>
+            <div class="amount">{{ payroll.netSalary|number_format(2, '.', ',') }} DA</div>
+        </div>
+
+        <div class="footer-note">
+            This is a computer-generated payslip and does not require a signature. &mdash; SynergyGig HR Platform &copy; {{ "now"|date('Y') }}
+        </div>
+    </div>
+</body>
+</html>

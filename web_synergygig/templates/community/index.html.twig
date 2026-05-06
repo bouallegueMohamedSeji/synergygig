@@ -1,0 +1,226 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Community{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/community.css') }}">
+{% endblock %}
+
+{% block content %}
+{% set aiText = app.session.get('ai_composer_text') %}
+{% if aiText is not null %}{% do app.session.remove('ai_composer_text') %}{% endif %}
+
+<div class="community-layout">
+    {% include 'community/_sidebar.html.twig' %}
+
+    <main class="community-main">
+        {# ── Post Composer ── #}
+        <div class="post-card post-composer">
+            <details class="composer-details"{{ aiText ? ' open' : '' }}>
+                <summary class="post-composer-toggle">
+                    <div class="composer-avatar">
+                        {{ app.user.firstName|default('U')|first|upper }}
+                    </div>
+                    <span class="composer-placeholder">What's on your mind, {{ app.user.firstName|default('User') }}?</span>
+                </summary>
+                <div class="post-form-body">
+                    <form action="{{ path('app_community_new') }}" method="post" enctype="multipart/form-data">
+                        <input type="hidden" name="_token" value="{{ csrf_token('new_post') }}">
+                        <textarea name="content" id="composer-textarea" rows="3" placeholder="Write something..." spellcheck="true">{{ aiText }}</textarea>
+                        <div class="composer-toolbar">
+                            <div class="composer-tools">
+                                <select name="visibility" class="visibility-select">
+                                    <option value="PUBLIC">🌍 Public</option>
+                                    <option value="FRIENDS">👥 Friends</option>
+                                    <option value="PRIVATE">🔒 Private</option>
+                                </select>
+                                <label class="composer-tool-btn" title="Add image or video">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                    <span class="composer-file-label">Image</span>
+                                    <input type="file" name="media" accept="image/*,video/mp4,video/webm" style="display:none"
+                                        onchange="var lbl=this.parentElement.querySelector('.composer-file-label');if(this.files.length){lbl.textContent=this.files[0].name.length>18?this.files[0].name.substring(0,15)+'...':this.files[0].name;this.parentElement.style.borderColor='#2C666E';this.parentElement.style.color='#90DDF0'}else{lbl.textContent='Image';this.parentElement.style.borderColor='';this.parentElement.style.color=''}">
+                                </label>
+                                <button type="submit" formaction="{{ path('app_community_ai_improve') }}" name="ai_action" value="improve" class="composer-tool-btn" title="AI Improve text">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                                    <span>AI Improve</span>
+                                </button>
+                                <button type="submit" formaction="{{ path('app_community_ai_improve') }}" name="ai_action" value="tone" class="composer-tool-btn" title="Analyze tone">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    <span>Check Tone</span>
+                                </button>
+                            </div>
+                            <div class="composer-actions">
+                                <button type="submit" class="btn-publish">Post</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </details>
+        </div>
+
+        {# ── Flash Messages ── #}
+        {% for type, messages in app.flashes %}
+            {% for msg in messages %}
+                <div class="flash-toast" data-type="{{ type }}">{{ msg|raw }}</div>
+            {% endfor %}
+        {% endfor %}
+
+        {# ── Posts Feed ── #}
+        {% for post in posts %}
+        {% set r = reactions[post.id]|default({counts:{}, userReaction:null, total:0}) %}
+        <article class="post-card" data-post-id="{{ post.id }}">
+            <div class="post-header">
+                <div class="post-avatar">{{ post.author ? post.author.firstName|first|upper : '?' }}</div>
+                <div class="post-meta">
+                    <strong class="post-author">{{ post.author ? post.author.firstName ~ ' ' ~ post.author.lastName : 'Unknown' }}</strong>
+                    <span class="post-time">{{ post.createdAt ? post.createdAt|date('M d, Y \\a\\t H:i') : '' }}</span>
+                    {% if post.visibility and post.visibility != 'PUBLIC' %}
+                        <span class="post-badge">{{ post.visibility }}</span>
+                    {% endif %}
+                </div>
+                {% if app.user and post.author and app.user.id == post.author.id %}
+                <details class="post-menu-details">
+                    <summary class="btn-dots" title="Post actions">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                    </summary>
+                    <div class="dropdown-menu">
+                        <button type="button" class="dropdown-item" onclick="var f=this.parentElement.querySelector('.edit-form-inline');f.classList.toggle('show')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            Edit Post
+                        </button>
+                        <div class="edit-form-inline">
+                            <form action="{{ path('app_community_edit', {id: post.id}) }}" method="post" enctype="multipart/form-data">
+                                <input type="hidden" name="_token" value="{{ csrf_token('edit-post-' ~ post.id) }}">
+                                <input type="hidden" name="from" value="index">
+                                <textarea name="content" rows="3">{{ post.content }}</textarea>
+                                <div style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem;flex-wrap:wrap">
+                                    <label class="composer-tool-btn" style="margin:0">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                        <span class="composer-file-label">Image</span>
+                                        <input type="file" name="media" accept="image/*,video/mp4,video/webm" style="display:none"
+                                            onchange="var lbl=this.parentElement.querySelector('.composer-file-label');if(this.files.length){lbl.textContent=this.files[0].name.length>14?this.files[0].name.substring(0,11)+'...':this.files[0].name;this.parentElement.style.borderColor='#2C666E';this.parentElement.style.color='#90DDF0'}else{lbl.textContent='Image';this.parentElement.style.borderColor='';this.parentElement.style.color=''}">
+                                    </label>
+                                    {% if post.image_base64 %}
+                                    <label style="display:flex;align-items:center;gap:.3rem;color:#8E8E99;font-size:.75rem;cursor:pointer">
+                                        <input type="checkbox" name="remove_media" value="1"> Remove media
+                                    </label>
+                                    {% endif %}
+                                    <div style="margin-left:auto;display:flex;gap:.5rem">
+                                        <button type="submit" class="btn-publish">Save</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                        <hr style="border-color:#2A2A3C;margin:.5rem 0">
+                        <form action="{{ path('app_community_delete', {id: post.id}) }}" method="post" onsubmit="return confirm('Delete this post?')">
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete-post-' ~ post.id) }}">
+                            <button type="submit" class="dropdown-item dropdown-danger">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                Delete Post
+                            </button>
+                        </form>
+                    </div>
+                </details>
+                {% endif %}
+            </div>
+
+            <div class="post-content" id="post-content-{{ post.id }}">
+                <p>{{ post.content|nl2br }}</p>
+                {% if post.image_base64 %}
+                <div class="post-media">
+                    {% if post.image_base64 starts with 'data:video' %}
+                        <video src="{{ post.image_base64 }}" controls class="post-media-content"></video>
+                    {% else %}
+                        <img src="{{ post.image_base64 }}" alt="Post media" class="post-media-content" loading="lazy">
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            {# ── Reactions display (Twemoji) ── #}
+            <div class="reactions-strip">
+                {% for type, info in emojiMap %}
+                    {% set count = r.counts[type]|default(0) %}
+                    {% if count > 0 %}
+                    <form method="post" action="{{ path('app_community_react', {id: post.id}) }}" style="display:inline">
+                        <input type="hidden" name="type" value="{{ type }}">
+                        <input type="hidden" name="from" value="index">
+                        <button type="submit" class="reaction-pill {{ r.userReaction == type ? 'active' : '' }}">
+                            <img src="{{ twemojiCdn }}{{ info.hex }}.png" alt="{{ info.label }}" class="twemoji-icon"> {{ count }}
+                        </button>
+                    </form>
+                    {% endif %}
+                {% endfor %}
+                <details class="reaction-picker-details">
+                    <summary class="reaction-add" title="Add reaction">+</summary>
+                    <div class="reaction-picker">
+                        {% for key, info in emojiMap %}
+                            <form method="post" action="{{ path('app_community_react', {id: post.id}) }}" class="react-emoji-form" style="display:inline">
+                                <input type="hidden" name="type" value="{{ key }}">
+                                <input type="hidden" name="from" value="index">
+                                <button type="submit" class="reaction-emoji" title="{{ key }}">
+                                    <img src="{{ twemojiCdn }}{{ info.hex }}.png" alt="{{ info.label }}" class="twemoji-icon-lg">
+                                </button>
+                            </form>
+                        {% endfor %}
+                    </div>
+                </details>
+            </div>
+
+            {# ── Engagement bar ── #}
+            <div class="engagement-bar">
+                <a href="{{ path('app_community_show', {id: post.id}) }}" class="engagement-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    {{ post.commentsCount ?? 0 }} Comments
+                </a>
+                <details class="share-details">
+                    <summary class="engagement-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                        Share
+                    </summary>
+                    <div class="share-dropdown">
+                        <a href="https://www.facebook.com/sharer/sharer.php?u={{ url('app_community_show', {id: post.id})|url_encode }}" target="_blank" rel="noopener" class="share-option">
+                            <span class="share-icon" style="background:#1877F2">f</span>
+                            <span>Facebook</span>
+                        </a>
+                        <a href="https://twitter.com/intent/tweet?url={{ url('app_community_show', {id: post.id})|url_encode }}&text={{ post.content|slice(0,100)|url_encode }}" target="_blank" rel="noopener" class="share-option">
+                            <span class="share-icon" style="background:#1DA1F2">𝕏</span>
+                            <span>Twitter</span>
+                        </a>
+                        <span class="share-option share-url-row">
+                            <span class="share-icon" style="background:#2C666E">🔗</span>
+                            <input type="text" readonly value="{{ url('app_community_show', {id: post.id}) }}" class="share-url-input" title="Select and copy">
+                        </span>
+                    </div>
+                </details>
+                <form method="post" action="{{ path('app_community_bookmark', {id: post.id}) }}" style="display:inline">
+                    <input type="hidden" name="from" value="{{ tab == 'saved' ? 'saved' : 'index' }}">
+                    <button type="submit" class="engagement-btn btn-save {{ post.id in bookmarkedIds ? 'saved' : '' }}">
+                        <svg class="bookmark-icon" width="16" height="16" viewBox="0 0 24 24" fill="{{ post.id in bookmarkedIds ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                        <span class="bookmark-label">{{ post.id in bookmarkedIds ? 'Saved' : 'Save' }}</span>
+                    </button>
+                </form>
+            </div>
+        </article>
+        {% else %}
+            <div class="empty-state">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <h3>No posts yet</h3>
+                <p>Be the first to share something with the community!</p>
+            </div>
+        {% endfor %}
+    </main>
+</div>
+
+{# ── Minimal inline script: ONLY for emoji insertion into textarea (impossible without JS) ── #}
+<script>
+document.querySelectorAll('.emoji-pick-btn').forEach(function(b){
+    b.addEventListener('click',function(){
+        var t=document.getElementById('composer-textarea');
+        if(t){var s=t.selectionStart,e=b.dataset.emoji;t.value=t.value.slice(0,s)+e+t.value.slice(t.selectionEnd);t.selectionStart=t.selectionEnd=s+e.length;t.focus();}
+    });
+});
+</script>
+{% endblock %}
+

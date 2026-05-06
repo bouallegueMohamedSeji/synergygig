@@ -1,0 +1,55 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Interview #{{ interview.id }}{% endblock %}
+
+{% block header_actions %}
+    {% if is_granted('ROLE_HR') %}
+    <a href="{{ path('app_interview_edit', {id: interview.id}) }}" class="btn btn-primary btn-sm">Edit</a>
+    {% endif %}
+    <a href="{{ path('app_interview_index') }}" class="btn btn-ghost btn-sm">Back</a>
+{% endblock %}
+
+{% block content %}
+{# Stat cards #}
+<div class="bento-grid" style="grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem">
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Status</div>
+        {% set sc = {'PENDING': 'blue', 'ACCEPTED': 'green', 'REJECTED': 'red', 'COMPLETED': 'green', 'CANCELLED': 'red'} %}
+        <span class="badge badge--{{ sc[interview.status] ?? 'blue' }}">{{ interview.status ?? 'N/A' }}</span>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Organizer</div>
+        <div style="font-weight:600;color:var(--text-primary)">{% if interview.organizer %}{{ interview.organizer.firstName }} {{ interview.organizer.lastName }}{% else %}—{% endif %}</div>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Candidate</div>
+        <div style="font-weight:600;color:var(--text-primary)">{% if interview.candidate %}{{ interview.candidate.firstName }} {{ interview.candidate.lastName }}{% else %}—{% endif %}</div>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Date &amp; Time</div>
+        <div style="font-weight:600;color:var(--text-primary)">{{ interview.dateTime ? interview.dateTime|date('M d, Y H:i') : '—' }}</div>
+    </div>
+</div>
+
+{# Details table #}
+<div class="card">
+    <div class="card__header"><h4>Details</h4></div>
+    <div class="table-wrap">
+        <table class="table">
+            <tr><td class="text-muted" style="width:200px">Offer</td><td>{% if interview.offer %}{{ interview.offer.title }}{% else %}—{% endif %}</td></tr>
+            <tr><td class="text-muted">Meet Link</td><td>{% if interview.meetLink %}<a href="{{ interview.meetLink }}" target="_blank" style="color:var(--accent-blue)">{{ interview.meetLink }}</a>{% else %}—{% endif %}</td></tr>
+            <tr><td class="text-muted">Created</td><td>{{ interview.createdAt ? interview.createdAt|date('M d, Y H:i') : '—' }}</td></tr>
+        </table>
+    </div>
+</div>
+
+{# Delete #}
+{% if is_granted('ROLE_HR') %}
+<div style="margin-top:2rem">
+    <form method="post" action="{{ path('app_interview_delete', {id: interview.id}) }}" onsubmit="return confirm('Delete this interview?')">
+        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ interview.id) }}">
+        <button class="btn btn-danger btn-sm">Delete Interview</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

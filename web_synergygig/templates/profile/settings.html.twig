@@ -1,0 +1,293 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Settings | SynergyGig{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:200px 1fr;gap:var(--space-xl);align-items:start">
+    {# ── Settings Sidebar ── #}
+    <div class="card" style="padding:var(--space-md)">
+        <div class="text-muted" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.5px;padding:.5rem .75rem;margin-bottom:var(--space-xs)">Settings</div>
+
+        <a href="#voice" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:var(--radius-md);background:var(--accent-primary);color:#fff;text-decoration:none;font-weight:600;font-size:.875rem;margin-bottom:2px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+            Voice &amp; Video
+        </a>
+        <a href="#notifications" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:var(--radius-md);color:var(--text-secondary);text-decoration:none;font-size:.875rem;margin-bottom:2px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Notifications
+        </a>
+        <a href="#api" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:var(--radius-md);color:var(--text-secondary);text-decoration:none;font-size:.875rem;margin-bottom:2px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+            API Keys
+        </a>
+        <a href="#theme" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:var(--radius-md);color:var(--text-secondary);text-decoration:none;font-size:.875rem;margin-bottom:2px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            Theme Schedule
+        </a>
+        <a href="#language" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:var(--radius-md);color:var(--text-secondary);text-decoration:none;font-size:.875rem;margin-bottom:2px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            Language
+        </a>
+        <a href="#password" style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:var(--radius-md);color:var(--text-secondary);text-decoration:none;font-size:.875rem">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Change Password
+        </a>
+    </div>
+
+    {# ── Settings Content ── #}
+    <div>
+        {# Voice & Video #}
+        <div class="card" style="margin-bottom:var(--space-xl);padding:var(--space-xl)" id="voice">
+            <h2 style="font-size:1.25rem;color:var(--text-primary);margin:0 0 var(--space-xl)">Voice &amp; Video</h2>
+
+            <div style="margin-bottom:var(--space-xl)">
+                <label class="form-label" style="text-transform:uppercase;font-size:.75rem;letter-spacing:.5px">Input Device</label>
+                <select id="settingInputDevice" class="form-control form-select">
+                    <option value="">Loading devices…</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:var(--space-xl)">
+                <label class="form-label" style="text-transform:uppercase;font-size:.75rem;letter-spacing:.5px">Input Volume</label>
+                <div style="display:flex;align-items:center;gap:var(--space-md)">
+                    <input id="settingInputVol" type="range" min="0" max="200" value="100"
+                           style="flex:1;accent-color:var(--accent-primary);cursor:pointer">
+                    <span id="settingInputVolLabel" style="color:var(--accent-primary);font-weight:600;min-width:50px;text-align:right">100%</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom:var(--space-xl)">
+                <label class="form-label" style="text-transform:uppercase;font-size:.75rem;letter-spacing:.5px">Output Device</label>
+                <select id="settingOutputDevice" class="form-control form-select">
+                    <option value="">Loading devices…</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:var(--space-xl)">
+                <label class="form-label" style="text-transform:uppercase;font-size:.75rem;letter-spacing:.5px">Output Volume</label>
+                <div style="display:flex;align-items:center;gap:var(--space-md)">
+                    <input id="settingOutputVol" type="range" min="0" max="300" value="100"
+                           style="flex:1;accent-color:var(--accent-primary);cursor:pointer">
+                    <span id="settingOutputVolLabel" style="color:var(--accent-primary);font-weight:600;min-width:50px;text-align:right">100%</span>
+                </div>
+            </div>
+
+            <h3 style="font-size:1.125rem;color:var(--text-primary);margin:var(--space-xl) 0 var(--space-lg)">Screen Share</h3>
+
+            <div style="margin-bottom:var(--space-lg)">
+                <label class="form-label" style="text-transform:uppercase;font-size:.75rem;letter-spacing:.5px">Resolution</label>
+                <select id="settingResolution" class="form-control form-select">
+                    <option value="1280x720">720p (1280×720)</option>
+                    <option value="1920x1080">1080p (1920×1080)</option>
+                    <option value="854x480">480p (854×480)</option>
+                    <option value="2560x1440">1440p (2560×1440)</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom:var(--space-lg)">
+                <label class="form-label" style="text-transform:uppercase;font-size:.75rem;letter-spacing:.5px">Frame Rate</label>
+                <div style="display:flex;align-items:center;gap:var(--space-md)">
+                    <input id="settingFps" type="range" min="1" max="60" step="1" value="30"
+                           style="flex:1;accent-color:var(--accent-primary);cursor:pointer">
+                    <span id="settingFpsLabel" style="color:var(--text-primary);font-weight:500;min-width:50px;text-align:right">30 fps</span>
+                </div>
+                <div style="display:flex;gap:0.4rem;margin-top:0.4rem">
+                    <button type="button" onclick="var s=document.getElementById('settingFps');s.value=15;s.dispatchEvent(new Event('input'))"
+                            style="padding:0.15rem 0.55rem;border:1px solid var(--border-primary,#ccc);border-radius:4px;background:var(--bg-secondary,#f3f4f6);color:var(--text-secondary,#555);font-size:0.75rem;cursor:pointer">15 fps</button>
+                    <button type="button" onclick="var s=document.getElementById('settingFps');s.value=30;s.dispatchEvent(new Event('input'))"
+                            style="padding:0.15rem 0.55rem;border:1px solid var(--border-primary,#ccc);border-radius:4px;background:var(--bg-secondary,#f3f4f6);color:var(--text-secondary,#555);font-size:0.75rem;cursor:pointer">30 fps</button>
+                    <button type="button" onclick="var s=document.getElementById('settingFps');s.value=60;s.dispatchEvent(new Event('input'))"
+                            style="padding:0.15rem 0.55rem;border:1px solid var(--border-primary,#ccc);border-radius:4px;background:var(--bg-secondary,#f3f4f6);color:var(--text-secondary,#555);font-size:0.75rem;cursor:pointer">60 fps</button>
+                </div>
+            </div>
+
+            <div>
+                <label class="form-label" style="text-transform:uppercase;font-size:.75rem;letter-spacing:.5px">Quality (bandwidth)</label>
+                <div style="display:flex;align-items:center;gap:var(--space-md)">
+                    <input id="settingQuality" type="range" min="10" max="100" step="5" value="80"
+                           style="flex:1;accent-color:var(--accent-primary);cursor:pointer">
+                    <span id="settingQualityLabel" style="color:var(--text-primary);font-weight:500;min-width:50px;text-align:right">80%</span>
+                </div>
+            </div>
+
+            <div style="margin-top:var(--space-xl)">
+                <button id="settingSaveVoice" class="btn btn-primary" style="margin-right:var(--space-md)">Save Settings</button>
+                <span id="settingSaveStatus" style="font-size:.85rem;color:var(--color-success);display:none">✓ Saved</span>
+            </div>
+        </div>
+
+        <script>
+        (function(){
+            const LS = 'sg_voice_settings';
+
+            // Restore saved settings
+            function load() {
+                try {
+                    const s = JSON.parse(localStorage.getItem(LS) || '{}');
+                    if (s.inputVol  !== undefined) document.getElementById('settingInputVol').value  = s.inputVol;
+                    if (s.outputVol !== undefined) document.getElementById('settingOutputVol').value = s.outputVol;
+                    if (s.fps       !== undefined) document.getElementById('settingFps').value       = s.fps;
+                    if (s.quality   !== undefined) document.getElementById('settingQuality').value   = s.quality;
+                    if (s.resolution) {
+                        const sel = document.getElementById('settingResolution');
+                        for (let i = 0; i < sel.options.length; i++) {
+                            if (sel.options[i].value === s.resolution) { sel.selectedIndex = i; break; }
+                        }
+                    }
+                    updateLabels();
+                } catch(e) {}
+            }
+
+            function updateLabels() {
+                document.getElementById('settingInputVolLabel').textContent  = document.getElementById('settingInputVol').value  + '%';
+                document.getElementById('settingOutputVolLabel').textContent = document.getElementById('settingOutputVol').value + '%';
+                document.getElementById('settingFpsLabel').textContent       = document.getElementById('settingFps').value       + ' fps';
+                document.getElementById('settingQualityLabel').textContent   = document.getElementById('settingQuality').value   + '%';
+            }
+
+            // Live label updates
+            ['settingInputVol','settingOutputVol','settingFps','settingQuality'].forEach(function(id) {
+                document.getElementById(id).addEventListener('input', updateLabels);
+            });
+
+            // Populate audio devices
+            async function populateDevices() {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+                try {
+                    // Request permission first so labels are available
+                    await navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop())).catch(() => {});
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const saved = JSON.parse(localStorage.getItem(LS) || '{}');
+
+                    const inSel  = document.getElementById('settingInputDevice');
+                    const outSel = document.getElementById('settingOutputDevice');
+                    inSel.innerHTML  = '';
+                    outSel.innerHTML = '';
+
+                    let hasIn = false, hasOut = false;
+                    devices.forEach(function(d) {
+                        if (d.kind === 'audioinput') {
+                            const opt = document.createElement('option');
+                            opt.value = d.deviceId;
+                            opt.textContent = d.label || ('Microphone ' + (inSel.options.length + 1));
+                            if (saved.inputDeviceId === d.deviceId) opt.selected = true;
+                            inSel.appendChild(opt);
+                            hasIn = true;
+                        } else if (d.kind === 'audiooutput') {
+                            const opt = document.createElement('option');
+                            opt.value = d.deviceId;
+                            opt.textContent = d.label || ('Speaker ' + (outSel.options.length + 1));
+                            if (saved.outputDeviceId === d.deviceId) opt.selected = true;
+                            outSel.appendChild(opt);
+                            hasOut = true;
+                        }
+                    });
+                    if (!hasIn)  inSel.innerHTML  = '<option value="">No microphone found</option>';
+                    if (!hasOut) outSel.innerHTML = '<option value="">No speaker found</option>';
+                } catch(e) {
+                    document.getElementById('settingInputDevice').innerHTML  = '<option value="">Permission required</option>';
+                    document.getElementById('settingOutputDevice').innerHTML = '<option value="">Permission required</option>';
+                }
+            }
+
+            // Save button
+            document.getElementById('settingSaveVoice').addEventListener('click', function() {
+                const s = {
+                    inputDeviceId:  document.getElementById('settingInputDevice').value,
+                    outputDeviceId: document.getElementById('settingOutputDevice').value,
+                    inputVol:       document.getElementById('settingInputVol').value,
+                    outputVol:      document.getElementById('settingOutputVol').value,
+                    resolution:     document.getElementById('settingResolution').value,
+                    fps:            document.getElementById('settingFps').value,
+                    quality:        document.getElementById('settingQuality').value,
+                };
+                localStorage.setItem(LS, JSON.stringify(s));
+                const status = document.getElementById('settingSaveStatus');
+                status.style.display = 'inline';
+                setTimeout(function() { status.style.display = 'none'; }, 2000);
+            });
+
+            load();
+            populateDevices();
+        })();
+        </script>
+
+        {# Notifications #}
+        <div class="card" style="margin-bottom:var(--space-xl);padding:var(--space-xl)" id="notifications">
+            <h2 style="font-size:1.25rem;color:var(--text-primary);margin:0 0 var(--space-xl)">Notifications</h2>
+
+            {% set notifs = ['Email Notifications', 'Push Notifications', 'Interview Reminders', 'Leave Approval Alerts', 'Payroll Updates', 'Community Activity'] %}
+            {% for n in notifs %}
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-md) 0;{% if not loop.last %}border-bottom:1px solid var(--border-primary);{% endif %}">
+                <span style="color:var(--text-primary)">{{ n }}</span>
+                <span class="badge badge--green" style="cursor:default">ON</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        {# Theme Schedule #}
+        <div class="card" style="margin-bottom:var(--space-xl);padding:var(--space-xl)" id="theme">
+            <h2 style="font-size:1.25rem;color:var(--text-primary);margin:0 0 var(--space-xl)">Theme Schedule</h2>
+            <p class="text-muted" style="margin-bottom:var(--space-lg)">Current theme: <strong style="color:var(--accent-primary)">Dark Mode</strong></p>
+            <div style="display:flex;gap:var(--space-md)">
+                <div class="card" style="flex:1;text-align:center;padding:var(--space-lg);border:2px solid var(--accent-primary)">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" stroke-width="2" style="margin-bottom:.5rem"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                    <div style="color:var(--text-primary);font-weight:500;font-size:.875rem">Dark</div>
+                </div>
+                <div class="card" style="flex:1;text-align:center;padding:var(--space-lg);opacity:.5">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:.5rem"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+                    <div style="color:var(--text-secondary);font-weight:500;font-size:.875rem">Light</div>
+                </div>
+            </div>
+        </div>
+
+        {# Language #}
+        <div class="card" style="margin-bottom:var(--space-xl);padding:var(--space-xl)" id="language">
+            <h2 style="font-size:1.25rem;color:var(--text-primary);margin:0 0 var(--space-xl)">Language</h2>
+            <div style="margin-bottom:var(--space-lg)">
+                <label class="form-label">Interface Language</label>
+                <select class="form-control form-select" style="max-width:300px">
+                    <option selected>English</option>
+                    <option>Français</option>
+                    <option>العربية</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">Date Format</label>
+                <select class="form-control form-select" style="max-width:300px">
+                    <option selected>MMM dd, yyyy</option>
+                    <option>dd/MM/yyyy</option>
+                    <option>yyyy-MM-dd</option>
+                </select>
+            </div>
+        </div>
+
+        {# Change Password #}
+        <div class="card" style="padding:var(--space-xl)" id="password">
+            <h2 style="font-size:1.25rem;color:var(--text-primary);margin:0 0 var(--space-xl)">Change Password</h2>
+            {% for msg in app.flashes('error') %}
+                <div style="background:rgba(220,53,69,.15);color:#dc3545;padding:var(--space-sm) var(--space-md);border-radius:var(--radius-md);margin-bottom:var(--space-lg);font-size:.875rem">{{ msg }}</div>
+            {% endfor %}
+            {% for msg in app.flashes('success') %}
+                <div style="background:rgba(40,167,69,.15);color:#28a745;padding:var(--space-sm) var(--space-md);border-radius:var(--radius-md);margin-bottom:var(--space-lg);font-size:.875rem">{{ msg }}</div>
+            {% endfor %}
+            <form method="post" action="{{ path('app_profile_password') }}" novalidate>
+                <div class="form-group" style="margin-bottom:var(--space-lg)">
+                    <label class="form-label">Current Password</label>
+                    <input type="password" name="current_password" class="form-control" style="max-width:400px">
+                </div>
+                <div class="form-group" style="margin-bottom:var(--space-lg)">
+                    <label class="form-label">New Password</label>
+                    <input type="password" name="new_password" class="form-control" style="max-width:400px">
+                </div>
+                <div class="form-group" style="margin-bottom:var(--space-lg)">
+                    <label class="form-label">Confirm New Password</label>
+                    <input type="password" name="confirm_password" class="form-control" style="max-width:400px">
+                </div>
+                <button type="submit" class="btn btn-primary">Update Password</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

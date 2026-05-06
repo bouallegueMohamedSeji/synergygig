@@ -1,0 +1,150 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Resume Parser | AI Tools{% endblock %}
+{% block page_title %}AI Resume Parser{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_ai_index') }}" class="btn btn-ghost btn-sm">← All Tools</a>
+{% endblock %}
+
+{% block content %}
+{# ── Upload / Paste Area ── #}
+<div id="inputSection">
+    <div class="card" style="padding:1.5rem;max-width:700px;margin:0 auto">
+        <h3 style="margin:0 0 1rem;font-size:1rem">Paste Resume Text</h3>
+        <p class="text-muted" style="font-size:0.85rem;margin-bottom:1rem">Paste the full text of a resume below. For best results, copy from a PDF or plain text file.</p>
+
+        <textarea id="resumeText" class="form-input" rows="12" placeholder="John Doe&#10;john.doe@email.com&#10;+1 555-0123&#10;&#10;Senior Software Engineer with 8+ years of experience in Java, Python, and cloud technologies…&#10;&#10;SKILLS&#10;Java, Spring Boot, Python, Docker, AWS, PostgreSQL&#10;&#10;EXPERIENCE&#10;Senior Engineer — TechCorp (2020-Present)&#10;Led a team of 5 engineers…"
+            style="font-size:0.9rem;line-height:1.6"></textarea>
+
+        <div style="display:flex;gap:0.75rem;margin-top:1rem">
+            <button id="btnParse" class="btn btn-primary" onclick="parseResume()">📄 Parse Resume</button>
+        </div>
+    </div>
+</div>
+
+{# ── Loading ── #}
+<div id="loading" style="display:none;text-align:center;padding:3rem">
+    <div class="spinner"></div>
+    <p class="text-muted" style="margin-top:1rem">Parsing resume…</p>
+</div>
+
+{# ── Results ── #}
+<div id="resultSection" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+        <h3 style="margin:0">Parsed Resume</h3>
+        <div style="display:flex;gap:0.75rem">
+            <button class="btn btn-ghost btn-sm" onclick="copyJson()">📋 Copy JSON</button>
+            <button class="btn btn-ghost btn-sm" onclick="resetParser()">🔄 Parse Another</button>
+        </div>
+    </div>
+
+    {# Identity Card #}
+    <div class="card" style="padding:1.25rem;margin-bottom:1.25rem">
+        <div style="display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap">
+            <div id="resAvatar" style="width:56px;height:56px;border-radius:50%;background:var(--accent-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.25rem;font-weight:700;flex-shrink:0"></div>
+            <div style="flex:1;min-width:200px">
+                <div id="resName" style="font-size:1.15rem;font-weight:700;color:var(--text-primary)"></div>
+                <div id="resSummary" class="text-muted" style="font-size:0.85rem;margin-top:0.25rem"></div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:1rem;font-size:0.85rem" class="text-muted">
+                <span>📧 <span id="resEmail"></span></span>
+                <span>📱 <span id="resPhone"></span></span>
+                <span>📍 <span id="resLocation"></span></span>
+            </div>
+        </div>
+    </div>
+
+    {# Skills #}
+    <div class="card" style="padding:1.25rem;margin-bottom:1.25rem">
+        <h4 style="margin:0 0 0.75rem;font-size:0.95rem">🛠 Skills</h4>
+        <div id="resSkills" style="display:flex;flex-wrap:wrap;gap:0.5rem"></div>
+    </div>
+
+    {# Experience + Education side by side #}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem">
+        <div class="card" style="padding:1.25rem">
+            <h4 style="margin:0 0 0.75rem;font-size:0.95rem">💼 Experience</h4>
+            <div id="resExperience"></div>
+        </div>
+        <div class="card" style="padding:1.25rem">
+            <h4 style="margin:0 0 0.75rem;font-size:0.95rem">🎓 Education</h4>
+            <div id="resEducation"></div>
+            <h4 style="margin:1rem 0 0.5rem;font-size:0.95rem">📜 Certifications</h4>
+            <div id="resCerts"></div>
+            <h4 style="margin:1rem 0 0.5rem;font-size:0.95rem">🌐 Languages</h4>
+            <div id="resLangs"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+.spinner{width:32px;height:32px;border:3px solid var(--border-primary);border-top-color:var(--accent-primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.skill-pill{display:inline-block;padding:.25rem .7rem;border-radius:999px;background:rgba(59,130,246,.15);color:#60a5fa;font-size:.8rem;font-weight:500}
+.exp-card{padding:.75rem 0;border-bottom:1px solid var(--border-primary)}
+.exp-card:last-child{border-bottom:none}
+</style>
+
+<script>
+let parsedJson=null;
+
+async function parseResume(){
+    const text=document.getElementById('resumeText').value.trim();
+    if(text.length<30){alert('Please enter at least 30 characters.');return}
+    document.getElementById('inputSection').style.display='none';
+    document.getElementById('loading').style.display='block';
+
+    try{
+        const r=await fetch('{{ path("app_ai_resume_parser_process") }}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+        const d=await r.json();
+        if(d.error){alert(d.error);document.getElementById('inputSection').style.display='block';return}
+        parsedJson=d;
+        renderResult(d);
+        document.getElementById('resultSection').style.display='block';
+    }catch(e){alert('Error: '+e.message);document.getElementById('inputSection').style.display='block'}
+    finally{document.getElementById('loading').style.display='none'}
+}
+
+function renderResult(d){
+    const initials=(d.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    document.getElementById('resAvatar').textContent=initials;
+    document.getElementById('resName').textContent=d.name||'Unknown';
+    document.getElementById('resSummary').textContent=d.summary||'';
+    document.getElementById('resEmail').textContent=d.email||'N/A';
+    document.getElementById('resPhone').textContent=d.phone||'N/A';
+    document.getElementById('resLocation').textContent=d.location||'N/A';
+
+    // Skills
+    const sk=document.getElementById('resSkills');
+    sk.innerHTML='';
+    (d.skills||[]).forEach(s=>{const el=document.createElement('span');el.className='skill-pill';el.textContent=s;sk.appendChild(el)});
+
+    // Experience
+    const ex=document.getElementById('resExperience');
+    ex.innerHTML='';
+    (d.experience||[]).forEach(e=>{
+        ex.innerHTML+=`<div class="exp-card"><div style="font-weight:600;color:var(--text-primary)">${esc(e.title)}</div>`
+            +`<div class="text-muted" style="font-size:.85rem">${esc(e.company)}${e.period?' · '+esc(e.period):''}</div>`
+            +(e.description?`<div style="font-size:.85rem;margin-top:.25rem">${esc(e.description)}</div>`:'')
+            +`</div>`;
+    });
+    if(!d.experience||!d.experience.length) ex.innerHTML='<span class="text-muted">None detected</span>';
+
+    // Education
+    const ed=document.getElementById('resEducation');
+    ed.innerHTML='';
+    (d.education||[]).forEach(e=>{ed.innerHTML+=`<div style="margin-bottom:.5rem"><strong>${esc(e.degree)}</strong> — ${esc(e.institution)} ${e.year?'('+esc(e.year)+')':''}</div>`});
+    if(!d.education||!d.education.length) ed.innerHTML='<span class="text-muted">None detected</span>';
+
+    // Certs & Langs
+    document.getElementById('resCerts').innerHTML=(d.certifications&&d.certifications.length)?d.certifications.map(c=>'<div>• '+esc(c)+'</div>').join(''):'<span class="text-muted">None found</span>';
+    document.getElementById('resLangs').innerHTML=(d.languages&&d.languages.length)?d.languages.map(l=>'<div>• '+esc(l)+'</div>').join(''):'<span class="text-muted">None found</span>';
+}
+
+function resetParser(){document.getElementById('resultSection').style.display='none';document.getElementById('inputSection').style.display='block';parsedJson=null}
+function copyJson(){if(!parsedJson)return;navigator.clipboard.writeText(JSON.stringify(parsedJson,null,2)).then(()=>alert('JSON copied to clipboard!'))}
+
+function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
+</script>
+{% endblock %}

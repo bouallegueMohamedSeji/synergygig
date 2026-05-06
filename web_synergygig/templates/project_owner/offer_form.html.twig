@@ -1,0 +1,31 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}{{ is_edit ? 'Edit Offer' : 'New Offer' }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_project_owner_offers') }}" class="btn btn-ghost btn-sm">Back to My Offers</a>
+{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:720px">
+    <div class="card__header"><h4>{{ is_edit ? 'Edit Offer' : 'Create New Offer' }}</h4></div>
+    <div class="card__body">
+        {{ form_start(form, {'attr': {'class': 'form-stack', 'novalidate': 'novalidate'}}) }}
+            {{ form_row(form.title) }}
+            {{ form_row(form.description) }}
+            {{ form_row(form.offer_type) }}
+            {% if form.department is defined %}{{ form_row(form.department) }}{% endif %}
+            {% if form.required_skills is defined %}{{ form_row(form.required_skills) }}{% endif %}
+            {% if form.location is defined %}{{ form_row(form.location) }}{% endif %}
+            {% if form.amount is defined %}{{ form_row(form.amount) }}{% endif %}
+            {% if form.currency is defined %}{{ form_row(form.currency) }}{% endif %}
+            {% if form.start_date is defined %}{{ form_row(form.start_date) }}{% endif %}
+            {% if form.end_date is defined %}{{ form_row(form.end_date) }}{% endif %}
+            <div style="display:flex;gap:.75rem;margin-top:1rem">
+                <button type="submit" class="btn btn-primary">{{ is_edit ? 'Update' : 'Create' }} Offer</button>
+                <a href="{{ path('app_project_owner_offers') }}" class="btn btn-ghost">Cancel</a>
+            </div>
+        {{ form_end(form) }}
+    </div>
+</div>
+{% endblock %}

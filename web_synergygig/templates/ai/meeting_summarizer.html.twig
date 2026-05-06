@@ -1,0 +1,98 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Meeting Summarizer | AI Tools{% endblock %}
+{% block page_title %}AI Meeting Summarizer{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_ai_index') }}" class="btn btn-ghost btn-sm">← All Tools</a>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;height:calc(100vh - 200px);min-height:500px">
+    {# ── Input ── #}
+    <div class="card" style="display:flex;flex-direction:column;padding:1.25rem;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <h3 style="margin:0;font-size:1rem">Meeting Transcript</h3>
+            <span id="charCount" class="text-muted" style="font-size:0.75rem">0 chars</span>
+        </div>
+
+        <textarea id="transcriptInput" class="form-input" placeholder="Paste the meeting transcript here…&#10;&#10;John: Let's discuss the Q4 roadmap.&#10;Sarah: I think we should prioritize the mobile app…"
+            style="flex:1;resize:none;line-height:1.6;font-size:0.9rem"></textarea>
+
+        <div style="display:flex;gap:0.75rem;margin-top:1rem">
+            <button id="btnSummarize" class="btn btn-primary" onclick="summarize()">📝 Summarize</button>
+            <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
+            <button id="btnNew" class="btn btn-ghost" onclick="newSummary()" style="display:none">New Summary</button>
+        </div>
+    </div>
+
+    {# ── Result ── #}
+    <div class="card" style="display:flex;flex-direction:column;padding:1.25rem;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <h3 style="margin:0;font-size:1rem">Summary</h3>
+            <button id="btnCopy" class="btn btn-ghost btn-sm" onclick="copySummary()" style="display:none">📋 Copy</button>
+        </div>
+
+        <div id="resultArea" style="flex:1;overflow-y:auto;padding-right:0.5rem">
+            <div id="placeholder" class="text-muted" style="display:flex;align-items:center;justify-content:center;height:100%;text-align:center">
+                <div>
+                    <div style="font-size:3rem;margin-bottom:1rem">📝</div>
+                    <p>Paste a meeting transcript and click <strong>Summarize</strong>.</p>
+                </div>
+            </div>
+            <div id="summaryContent" style="display:none;line-height:1.7"></div>
+            <div id="loading" style="display:none;text-align:center;padding:2rem">
+                <div class="spinner"></div>
+                <p class="text-muted" style="margin-top:1rem">Summarizing meeting…</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.spinner{width:32px;height:32px;border:3px solid var(--border-primary);border-top-color:var(--accent-primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+#summaryContent h2,#summaryContent h3{margin:1.25rem 0 .5rem;color:var(--text-primary)}
+#summaryContent h2{font-size:1.1rem}#summaryContent h3{font-size:1rem}
+#summaryContent li{margin:.35rem 0}
+#summaryContent blockquote{border-left:3px solid var(--accent-primary);padding:.5rem 1rem;margin:1rem 0;color:var(--text-secondary);font-style:italic}
+</style>
+
+<script>
+const ti=document.getElementById('transcriptInput'),cc=document.getElementById('charCount');
+ti.addEventListener('input',()=>{cc.textContent=ti.value.length+' chars'});
+let lastSummary='';
+
+async function summarize(){
+    const text=ti.value.trim();
+    if(text.length<30){alert('Transcript must be at least 30 characters.');return}
+    show('loading');hide('placeholder','summaryContent');
+    document.getElementById('btnSummarize').disabled=true;
+    try{
+        const r=await fetch('{{ path("app_ai_meeting_summarizer_process") }}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({transcript:text})});
+        const d=await r.json();
+        if(d.error){alert(d.error);return}
+        lastSummary=d.summary;
+        document.getElementById('summaryContent').innerHTML=marked(d.summary);
+        show('summaryContent');
+        document.getElementById('btnCopy').style.display='inline-flex';
+        document.getElementById('btnNew').style.display='inline-flex';
+    }catch(e){alert('Error: '+e.message)}
+    finally{hide('loading');document.getElementById('btnSummarize').disabled=false}
+}
+
+function clearAll(){ti.value='';cc.textContent='0 chars';show('placeholder');hide('summaryContent');document.getElementById('btnCopy').style.display='none'}
+function newSummary(){clearAll();lastSummary='';document.getElementById('btnNew').style.display='none'}
+function copySummary(){navigator.clipboard.writeText(lastSummary).then(()=>{const b=document.getElementById('btnCopy');b.textContent='✅ Copied!';setTimeout(()=>b.textContent='📋 Copy',1500)})}
+
+function show(...ids){ids.forEach(id=>document.getElementById(id).style.display='block')}
+function hide(...ids){ids.forEach(id=>document.getElementById(id).style.display='none')}
+
+function marked(md){
+    return md.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>')
+        .replace(/^- (.+)$/gm,'<li>$1</li>').replace(/^(\d+)\. (.+)$/gm,'<li>$2</li>')
+        .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>').replace(/\n{2,}/g,'<br><br>').replace(/\n/g,'<br>');
+}
+</script>
+{% endblock %}

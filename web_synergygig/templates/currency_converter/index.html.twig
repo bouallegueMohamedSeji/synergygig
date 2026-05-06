@@ -1,0 +1,187 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Currency Converter | SynergyGig{% endblock %}
+{% block page_title %}Currency Converter{% endblock %}
+
+{% block content %}
+<style>
+.cc-module { max-width:600px; margin:0 auto; }
+
+.cc-card {
+    background:var(--bg-card); border:1px solid var(--glass-border); border-radius:12px;
+    padding:2rem; margin-bottom:1.5rem;
+}
+.cc-card-title {
+    font-weight:600; font-size:1rem; color:var(--text-primary); margin-bottom:0.25rem;
+}
+.cc-card-sub {
+    font-size:0.8rem; color:var(--text-muted); margin-bottom:1.5rem;
+}
+
+.cc-input-group { margin-bottom:1.25rem; }
+.cc-label {
+    font-size:0.8rem; font-weight:600; color:var(--text-secondary); margin-bottom:0.4rem; display:block;
+}
+.cc-amount-input {
+    width:100%; padding:0.75rem 1rem; border:2px solid var(--border); border-radius:8px;
+    background:var(--bg-card); color:var(--text-primary); font-size:1.25rem; font-weight:700;
+    outline:none; transition:border-color 0.2s;
+}
+.cc-amount-input:focus { border-color:var(--accent); }
+
+.cc-currency-row {
+    display:flex; gap:0.75rem; align-items:center; margin-bottom:1.5rem;
+}
+.cc-currency-select {
+    flex:1; padding:0.65rem 0.75rem; border:1px solid var(--border); border-radius:8px;
+    background:var(--bg-card); color:var(--text-primary); font-size:0.95rem; cursor:pointer;
+}
+.cc-swap-btn {
+    width:40px; height:40px; border-radius:50%; border:1px solid var(--border);
+    background:var(--bg-secondary); color:var(--text-primary); font-size:1.2rem;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    transition:background 0.2s, transform 0.2s;
+}
+.cc-swap-btn:hover { background:var(--accent); color:#fff; transform:rotate(180deg); }
+
+.cc-convert-btn {
+    width:100%; padding:0.75rem; border:none; border-radius:8px;
+    background:var(--accent); color:#fff; font-size:1rem; font-weight:600;
+    cursor:pointer; transition:background 0.2s, transform 0.1s;
+}
+.cc-convert-btn:hover { filter:brightness(1.1); }
+.cc-convert-btn:active { transform:scale(0.98); }
+.cc-convert-btn:disabled { opacity:0.6; cursor:not-allowed; }
+
+/* Result */
+.cc-result {
+    text-align:center; padding:1.5rem; background:var(--bg-secondary); border-radius:10px;
+    display:none;
+}
+.cc-result-amount {
+    font-size:2rem; font-weight:800; color:var(--accent); margin-bottom:0.3rem;
+}
+.cc-result-detail {
+    font-size:0.85rem; color:var(--text-secondary);
+}
+.cc-result-rate {
+    font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem;
+}
+
+/* Error */
+.cc-error {
+    text-align:center; padding:1rem; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3);
+    border-radius:8px; color:#ef4444; font-size:0.9rem; display:none;
+}
+</style>
+
+<div class="cc-module">
+    <div class="cc-card">
+        <div class="cc-card-title">💱 Convert Currencies</div>
+        <div class="cc-card-sub">Real-time exchange rates — perfect for comparing international gig offer budgets</div>
+
+        <div class="cc-input-group">
+            <label class="cc-label">Amount</label>
+            <input type="number" id="ccAmount" class="cc-amount-input" value="1000" min="0.01" step="0.01">
+        </div>
+
+        <div class="cc-currency-row">
+            <div style="flex:1">
+                <label class="cc-label">From</label>
+                <select id="ccFrom" class="cc-currency-select">
+                    {% for code, name in currencies %}
+                        <option value="{{ code }}" {{ code == 'USD' ? 'selected' : '' }}>{{ code }} — {{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button id="ccSwap" class="cc-swap-btn" title="Swap currencies">⇄</button>
+            <div style="flex:1">
+                <label class="cc-label">To</label>
+                <select id="ccTo" class="cc-currency-select">
+                    {% for code, name in currencies %}
+                        <option value="{{ code }}" {{ code == 'TND' ? 'selected' : '' }}>{{ code }} — {{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <button id="ccConvertBtn" class="cc-convert-btn">Convert</button>
+    </div>
+
+    <div id="ccResult" class="cc-result">
+        <div id="ccResultAmount" class="cc-result-amount"></div>
+        <div id="ccResultDetail" class="cc-result-detail"></div>
+        <div id="ccResultRate" class="cc-result-rate"></div>
+    </div>
+
+    <div id="ccError" class="cc-error"></div>
+</div>
+
+<script>
+(function(){
+    const amountInput = document.getElementById('ccAmount');
+    const fromSelect  = document.getElementById('ccFrom');
+    const toSelect    = document.getElementById('ccTo');
+    const swapBtn     = document.getElementById('ccSwap');
+    const convertBtn  = document.getElementById('ccConvertBtn');
+    const resultDiv   = document.getElementById('ccResult');
+    const resultAmount= document.getElementById('ccResultAmount');
+    const resultDetail= document.getElementById('ccResultDetail');
+    const resultRate  = document.getElementById('ccResultRate');
+    const errorDiv    = document.getElementById('ccError');
+
+    swapBtn.addEventListener('click', function() {
+        const tmp = fromSelect.value;
+        fromSelect.value = toSelect.value;
+        toSelect.value = tmp;
+    });
+
+    convertBtn.addEventListener('click', doConvert);
+    amountInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); doConvert(); }
+    });
+
+    async function doConvert() {
+        const amount = parseFloat(amountInput.value);
+        if (!amount || amount <= 0) {
+            amountInput.style.borderColor = '#ff4444';
+            return;
+        }
+        amountInput.style.borderColor = '';
+        convertBtn.disabled = true;
+        convertBtn.textContent = 'Converting...';
+        resultDiv.style.display = 'none';
+        errorDiv.style.display = 'none';
+
+        try {
+            const resp = await fetch('{{ path("app_currency_convert") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount: amount,
+                    from:   fromSelect.value,
+                    to:     toSelect.value,
+                })
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                errorDiv.textContent = data.error;
+                errorDiv.style.display = '';
+            } else {
+                resultAmount.textContent = Number(data.result).toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' ' + data.to;
+                resultDetail.textContent = Number(data.amount).toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' ' + data.from + ' = ' + Number(data.result).toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' ' + data.to;
+                resultRate.textContent = data.rate ? ('1 ' + data.from + ' = ' + data.rate + ' ' + data.to + (data.updated ? ' · Updated: ' + data.updated : '')) : '';
+                resultDiv.style.display = '';
+            }
+        } catch (e) {
+            errorDiv.textContent = 'Network error: ' + (e.message || 'Connection failed');
+            errorDiv.style.display = '';
+        } finally {
+            convertBtn.disabled = false;
+            convertBtn.textContent = 'Convert';
+        }
+    }
+})();
+</script>
+{% endblock %}

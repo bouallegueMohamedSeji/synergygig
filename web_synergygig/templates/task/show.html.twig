@@ -1,0 +1,210 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Task: {{ task.title }}{% endblock %}
+
+{% block header_actions %}
+    {% if is_granted('ROLE_ADMIN') or (task.project and task.project.owner and task.project.owner.id == app.user.id) %}
+    <a href="{{ path('app_task_edit', {id: task.id}) }}" class="btn btn-primary btn-sm">Edit</a>
+    {% endif %}
+    <a href="{{ path('app_task_index') }}" class="btn btn-ghost btn-sm">Back</a>
+{% endblock %}
+
+{% block content %}
+{# Stat cards #}
+<div class="bento-grid" style="grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem">
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Status</div>
+        {% set sc = {'TODO': 'blue', 'IN_PROGRESS': 'orange', 'IN_REVIEW': 'purple', 'DONE': 'green'} %}
+        <span class="badge badge--{{ sc[task.status] ?? 'blue' }}">{{ task.status ?? 'N/A' }}</span>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Priority</div>
+        {% set pc = {'LOW': 'green', 'MEDIUM': 'blue', 'HIGH': 'orange'} %}
+        <span class="badge badge--{{ pc[task.priority] ?? 'blue' }}">{{ task.priority ?? '—' }}</span>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Project</div>
+        <div style="font-weight:600;color:var(--text-primary)">{{ task.project ? task.project.name : '—' }}</div>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Assigned To</div>
+        <div style="font-weight:600;color:var(--text-primary)">{% if task.assignedTo %}{{ task.assignedTo.firstName }} {{ task.assignedTo.lastName }}{% else %}Unassigned{% endif %}</div>
+    </div>
+</div>
+
+{# Description #}
+{% if task.description %}
+<div class="card" style="margin-bottom:1.5rem">
+    <div class="card__header"><h4>Description</h4></div>
+    <div class="card__body"><p style="white-space:pre-wrap">{{ task.description }}</p></div>
+</div>
+{% endif %}
+
+{# Details table #}
+<div class="card" style="margin-bottom:1.5rem">
+    <div class="card__header"><h4>Details</h4></div>
+    <div class="table-wrap">
+        <table class="table">
+            <tr><td class="text-muted" style="width:200px">Title</td><td>{{ task.title }}</td></tr>
+            <tr><td class="text-muted">Due Date</td><td>{{ task.dueDate ? task.dueDate|date('M d, Y') : '—' }}</td></tr>
+            <tr><td class="text-muted">Created</td><td>{{ task.createdAt ? task.createdAt|date('M d, Y H:i') : '—' }}</td></tr>
+        </table>
+    </div>
+</div>
+
+{# ── Submission section ── #}
+<div class="card" style="margin-bottom:1.5rem">
+    <div class="card__header"><h4>📝 Submission</h4></div>
+    <div class="card__body">
+        {% if task.submissionText %}
+            <div style="margin-bottom:1rem">
+                <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.5rem">Submitted Work</div>
+                <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:1rem;white-space:pre-wrap;color:var(--text-primary)">{{ task.submissionText }}</div>
+            </div>
+            {% if task.submissionFile %}
+                <div style="margin-bottom:1rem">
+                    <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Attached File</div>
+                    <a href="/{{ task.submissionFile }}" target="_blank" class="btn btn-secondary btn-sm">📎 Download File</a>
+                </div>
+            {% endif %}
+        {% else %}
+            {% if task.status != 'DONE' and task.assignedTo and task.assignedTo.id == app.user.id %}
+                <form method="post" action="{{ path('app_task_submit', {id: task.id}) }}" enctype="multipart/form-data" novalidate>
+                    <input type="hidden" name="_token" value="{{ csrf_token('submit' ~ task.id) }}">
+
+                    <div class="form-group">
+                        <label class="form-label">Describe your work <span style="color:var(--color-danger)">*</span></label>
+                        <textarea name="submission_text" class="form-control" rows="5" placeholder="Detail what you've done, approach taken, results..."></textarea>
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">Min 10 characters</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Attach file (optional)</label>
+                        <input type="file" name="submission_file" class="form-control" accept=".pdf,.doc,.docx,.txt,.zip,.png,.jpg,.jpeg">
+                        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">Max 10 MB &bull; pdf, doc, docx, txt, zip, png, jpg</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Submit Work</button>
+                </form>
+            {% else %}
+                <p class="text-muted">No submission recorded.</p>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+{# ── Review section ── #}
+<div class="card" style="margin-bottom:1.5rem">
+    <div class="card__header"><h4>⭐ Review</h4></div>
+    <div class="card__body">
+        {% if task.reviewStatus %}
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1rem">
+                <div>
+                    <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Status</div>
+                    {% set rc = {'APPROVED': 'green', 'NEEDS_REVISION': 'orange', 'REJECTED': 'red'} %}
+                    <span class="badge badge--{{ rc[task.reviewStatus] ?? 'blue' }}">{{ task.reviewStatus }}</span>
+                </div>
+                <div>
+                    <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Rating</div>
+                    <div style="font-size:1.25rem;font-weight:700;color:var(--accent-blue)">
+                        {% for i in 1..5 %}
+                            <span style="color:{% if i <= task.reviewRating %}var(--color-warning){% else %}var(--text-muted){% endif %}">★</span>
+                        {% endfor %}
+                        <span style="font-size:0.875rem;color:var(--text-secondary);margin-left:0.25rem">{{ task.reviewRating }}/5</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Reviewed</div>
+                    <div style="color:var(--text-primary)">{{ task.reviewDate ? task.reviewDate|date('M d, Y H:i') : '—' }}</div>
+                </div>
+            </div>
+            {% if task.reviewFeedback %}
+                <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Feedback</div>
+                <div style="background:var(--bg-secondary);border-radius:var(--radius-md);padding:1rem;white-space:pre-wrap;color:var(--text-primary)">{{ task.reviewFeedback }}</div>
+            {% endif %}
+        {% elseif task.submissionText %}
+            {# Show review form only when there's a submission to review #}
+            {% if is_granted('ROLE_ADMIN') or (task.project and task.project.owner and task.project.owner.id == app.user.id) %}
+            <form method="post" action="{{ path('app_task_review', {id: task.id}) }}" novalidate>
+                <input type="hidden" name="_token" value="{{ csrf_token('review' ~ task.id) }}">
+
+                <div class="form-group">
+                    <label class="form-label">Decision <span style="color:var(--color-danger)">*</span></label>
+                    <select name="review_status" class="form-control form-select">
+                        <option value="">Select...</option>
+                        <option value="APPROVED">✅ Approved</option>
+                        <option value="NEEDS_REVISION">🔄 Needs Revision</option>
+                        <option value="REJECTED">❌ Rejected</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Rating (1-5) <span style="color:var(--color-danger)">*</span></label>
+                    <div style="display:flex;gap:0.5rem" id="star-rating">
+                        {% for i in 1..5 %}
+                            <label style="cursor:pointer;font-size:1.75rem;color:var(--text-muted);transition:color .15s" data-star="{{ i }}">
+                                <input type="radio" name="review_rating" value="{{ i }}" style="display:none">
+                                ★
+                            </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Feedback <span style="color:var(--color-danger)">*</span></label>
+                    <textarea name="review_feedback" class="form-control" rows="4" placeholder="Provide constructive feedback..."></textarea>
+                    <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px">Min 5 characters</div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Submit Review</button>
+            </form>
+            {% else %}
+                <p class="text-muted">Work submitted — awaiting review from the project owner.</p>
+            {% endif %}
+        {% else %}
+            <p class="text-muted">Waiting for submission before review.</p>
+        {% endif %}
+    </div>
+</div>
+
+{# Delete #}
+{% if is_granted('ROLE_ADMIN') or (task.project and task.project.owner and task.project.owner.id == app.user.id) %}
+<div style="margin-top:2rem">
+    <form method="post" action="{{ path('app_task_delete', {id: task.id}) }}" onsubmit="return confirm('Delete this task?')">
+        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ task.id) }}">
+        <button class="btn btn-danger btn-sm">Delete Task</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+(function(){
+    const wrap = document.getElementById('star-rating');
+    if (!wrap) return;
+    const labels = wrap.querySelectorAll('label');
+    labels.forEach(function(lbl) {
+        lbl.addEventListener('mouseenter', function() {
+            const s = parseInt(lbl.dataset.star);
+            labels.forEach(function(l) {
+                l.style.color = parseInt(l.dataset.star) <= s ? 'var(--color-warning)' : 'var(--text-muted)';
+            });
+        });
+        lbl.addEventListener('click', function() {
+            const s = parseInt(lbl.dataset.star);
+            labels.forEach(function(l) {
+                l.dataset.selected = parseInt(l.dataset.star) <= s ? '1' : '0';
+                l.style.color = parseInt(l.dataset.star) <= s ? 'var(--color-warning)' : 'var(--text-muted)';
+            });
+        });
+    });
+    wrap.addEventListener('mouseleave', function() {
+        labels.forEach(function(l) {
+            l.style.color = l.dataset.selected === '1' ? 'var(--color-warning)' : 'var(--text-muted)';
+        });
+    });
+})();
+</script>
+{% endblock %}

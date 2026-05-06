@@ -1,0 +1,77 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Call History{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/call.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>With</th>
+                    <th>Status</th>
+                    <th>Duration</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for call in calls %}
+                <tr>
+                    <td>
+                        {% if call.callType == 'VIDEO' %}
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary, #2C666E)" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                            Video
+                        {% else %}
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary, #2C666E)" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            Audio
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if call.caller and call.caller.id == app.user.id %}
+                            {% if call.callee %}
+                                {{ call.callee.firstName }} {{ call.callee.lastName }}
+                            {% else %}
+                                <span class="text-muted">No answer</span>
+                            {% endif %}
+                        {% elseif call.caller %}
+                            {{ call.caller.firstName }} {{ call.caller.lastName }}
+                        {% else %}
+                            <span class="text-muted">Unknown</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% set statusClass = {
+                            'ENDED': 'badge--success',
+                            'CONNECTED': 'badge--info',
+                            'RINGING': 'badge--warning',
+                            'MISSED': 'badge--danger',
+                            'REJECTED': 'badge--danger'
+                        } %}
+                        <span class="badge {{ statusClass[call.status] ?? '' }}">{{ call.status }}</span>
+                    </td>
+                    <td>
+                        {% if call.startedAt and call.endedAt %}
+                            {% set diff = call.endedAt.timestamp - call.startedAt.timestamp %}
+                            {{ (diff / 60)|round(0, 'floor') }}m {{ diff % 60 }}s
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td class="text-muted">{{ call.createdAt|date('M d, Y H:i') }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align:center;padding:2rem;color:var(--text-muted)">No calls yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

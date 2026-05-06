@@ -1,0 +1,156 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}{{ is_edit ? 'Edit' : 'New' }} User | SynergyGig{% endblock %}
+
+{% block page_title %}{{ is_edit ? 'Edit User' : 'New User' }}{% endblock %}
+
+{% block breadcrumb %}
+    <nav class="breadcrumb">
+        <a href="{{ path('app_dashboard') }}">Home</a>
+        <span class="sep">/</span>
+        <a href="{{ path('app_user_index') }}">Users</a>
+        <span class="sep">/</span>
+        <span>{{ is_edit ? 'Edit' : 'New' }}</span>
+    </nav>
+{% endblock %}
+
+{% block content %}
+    <div style="max-width: 640px;">
+
+        {# ── Avatar Upload Card ── #}
+        {% if is_edit %}
+        <div class="card" style="margin-bottom:var(--space-lg);padding:var(--space-lg)">
+            <div style="font-weight:600;margin-bottom:var(--space-md);font-size:.9375rem">Profile Photo</div>
+            <div style="display:flex;align-items:center;gap:var(--space-lg);flex-wrap:wrap">
+                <div style="flex-shrink:0">
+                    {% if user.avatar_path %}
+                        <img id="avatar-preview" src="{{ asset('uploads/avatars/' ~ user.avatar_path) }}" alt="Avatar"
+                             style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--border-color)">
+                    {% else %}
+                        <div id="avatar-preview-initials" style="width:90px;height:90px;border-radius:50%;background:var(--color-primary,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;color:#fff;border:3px solid var(--border-color)">
+                            {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+                        </div>
+                        <img id="avatar-preview" src="" alt="" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid var(--border-color);display:none">
+                    {% endif %}
+                </div>
+                <div style="flex:1">
+                    <form method="post" action="{{ path('app_user_upload_avatar', {id: user.id}) }}" enctype="multipart/form-data">
+                        <input type="hidden" name="_token" value="{{ csrf_token('avatar-' ~ user.id) }}">
+                        <label style="display:inline-flex;align-items:center;gap:.5rem;padding:7px 14px;border-radius:8px;border:1px dashed var(--border-color);cursor:pointer;font-size:.85rem;color:var(--text-muted);transition:border-color .2s"
+                               onmouseover="this.style.borderColor='var(--color-primary,#7c3aed)'" onmouseout="this.style.borderColor='var(--border-color)'">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                            Choose photo
+                            <input type="file" name="avatar" accept="image/jpeg,image/png,image/gif,image/webp" style="display:none" onchange="previewAvatar(this)">
+                        </label>
+                        <button type="submit" id="avatar-upload-btn" class="btn btn-primary btn-sm" style="margin-left:.5rem;display:none">Upload</button>
+                        <div class="text-muted" style="font-size:.75rem;margin-top:.4rem">JPG, PNG, GIF or WEBP · max 5 MB</div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card">
+            {{ form_start(form, {'attr': {'novalidate': 'novalidate'}}) }}
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg);">
+                <div class="form-group">
+                    {{ form_label(form.first_name) }}
+                    {{ form_widget(form.first_name) }}
+                    {% for error in form.first_name.vars.errors %}
+                        <div class="form-error">{{ error.message }}</div>
+                    {% endfor %}
+                </div>
+                <div class="form-group">
+                    {{ form_label(form.last_name) }}
+                    {{ form_widget(form.last_name) }}
+                    {% for error in form.last_name.vars.errors %}
+                        <div class="form-error">{{ error.message }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.email) }}
+                {{ form_widget(form.email) }}
+                {% for error in form.email.vars.errors %}
+                    <div class="form-error">{{ error.message }}</div>
+                {% endfor %}
+            </div>
+
+            {% if not is_edit %}
+            <div class="form-group">
+                {{ form_label(form.password) }}
+                {{ form_widget(form.password) }}
+                {% for error in form.password.vars.errors %}
+                    <div class="form-error">{{ error.message }}</div>
+                {% endfor %}
+                <div class="form-hint">Minimum 6 characters.</div>
+            </div>
+            {% endif %}
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg);">
+                <div class="form-group">
+                    {{ form_label(form.role) }}
+                    {{ form_widget(form.role) }}
+                </div>
+                <div class="form-group">
+                    {{ form_label(form.department) }}
+                    {{ form_widget(form.department) }}
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg);">
+                <div class="form-group">
+                    {{ form_label(form.monthly_salary) }}
+                    {{ form_widget(form.monthly_salary) }}
+                    {% for error in form.monthly_salary.vars.errors %}
+                        <div class="form-error">{{ error.message }}</div>
+                    {% endfor %}
+                </div>
+                <div class="form-group">
+                    {{ form_label(form.hourly_rate) }}
+                    {{ form_widget(form.hourly_rate) }}
+                    {% for error in form.hourly_rate.vars.errors %}
+                        <div class="form-error">{{ error.message }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.bio) }}
+                {{ form_widget(form.bio) }}
+            </div>
+
+            <hr class="divider">
+
+            <div style="display: flex; gap: var(--space-sm); justify-content: flex-end;">
+                <a href="{{ path('app_user_index') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    {{ is_edit ? 'Save Changes' : 'Create User' }}
+                </button>
+            </div>
+
+            {{ form_end(form) }}
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+function previewAvatar(input) {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = document.getElementById('avatar-preview');
+        const initials = document.getElementById('avatar-preview-initials');
+        if (img) { img.src = e.target.result; img.style.display = 'block'; }
+        if (initials) initials.style.display = 'none';
+    };
+    reader.readAsDataURL(input.files[0]);
+    const btn = document.getElementById('avatar-upload-btn');
+    if (btn) btn.style.display = 'inline-flex';
+}
+</script>
+{% endblock %}

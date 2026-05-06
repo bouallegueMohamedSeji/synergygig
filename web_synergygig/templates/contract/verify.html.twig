@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract Verification — SynergyGig</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 48px 16px 64px;
+        }
+
+        .brand-bar {
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        .brand { font-size: 24px; font-weight: 700; color: #f1f5f9; letter-spacing: -0.5px; }
+        .brand span { color: #3b82f6; }
+        .brand-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 36px 40px;
+            max-width: 680px;
+            width: 100%;
+        }
+
+        .verify-icon {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 40px;
+            margin: 0 auto 20px;
+        }
+        .icon-valid   { background: rgba(16, 185, 129, 0.15); border: 2px solid #10b981; }
+        .icon-invalid { background: rgba(239, 68, 68, 0.15); border: 2px solid #ef4444; }
+
+        .verify-title {
+            font-size: 22px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 6px;
+        }
+        .verify-sub {
+            font-size: 13px;
+            color: #94a3b8;
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .hash-display {
+            background: #0f172a;
+            border: 1px solid #1e3a5f;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: #60a5fa;
+            word-break: break-all;
+            margin-bottom: 24px;
+        }
+        .hash-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; margin-bottom: 4px; font-family: system-ui, sans-serif; }
+
+        .detail-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+        .detail-table tr { border-bottom: 1px solid #1e293b; }
+        .detail-table td { padding: 10px 12px; font-size: 13px; }
+        .detail-table td:first-child { color: #94a3b8; width: 160px; }
+        .detail-table td:last-child { color: #e2e8f0; font-weight: 500; }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        .badge-active  { background: rgba(16,185,129,0.15); color: #10b981; }
+        .badge-draft   { background: rgba(59,130,246,0.15); color: #3b82f6; }
+        .badge-other   { background: rgba(148,163,184,0.1); color: #94a3b8; }
+
+        .sig-preview {
+            background: #fff;
+            border-radius: 8px;
+            padding: 10px;
+            display: inline-block;
+        }
+        .sig-preview img { max-width: 260px; max-height: 80px; display: block; }
+
+        .verified-stamp {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(16,185,129,0.08);
+            border: 1px solid rgba(16,185,129,0.3);
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+        }
+        .stamp-icon { font-size: 24px; flex-shrink: 0; }
+        .stamp-text { font-size: 13px; }
+        .stamp-text strong { display: block; color: #10b981; font-size: 14px; }
+
+        .invalid-stamp {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(239,68,68,0.08);
+            border: 1px solid rgba(239,68,68,0.3);
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+        }
+        .invalid-stamp strong { color: #ef4444; font-size: 14px; }
+
+        .divider { border: none; border-top: 1px solid #1e3a5f; margin: 20px 0; }
+
+        .footer-links { text-align: center; margin-top: 20px; }
+        .footer-links a { color: #3b82f6; font-size: 13px; text-decoration: none; margin: 0 8px; }
+        .footer-links a:hover { text-decoration: underline; }
+
+        .footer-bar { margin-top: 32px; font-size: 11px; color: #475569; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="brand-bar">
+    <div class="brand">Synergy<span>Gig</span></div>
+    <div class="brand-sub">Contract Blockchain Verification</div>
+</div>
+
+<div class="card">
+
+    <!-- Verification icon -->
+    <div class="verify-icon {{ valid ? 'icon-valid' : 'icon-invalid' }}">
+        {{ valid ? '✓' : '✕' }}
+    </div>
+
+    <div class="verify-title">
+        {{ valid ? 'Contract Verified' : 'Contract Not Found' }}
+    </div>
+    <div class="verify-sub">
+        {% if valid %}
+            This hash matches a signed contract on the SynergyGig platform.
+        {% else %}
+            No contract matches this hash. It may be invalid, altered, or not yet signed.
+        {% endif %}
+    </div>
+
+    <!-- Hash display -->
+    <div class="hash-display">
+        <div class="hash-label">SHA-256 Verification Hash</div>
+        {{ hash }}
+    </div>
+
+    {% if valid and contract %}
+
+        <!-- Verified stamp -->
+        <div class="verified-stamp">
+            <span class="stamp-icon">🔒</span>
+            <div class="stamp-text">
+                <strong>Cryptographically Verified</strong>
+                This contract's integrity is confirmed. The hash matches the signed record on the SynergyGig platform.
+            </div>
+        </div>
+
+        <div class="verified-stamp" style="margin-top:-6px;margin-bottom:20px;background:rgba(59,130,246,0.08);border-color:rgba(59,130,246,0.28)">
+            <span class="stamp-icon">👤</span>
+            <div class="stamp-text">
+                <strong style="color:#60a5fa">Verified For</strong>
+                {% if contract.applicant %}
+                    {{ contract.applicant.firstName }} {{ contract.applicant.lastName }}
+                {% else %}
+                    Unknown applicant
+                {% endif %}
+                {% if contract.owner %}
+                    · Owner: {{ contract.owner.firstName }} {{ contract.owner.lastName }}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Contract details -->
+        <table class="detail-table">
+            <tr>
+                <td>Contract ID</td>
+                <td>#{{ contract.id }}</td>
+            </tr>
+            <tr>
+                <td>Status</td>
+                <td>
+                    {% set sc = contract.status ?? 'DRAFT' %}
+                    <span class="badge {% if sc in ['ACTIVE','SIGNED'] %}badge-active{% elseif sc == 'DRAFT' %}badge-draft{% else %}badge-other{% endif %}">
+                        {{ sc }}
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td>Offer / Position</td>
+                <td>{{ contract.offer ? contract.offer.title : '—' }}</td>
+            </tr>
+            <tr>
+                <td>Contractor</td>
+                <td>
+                    {% if contract.applicant %}
+                        {{ contract.applicant.firstName }} {{ contract.applicant.lastName }}
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>Project Owner</td>
+                <td>
+                    {% if contract.owner %}
+                        {{ contract.owner.firstName }} {{ contract.owner.lastName }}
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>Amount</td>
+                <td>
+                    {% if contract.amount %}
+                        {{ contract.amount|number_format(2) }} {{ contract.currency ?? 'USD' }}
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>Contract Period</td>
+                <td>
+                    {% if contract.startDate %}{{ contract.startDate|date('M d, Y') }}{% endif %}
+                    {% if contract.startDate and contract.endDate %} → {% endif %}
+                    {% if contract.endDate %}{{ contract.endDate|date('M d, Y') }}{% endif %}
+                    {% if not contract.startDate and not contract.endDate %}—{% endif %}
+                </td>
+            </tr>
+            <tr>
+                <td>Signed At</td>
+                <td>{{ contract.signedAt ? contract.signedAt|date('M d, Y H:i') ~ ' UTC' : '—' }}</td>
+            </tr>
+        </table>
+
+        <!-- Signature preview -->
+        {% if contract.signatureData %}
+        <hr class="divider">
+        <div style="margin-bottom:8px;font-size:12px;color:#94a3b8">Signature on Record</div>
+        <div class="sig-preview">
+            <img src="{{ contract.signatureData }}" alt="Digital Signature">
+        </div>
+        {% endif %}
+
+    {% else %}
+
+        <!-- Invalid / not found -->
+        <div class="invalid-stamp">
+            <span class="stamp-icon" style="font-size:24px">⚠️</span>
+            <div class="stamp-text">
+                <strong>Verification Failed</strong>
+                <span style="color:#94a3b8;font-size:13px">No contract record found matching this hash. Possible reasons: hash was altered, contract does not exist, or contract was never signed.</span>
+            </div>
+        </div>
+
+    {% endif %}
+
+</div>
+
+<div class="footer-links">
+    <a href="{{ path('app_landing') }}">SynergyGig Home</a>
+    {% if app.user %}
+    <a href="{{ path('app_contract_index') }}">View Contracts</a>
+    {% else %}
+    <a href="{{ path('app_login') }}">Login</a>
+    {% endif %}
+</div>
+
+<div class="footer-bar">
+    SynergyGig Platform · Blockchain Contract Verification · All Rights Reserved
+</div>
+
+</body>
+</html>

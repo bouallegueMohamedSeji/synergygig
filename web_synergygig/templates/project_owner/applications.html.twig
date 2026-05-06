@@ -1,0 +1,73 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Applications for {{ offer.title }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_project_owner_offers') }}" class="btn btn-ghost btn-sm">Back to My Offers</a>
+{% endblock %}
+
+{% block content %}
+{# Offer info card #}
+<div class="card" style="padding:1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem">
+    <div style="flex:1">
+        <h4 style="margin:0">{{ offer.title }}</h4>
+        <div class="text-muted" style="font-size:.85rem">{{ offer.offerType ? offer.offerType|replace({'_': ' '}) : '' }} &middot; {{ offer.amount ? offer.amount ~ ' ' ~ (offer.currency ?? 'TND') : 'No budget set' }}</div>
+    </div>
+    {% set sc = {'DRAFT': 'blue', 'OPEN': 'green', 'CLOSED': 'red', 'CANCELLED': 'orange'} %}
+    <span class="badge badge--{{ sc[offer.status] ?? 'blue' }}" style="font-size:.85rem">{{ offer.status }}</span>
+</div>
+
+{# Applications table #}
+<div class="card">
+    {% if applications|length > 0 %}
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Applicant</th>
+                    <th>AI Score</th>
+                    <th>Status</th>
+                    <th>Applied</th>
+                    <th>Cover Letter</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in applications %}
+                <tr>
+                    <td>
+                        {% if a.applicant %}
+                            <div style="display:flex;align-items:center;gap:.5rem">
+                                <div class="avatar avatar--sm">{{ a.applicant.firstName|first }}{{ a.applicant.lastName|first }}</div>
+                                {{ a.applicant.firstName }} {{ a.applicant.lastName }}
+                            </div>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if a.aiScore is not null %}
+                            <span style="font-weight:600;{% if a.aiScore >= 70 %}color:var(--color-success){% elseif a.aiScore >= 40 %}color:var(--color-warning){% else %}color:var(--color-danger){% endif %}">{{ a.aiScore }}%</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% set asc = {'PENDING': 'orange', 'REVIEWED': 'blue', 'ACCEPTED': 'green', 'REJECTED': 'red'} %}
+                        <span class="badge badge--{{ asc[a.status] ?? 'blue' }}">{{ a.status }}</span>
+                    </td>
+                    <td>{{ a.appliedAt ? a.appliedAt|date('M d, Y') : '—' }}</td>
+                    <td>{{ a.coverLetter ? a.coverLetter|slice(0, 60) ~ '...' : '—' }}</td>
+                    <td>
+                        <a href="{{ path('app_application_show', {id: a.id}) }}" class="btn btn-ghost btn-sm" title="View">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:3rem">
+        <p class="text-muted">No applications received yet for this offer.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

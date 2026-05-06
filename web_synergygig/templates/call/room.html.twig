@@ -1,0 +1,211 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}
+    {{ call.callType == 'VIDEO' ? 'Video' : 'Audio' }} Call
+{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/call.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="call-room" id="callRoom" data-call-id="{{ call.id }}" data-call-type="{{ call.callType }}" data-call-status="{{ call.status }}" data-user-id="{{ app.user.id }}">
+
+    {# ── Video Containers ── #}
+    <div class="call-room__videos">
+        <div class="call-room__remote" id="remoteContainer">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <div class="call-room__placeholder" id="remotePlaceholder">
+                <div class="call-room__avatar-lg">
+                    {% if call.caller and call.caller.id != app.user.id %}
+                        {{ call.caller.firstName|first }}{{ call.caller.lastName|first }}
+                    {% elseif call.callee %}
+                        {{ call.callee.firstName|first }}{{ call.callee.lastName|first }}
+                    {% else %}
+                        ?
+                    {% endif %}
+                </div>
+                <p class="call-room__status" id="callStatus">
+                    {% if call.status == 'RINGING' %}
+                        {% if call.caller and call.caller.id == app.user.id %}
+                            Calling...
+                        {% else %}
+                            Incoming call from {{ call.caller.firstName }} {{ call.caller.lastName }}
+                        {% endif %}
+                    {% elseif call.status == 'CONNECTED' %}
+                        Connected
+                    {% else %}
+                        {{ call.status }}
+                    {% endif %}
+                </p>
+                <div class="call-room__timer" id="callTimer" style="display:none">00:00</div>
+            </div>
+        </div>
+
+        {# Local video (small overlay) #}
+        <div class="call-room__local" id="localContainer">
+            <video id="localVideo" autoplay playsinline muted></video>
+        </div>
+    </div>
+
+    {# ── Controls ── #}
+    <div class="call-room__controls">
+        {% if call.status == 'RINGING' and call.caller and call.caller.id != app.user.id %}
+            {# Incoming — show Accept / Reject #}
+            <form method="post" action="{{ path('app_call_accept', {id: call.id}) }}" style="display:inline">
+                <input type="hidden" name="_token" value="{{ csrf_token('call_action' ~ call.id) }}">
+                <button type="submit" class="call-btn call-btn--accept" title="Accept">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                </button>
+            </form>
+            <form method="post" action="{{ path('app_call_reject', {id: call.id}) }}" style="display:inline">
+                <input type="hidden" name="_token" value="{{ csrf_token('call_action' ~ call.id) }}">
+                <button type="submit" class="call-btn call-btn--end" title="Reject">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </form>
+        {% else %}
+            {# Active/outgoing — show media controls + End #}
+            <button class="call-btn" id="btnMute" title="Mute / Unmute">
+                <svg id="iconMicOn" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                <svg id="iconMicOff" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .58-.08 1.15-.22 1.69"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
+
+            {% if call.callType == 'VIDEO' %}
+            <button class="call-btn" id="btnCamera" title="Camera On / Off">
+                <svg id="iconCamOn" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                <svg id="iconCamOff" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
+            {% endif %}
+
+            <button class="call-btn" id="btnScreenShare" title="Share Screen">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </button>
+
+            <form method="post" action="{{ path('app_call_end', {id: call.id}) }}" style="display:inline">
+                <input type="hidden" name="_token" value="{{ csrf_token('call_action' ~ call.id) }}">
+                <button type="submit" class="call-btn call-btn--end" title="End Call">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="23" y1="1" x2="1" y2="23"/></svg>
+                </button>
+            </form>
+        {% endif %}
+    </div>
+</div>
+
+{# ── WebRTC Client-Side JS ── #}
+<script>
+(function() {
+    const room = document.getElementById('callRoom');
+    if (!room) return;
+
+    const callType = room.dataset.callType;
+    const callStatus = room.dataset.callStatus;
+
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const localContainer = document.getElementById('localContainer');
+    const placeholder = document.getElementById('remotePlaceholder');
+    const statusEl = document.getElementById('callStatus');
+    const timerEl = document.getElementById('callTimer');
+
+    let localStream = null;
+    let screenStream = null;
+    let isMuted = false;
+    let isCameraOff = false;
+    let timerInterval = null;
+    let seconds = 0;
+
+    // ── Get local media ──
+    async function initMedia() {
+        try {
+            const constraints = {
+                audio: true,
+                video: callType === 'VIDEO'
+            };
+            localStream = await navigator.mediaDevices.getUserMedia(constraints);
+            localVideo.srcObject = localStream;
+
+            if (callType !== 'VIDEO') {
+                localContainer.style.display = 'none';
+            }
+        } catch (err) {
+            console.error('Media access error:', err);
+            if (statusEl) statusEl.textContent = 'Could not access microphone' + (callType === 'VIDEO' ? '/camera' : '');
+        }
+    }
+
+    // ── Timer ──
+    function startTimer() {
+        timerEl.style.display = 'block';
+        timerInterval = setInterval(() => {
+            seconds++;
+            const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+            const s = String(seconds % 60).padStart(2, '0');
+            timerEl.textContent = m + ':' + s;
+        }, 1000);
+    }
+
+    // ── Mute toggle ──
+    const btnMute = document.getElementById('btnMute');
+    if (btnMute) {
+        btnMute.addEventListener('click', () => {
+            if (!localStream) return;
+            isMuted = !isMuted;
+            localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+            document.getElementById('iconMicOn').style.display = isMuted ? 'none' : '';
+            document.getElementById('iconMicOff').style.display = isMuted ? '' : 'none';
+            btnMute.classList.toggle('call-btn--active', isMuted);
+        });
+    }
+
+    // ── Camera toggle ──
+    const btnCamera = document.getElementById('btnCamera');
+    if (btnCamera) {
+        btnCamera.addEventListener('click', () => {
+            if (!localStream) return;
+            isCameraOff = !isCameraOff;
+            localStream.getVideoTracks().forEach(t => t.enabled = !isCameraOff);
+            document.getElementById('iconCamOn').style.display = isCameraOff ? 'none' : '';
+            document.getElementById('iconCamOff').style.display = isCameraOff ? '' : 'none';
+            btnCamera.classList.toggle('call-btn--active', isCameraOff);
+        });
+    }
+
+    // ── Screen share ──
+    const btnScreen = document.getElementById('btnScreenShare');
+    if (btnScreen) {
+        btnScreen.addEventListener('click', async () => {
+            try {
+                if (screenStream) {
+                    screenStream.getTracks().forEach(t => t.stop());
+                    screenStream = null;
+                    localVideo.srcObject = localStream;
+                    btnScreen.classList.remove('call-btn--active');
+                } else {
+                    screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                    localVideo.srcObject = screenStream;
+                    btnScreen.classList.add('call-btn--active');
+                    screenStream.getVideoTracks()[0].addEventListener('ended', () => {
+                        localVideo.srcObject = localStream;
+                        screenStream = null;
+                        btnScreen.classList.remove('call-btn--active');
+                    });
+                }
+            } catch (err) {
+                console.error('Screen share error:', err);
+            }
+        });
+    }
+
+    // ── Init ──
+    if (callStatus === 'CONNECTED' || callStatus === 'RINGING') {
+        initMedia();
+        if (callStatus === 'CONNECTED') {
+            startTimer();
+            if (statusEl) statusEl.textContent = 'Connected';
+        }
+    }
+})();
+</script>
+{% endblock %}

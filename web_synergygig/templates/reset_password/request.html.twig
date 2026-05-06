@@ -1,0 +1,34 @@
+{% extends 'layouts/auth.html.twig' %}
+
+{% block title %}Forgot Password | SynergyGig{% endblock %}
+
+{% block auth_body %}
+    <div style="text-align:center;margin-bottom:var(--space-xl)">
+        <div style="width:56px;height:56px;margin:0 auto var(--space-md);background:linear-gradient(135deg,rgba(44,102,110,.18),rgba(144,221,240,.10));border-radius:50%;display:flex;align-items:center;justify-content:center">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary,#2C666E)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h2 style="font-family:var(--font-heading,Outfit,sans-serif);margin:0 0 var(--space-xs)">Forgot your password?</h2>
+        <p style="color:var(--text-secondary);font-size:0.875rem;margin:0">Enter your email and we'll send you a reset link.</p>
+    </div>
+
+    {% for flash_error in app.flashes('reset_password_error') %}
+        <div class="alert alert-danger mb-3" style="background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.3);color:#ef4444;padding:.75rem 1rem;border-radius:8px;font-size:.875rem;margin-bottom:1rem">
+            {{ flash_error }}
+        </div>
+    {% endfor %}
+
+    {{ form_start(requestForm, {'attr': {'novalidate': 'novalidate'}}) }}
+        <div class="form-group">
+            <label class="form-label">Work Email</label>
+            {{ form_widget(requestForm.email) }}
+            {{ form_errors(requestForm.email) }}
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:var(--space-md)">
+            Send Reset Link
+        </button>
+    {{ form_end(requestForm) }}
+
+    <p style="text-align:center;margin-top:var(--space-lg);font-size:.875rem;color:var(--text-secondary)">
+        Remembered it? <a href="{{ path('app_login') }}" style="color:var(--primary,#2C666E)">Back to login</a>
+    </p>
+{% endblock %}

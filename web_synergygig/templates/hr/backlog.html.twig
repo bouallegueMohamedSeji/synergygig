@@ -1,0 +1,198 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}HR Backlog | SynergyGig{% endblock %}
+{% block page_title %}HR Backlog{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_hr_dashboard') }}" class="btn btn-ghost btn-sm">HR Home</a>
+{% endblock %}
+
+{% block content %}
+{# ── Stat Cards ── #}
+<div class="bento-grid bento-grid--stats" style="grid-template-columns:repeat(5,1fr);margin-bottom:1.5rem">
+    <a href="{{ path('app_user_index') }}" class="card card--glow-blue" style="text-align:center;padding:1.25rem;text-decoration:none;color:inherit">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Total Employees</div>
+        <div style="font-size:1.75rem;font-weight:700;color:var(--accent-blue)">{{ stats.employees }}</div>
+    </a>
+    <a href="{{ path('app_leave_index') }}" class="card card--glow-orange" style="text-align:center;padding:1.25rem;text-decoration:none;color:inherit">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Pending Leaves</div>
+        <div style="font-size:1.75rem;font-weight:700;color:var(--warning)">{{ stats.pending_leaves }}</div>
+    </a>
+    <a href="{{ path('app_attendance_index') }}" class="card card--glow-green" style="text-align:center;padding:1.25rem;text-decoration:none;color:inherit">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Present Today</div>
+        <div style="font-size:1.75rem;font-weight:700;color:var(--success)">{{ stats.present_today }}</div>
+    </a>
+    <a href="{{ path('app_payroll_index') }}" class="card card--glow-purple" style="text-align:center;padding:1.25rem;text-decoration:none;color:inherit">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Pending Payroll</div>
+        <div style="font-size:1.75rem;font-weight:700;color:var(--accent-purple, #a855f7)">{{ stats.pending_payroll }}</div>
+    </a>
+    <a href="{{ path('app_task_index') }}" class="card" style="text-align:center;padding:1.25rem;border-left:3px solid var(--accent-primary);text-decoration:none;color:inherit">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Open Tasks</div>
+        <div style="font-size:1.75rem;font-weight:700;color:var(--text-primary)">{{ stats.open_tasks }}</div>
+    </a>
+</div>
+
+{# ── Charts Row ── #}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem">
+    <div class="card" style="padding:1.25rem">
+        <h4 style="margin:0 0 1rem">Department Distribution</h4>
+        <canvas id="deptChart" height="200"></canvas>
+    </div>
+    <div class="card" style="padding:1.25rem">
+        <h4 style="margin:0 0 1rem">Leave Type Distribution</h4>
+        <canvas id="leaveChart" height="200"></canvas>
+    </div>
+</div>
+
+{# ── Employee Table ── #}
+<div class="card" style="margin-bottom:1.5rem">
+    <div class="card-header">
+        <h3 style="margin:0;font-size:1rem">Employees</h3>
+        <a href="{{ path('app_user_index') }}" class="btn btn-ghost btn-sm">View All</a>
+    </div>
+    <div class="table-wrap">
+        <table class="table">
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Department</th><th>Status</th></tr></thead>
+            <tbody>
+                {% for u in employees %}
+                <tr>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:0.5rem">
+                            <div class="avatar avatar--sm">{{ u.firstName|first }}{{ u.lastName|first }}</div>
+                            <a href="{{ path('app_user_show', {id: u.id}) }}">{{ u.firstName }} {{ u.lastName }}</a>
+                        </div>
+                    </td>
+                    <td class="text-muted">{{ u.email }}</td>
+                    <td>
+                        {% set rc = {'ADMIN':'red','HR':'purple','MANAGER':'blue','EMPLOYEE':'green','FREELANCER':'orange'} %}
+                        <span class="badge badge--{{ rc[u.role] ?? 'blue' }}">{{ u.role ?? 'N/A' }}</span>
+                    </td>
+                    <td>{{ u.department ? u.department.name : '—' }}</td>
+                    <td>{% if u.isActive %}<span style="color:var(--success)">● Active</span>{% else %}<span style="color:var(--danger)">● Frozen</span>{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# ── Two-Column: Leaves + Tasks ── #}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem">
+    {# Pending Leaves #}
+    <div class="card">
+        <div class="card-header">
+            <h3 style="margin:0;font-size:1rem">Pending Leave Requests</h3>
+            <a href="{{ path('app_leave_index') }}" class="btn btn-ghost btn-sm">View All</a>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead><tr><th>Employee</th><th>Type</th><th>Start</th><th>End</th><th>Action</th></tr></thead>
+                <tbody>
+                    {% for lv in pending_leaves_list %}
+                    <tr>
+                        <td>{% if lv.user %}{{ lv.user.firstName }} {{ lv.user.lastName }}{% else %}—{% endif %}</td>
+                        <td><span class="badge badge--purple">{{ lv.type }}</span></td>
+                        <td>{{ lv.startDate|date('M d') }}</td>
+                        <td>{{ lv.endDate|date('M d') }}</td>
+                        <td><a href="{{ path('app_leave_show', {id: lv.id}) }}" class="btn btn-ghost btn-sm">Review</a></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-muted" style="text-align:center">No pending requests</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {# Task Backlog #}
+    <div class="card">
+        <div class="card-header">
+            <h3 style="margin:0;font-size:1rem">Task Backlog</h3>
+            <a href="{{ path('app_task_index') }}" class="btn btn-ghost btn-sm">View All</a>
+        </div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead><tr><th>Title</th><th>Assignee</th><th>Status</th><th>Priority</th><th>Due</th></tr></thead>
+                <tbody>
+                    {% for t in tasks %}
+                    <tr>
+                        <td><a href="{{ path('app_task_show', {id: t.id}) }}">{{ t.title|length > 30 ? t.title|slice(0,30) ~ '…' : t.title }}</a></td>
+                        <td>{% if t.assignedTo %}{{ t.assignedTo.firstName }} {{ t.assignedTo.lastName|first }}.{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                        <td>
+                            {% set sc = {'TODO':'blue','IN_PROGRESS':'orange','IN_REVIEW':'purple','DONE':'green'} %}
+                            <span class="badge badge--{{ sc[t.status] ?? 'blue' }}">{{ t.status ?? 'TODO' }}</span>
+                        </td>
+                        <td>
+                            {% set pc = {'LOW':'green','MEDIUM':'blue','HIGH':'orange'} %}
+                            <span class="badge badge--{{ pc[t.priority] ?? 'blue' }}">{{ t.priority ?? '—' }}</span>
+                        </td>
+                        <td>{{ t.dueDate ? t.dueDate|date('M d') : '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# ── Today's Attendance ── #}
+<div class="card">
+    <div class="card-header">
+        <h3 style="margin:0;font-size:1rem">Today's Attendance</h3>
+        <a href="{{ path('app_attendance_index') }}" class="btn btn-ghost btn-sm">View All</a>
+    </div>
+    <div class="table-wrap">
+        <table class="table">
+            <thead><tr><th>Employee</th><th>Check In</th><th>Check Out</th><th>Status</th></tr></thead>
+            <tbody>
+                {% for a in today_attendance %}
+                <tr>
+                    <td>{% if a.user %}{{ a.user.firstName }} {{ a.user.lastName }}{% else %}—{% endif %}</td>
+                    <td>{{ a.checkIn ? a.checkIn|date('H:i') : '—' }}</td>
+                    <td>{{ a.checkOut ? a.checkOut|date('H:i') : '—' }}</td>
+                    <td>
+                        {% set ac = {'PRESENT':'green','ABSENT':'red','LATE':'orange','HALF_DAY':'blue'} %}
+                        <span class="badge badge--{{ ac[a.status] ?? 'blue' }}">{{ a.status ?? 'N/A' }}</span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="text-muted" style="text-align:center">No attendance records today</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# ── Chart.js ── #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+const chartColors = ['#3b82f6','#a855f7','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#14b8a6'];
+const chartOpts = {
+    responsive: true,
+    plugins: { legend: { position: 'bottom', labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#e2e8f0', padding: 12, font: { size: 12 } } } }
+};
+
+const deptData = {{ dept_distribution|json_encode|raw }};
+const leaveData = {{ leave_type_distribution|json_encode|raw }};
+
+// Department chart
+new Chart(document.getElementById('deptChart'), {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(deptData),
+        datasets: [{ data: Object.values(deptData), backgroundColor: chartColors.slice(0, Object.keys(deptData).length), borderWidth: 0 }]
+    },
+    options: chartOpts
+});
+
+// Leave type chart
+new Chart(document.getElementById('leaveChart'), {
+    type: 'pie',
+    data: {
+        labels: Object.keys(leaveData),
+        datasets: [{ data: Object.values(leaveData), backgroundColor: chartColors.slice(0, Object.keys(leaveData).length), borderWidth: 0 }]
+    },
+    options: chartOpts
+});
+</script>
+{% endblock %}

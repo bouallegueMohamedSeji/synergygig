@@ -1,0 +1,53 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}My Payrolls{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_dashboard') }}" class="btn btn-ghost btn-sm">← Dashboard</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 style="margin:0;font-size:1rem">Your Payroll History</h3>
+    </div>
+    {% if payrolls|length > 0 %}
+    {% set months = {1:'January',2:'February',3:'March',4:'April',5:'May',6:'June',7:'July',8:'August',9:'September',10:'October',11:'November',12:'December'} %}
+    <div class="table-wrapper">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Period</th>
+                    <th>Net Salary</th>
+                    <th>Status</th>
+                    <th>Generated</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for p in payrolls %}
+            <tr>
+                <td style="font-weight:600">{{ months[p.month] ?? p.month }} {{ p.year }}</td>
+                <td style="font-weight:700;color:var(--accent-blue);font-size:1.05rem">{{ p.netSalary ? p.netSalary|number_format(2) : '—' }}</td>
+                <td>
+                    {% set sc = {'PENDING': 'blue', 'PAID': 'green', 'CANCELLED': 'red'} %}
+                    <span class="badge badge--{{ sc[p.status] ?? 'blue' }}">{{ p.status }}</span>
+                </td>
+                <td class="text-muted">{{ p.generatedAt ? p.generatedAt|date('M d, Y') : '—' }}</td>
+                <td>
+                    <a href="{{ path('app_payroll_show', {id: p.id}) }}" class="btn btn-ghost btn-sm">View</a>
+                    <a href="{{ path('app_export_payroll_pdf', {id: p.id}) }}" class="btn btn-primary btn-sm" target="_blank">📄 Payslip</a>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:3rem">
+        <p class="text-muted">No payroll records found for your account yet.</p>
+        <p class="text-muted" style="font-size:.85rem;margin-top:.5rem">Contact HR to generate your payroll.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

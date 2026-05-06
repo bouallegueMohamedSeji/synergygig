@@ -1,0 +1,75 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Attendance #{{ record.id }}{% endblock %}
+
+{% block header_actions %}
+    {% if is_granted('ROLE_HR') %}
+    <a href="{{ path('app_attendance_edit', {id: record.id}) }}" class="btn btn-ghost btn-sm">Edit</a>
+    {% endif %}
+    <a href="{{ path('app_attendance_index') }}" class="btn btn-ghost btn-sm">Back</a>
+{% endblock %}
+
+{% block content %}
+<div class="bento-grid" style="grid-template-columns:repeat(5,1fr);gap:1rem;margin-bottom:1.5rem">
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Employee</div>
+        {% if record.user %}
+            <div class="avatar avatar--sm" style="margin:0 auto 0.5rem">{{ record.user.firstName|first }}{{ record.user.lastName|first }}</div>
+            <div style="font-weight:600;font-size:0.9rem">{{ record.user.firstName }} {{ record.user.lastName }}</div>
+        {% else %}
+            <div class="text-muted">—</div>
+        {% endif %}
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Date</div>
+        <div style="font-size:1.5rem;font-weight:700">{{ record.date ? record.date|date('M d') : '—' }}</div>
+        <div class="text-muted">{{ record.date ? record.date|date('Y') : '' }}</div>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Status</div>
+        {% set sc = {'PRESENT': 'green', 'ABSENT': 'red', 'LATE': 'orange', 'HALF_DAY': 'blue'} %}
+        <span class="badge badge--{{ sc[record.status] ?? 'blue' }}" style="font-size:0.85rem">{{ record.status ?? 'N/A' }}</span>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Hours Worked</div>
+        <div style="font-size:1.5rem;font-weight:700;color:var(--accent-blue)">{{ hoursWorked > 0 ? hoursWorked|number_format(1) ~ 'h' : '—' }}</div>
+    </div>
+    <div class="card" style="padding:1.25rem;text-align:center">
+        <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Overtime</div>
+        <div style="font-size:1.5rem;font-weight:700;{% if overtime > 0 %}color:var(--color-warning){% else %}color:var(--text-muted){% endif %}">{{ overtime > 0 ? '+' ~ overtime|number_format(1) ~ 'h' : '—' }}</div>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem">
+    <div class="card__header"><h4>Time Details</h4></div>
+    <div class="table-wrap">
+        <table class="table">
+            <tr>
+                <td class="text-muted" style="width:180px">Check In</td>
+                <td>
+                    {{ record.checkIn ? record.checkIn|date('H:i') : '—' }}
+                    {% if record.status == 'LATE' %}
+                        <span class="badge badge--orange" style="margin-left:0.5rem;font-size:0.7rem">LATE (after 09:15)</span>
+                    {% endif %}
+                </td>
+            </tr>
+            <tr><td class="text-muted">Check Out</td><td>{{ record.checkOut ? record.checkOut|date('H:i') : '—' }}</td></tr>
+            <tr><td class="text-muted">Hours Worked</td><td style="font-weight:600">{{ hoursWorked > 0 ? hoursWorked|number_format(2) ~ ' hours' : 'Not yet checked out' }}</td></tr>
+            {% if overtime > 0 %}
+            <tr><td class="text-muted">Overtime</td><td style="font-weight:600;color:var(--color-warning)">{{ overtime|number_format(2) }} hours (above 8h)</td></tr>
+            {% endif %}
+            <tr><td class="text-muted">Created</td><td>{{ record.createdAt ? record.createdAt|date('M d, Y H:i') : '—' }}</td></tr>
+        </table>
+    </div>
+</div>
+
+{# Delete #}
+{% if is_granted('ROLE_HR') %}
+<div style="margin-top:2rem">
+    <form method="post" action="{{ path('app_attendance_delete', {id: record.id}) }}" onsubmit="return confirm('Delete this record?')">
+        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ record.id) }}">
+        <button class="btn btn-danger btn-sm">Delete Record</button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}

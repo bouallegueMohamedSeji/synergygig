@@ -1,0 +1,62 @@
+<aside class="community-sidebar">
+    <nav class="community-nav">
+        <a href="{{ path('app_community_index') }}" class="community-nav-link {{ tab|default('home') == 'home' ? 'active' : '' }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Home
+        </a>
+        <a href="{{ path('app_community_discover') }}" class="community-nav-link {{ tab|default('') == 'discover' ? 'active' : '' }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+            Discover
+        </a>
+        <a href="{{ path('app_community_people') }}" class="community-nav-link {{ tab|default('') == 'people' ? 'active' : '' }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            People
+        </a>
+        <a href="{{ path('app_community_wiki') }}" class="community-nav-link {{ tab|default('') == 'wiki' ? 'active' : '' }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            Wikipedia
+        </a>
+        <a href="{{ path('app_community_quotes') }}" class="community-nav-link {{ tab|default('') == 'quotes' ? 'active' : '' }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z"/></svg>
+            Quotes
+        </a>
+        <a href="{{ path('app_community_saved') }}" class="community-nav-link {{ tab|default('') == 'saved' ? 'active' : '' }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            My Saved
+            {% if bookmarkCount|default(0) > 0 %}
+                <span class="nav-badge">{{ bookmarkCount }}</span>
+            {% endif %}
+        </a>
+    </nav>
+
+    <div class="sidebar-section">
+        <div class="sidebar-section-header">
+            <span>Groups</span>
+            <a href="{{ path('app_community_groups') }}" class="sidebar-section-link">See All</a>
+        </div>
+        {% for group in sidebarGroups|default([]) %}
+        <a href="{{ path('app_community_group_detail', {id: group.id}) }}" class="sidebar-group-item">
+            <div class="group-icon">{{ group.name|first|upper }}</div>
+            <div class="group-info">
+                <div class="group-name">{{ group.name }}</div>
+                <div class="group-meta">{{ group.member_count ?? 0 }} members</div>
+            </div>
+        </a>
+        {% endfor %}
+        <details class="sidebar-create-details">
+            <summary class="sidebar-create-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Create Group
+            </summary>
+            <form action="{{ path('app_community_create_group') }}" method="post" class="sidebar-create-form" novalidate>
+                <input type="text" name="name" placeholder="Group name" class="comment-input">
+                <textarea name="description" placeholder="Description (optional)" rows="2" class="comment-input" style="resize:vertical"></textarea>
+                <select name="privacy" class="visibility-select">
+                    <option value="PUBLIC">Public</option>
+                    <option value="PRIVATE">Private</option>
+                </select>
+                <button type="submit" class="btn-publish">Create</button>
+            </form>
+        </details>
+    </div>
+</aside>

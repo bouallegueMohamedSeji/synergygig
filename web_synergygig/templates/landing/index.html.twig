@@ -1,0 +1,645 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}SynergyGig — Workforce Intelligence Platform{% endblock %}
+
+{% block html_class %}landing-html{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="/css/landing.css">
+{% endblock %}
+
+{% block body %}
+
+{# ══════════════════════════════════════
+   NAVIGATION
+   ══════════════════════════════════════ #}
+<nav class="ln">
+    <a href="{{ path('app_landing') }}" class="ln__brand">SynergyGig</a>
+    <div class="ln__links">
+        <a href="#manifesto"   class="ln__link">Manifesto</a>
+        <a href="#platform"    class="ln__link">Platform</a>
+        <a href="#principles"  class="ln__link">Principles</a>
+        <a href="{{ path('app_login') }}"  class="ln__link">Sign In</a>
+        <a href="{{ path('app_signup') }}" class="ln__link ln__link--cta">Get Started</a>
+    </div>
+</nav>
+
+<div class="scroll-meter" aria-hidden="true">
+    <span id="scrollMeterBar"></span>
+</div>
+
+{# ══════════════════════════════════════
+   HERO
+   ══════════════════════════════════════ #}
+<section class="hero" id="home">
+    {# Aurora blobs #}
+    <div class="aurora aurora--1"></div>
+    <div class="aurora aurora--2"></div>
+
+    <div class="hero__layout">
+        <div class="hero__content">
+            <span class="hero__eyebrow">Workforce Intelligence Platform</span>
+
+            <h1 class="hero__title">
+                Unlock<br><span class="grad">collective<br>wisdom.</span>
+            </h1>
+
+            <p class="hero__sub">
+                Stop managing scattered knowledge. SynergyGig plugs into your
+                team's shared brainpower so you can instantly surface the right
+                people, projects, and decisions with context.
+            </p>
+
+            <div class="hero__cta-group">
+                <a href="{{ path('app_signup') }}" class="btn btn--vfx">
+                    <span class="btn__shine"></span>
+                    <span class="btn__label">Request Access</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                </a>
+                <a href="{{ path('app_login') }}" class="btn btn--ghost">Sign In</a>
+            </div>
+        </div>
+
+        <div class="hero-visual" id="heroVisual">
+            <div class="hero-globe" aria-hidden="true">
+                <canvas id="heroGlobeCanvas"></canvas>
+                <div class="hero-globe__halo"></div>
+                <div class="hero-globe__ring hero-globe__ring--one"></div>
+                <div class="hero-globe__ring hero-globe__ring--two"></div>
+                <div class="hero-globe__scan"></div>
+            </div>
+
+            <article class="orbit-item orbit-item--brain" data-depth="22">
+                <div class="orbit-item__icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6a3 3 0 0 1 5.2-2A3 3 0 0 1 17 7v10a3 3 0 0 1-4.8 2.4A3.5 3.5 0 0 1 7 17V8a2.5 2.5 0 0 1 1-2z"/><path d="M10 8v8M14 9v7M7 12h10"/></svg>
+                </div>
+                <h3>Brain Layer</h3>
+                <p>Cross-team memory graph with context-aware answers.</p>
+            </article>
+
+            <article class="orbit-item orbit-item--bulb" data-depth="14">
+                <div class="orbit-item__icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12c1 .8 1.7 1.9 2 3h4c.3-1.1 1-2.2 2-3A7 7 0 0 0 12 2z"/></svg>
+                </div>
+                <h3>Idea Engine</h3>
+                <p>Workflow automations that surface the next best action instantly.</p>
+            </article>
+
+            <article class="orbit-item orbit-item--earth" data-depth="30">
+                <div class="orbit-item__icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a13 13 0 0 1 0 18M12 3a13 13 0 0 0 0 18"/></svg>
+                </div>
+                <h3>Global Sync</h3>
+                <p>Distributed teams aligned around one real-time operational truth.</p>
+            </article>
+
+            <div class="hero-chip hero-chip--one" data-depth="10">26 modules online</div>
+            <div class="hero-chip hero-chip--two" data-depth="18">n8n AI automations</div>
+            <div class="hero-chip hero-chip--three" data-depth="12">Face ID + chat + calls</div>
+        </div>
+    </div>
+
+    {# Bottom loading bar (Dala-style) #}
+    <div class="hero__loading">
+        <span class="hero__loading-label">SynergyGig &copy;{{ 'now'|date('Y') }}</span>
+        <div class="hero__loading-bar">
+            <div class="hero__loading-fill"></div>
+        </div>
+        <a href="#manifesto" class="hero__scroll-hint">Scroll &darr;</a>
+    </div>
+</section>
+
+{# ══════════════════════════════════════
+   DIVIDER
+   ══════════════════════════════════════ #}
+<div class="divider"></div>
+
+{# ══════════════════════════════════════
+   MANIFESTO — Narrative Section 1
+   "Make decisions with confidence"
+   ══════════════════════════════════════ #}
+<section class="narr mask-reveal" id="manifesto">
+    <div class="aurora aurora--3"></div>
+
+    <div class="narr__inner">
+        <span class="narr__eyebrow">Manifesto</span>
+        <h2 class="narr__heading">
+            Make decisions<br>with <span class="grad">confidence.</span>
+        </h2>
+
+        <div class="narr__blocks">
+            <p class="narr__block">
+                <strong>This is your workplace today.</strong> Countless fragments
+                of critical HR data scattered across spreadsheets, legacy systems,
+                and email threads. Your team deserves better.
+            </p>
+            <p class="narr__block">
+                <strong>SynergyGig unifies everything</strong> — attendance, payroll,
+                recruitment, project management, and performance tracking into a
+                single living system that actually works.
+            </p>
+        </div>
+
+        <div class="narr__stat mask-reveal-diamond">26</div>
+        <div class="narr__stat-label mask-reveal-text">Interconnected modules. One platform. Zero fragmentation.</div>
+
+        <div class="narr__blocks">
+            <p class="narr__block narr__block--wide">
+                Existing solutions are cumbersome and quickly become outdated —
+                yet another decaying system requiring continuous maintenance. They
+                fail to understand what your team needs from the vast amounts of
+                data generated every day.
+            </p>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+{# ══════════════════════════════════════
+   NARRATIVE 2 — "Spark lightbulb moments"
+   ══════════════════════════════════════ #}
+<section class="narr mask-reveal mask-reveal--right">
+    <div class="aurora aurora--5"></div>
+
+    <div class="narr__inner">
+        <span class="narr__eyebrow">Intelligence</span>
+        <h2 class="narr__heading">
+            Spark <span class="grad">lightbulb</span><br>moments.
+        </h2>
+
+        <div class="narr__blocks">
+            <p class="narr__block">
+                <strong>SynergyGig is your intelligent, real-time source of truth</strong>
+                that eliminates the cultural, financial and operational struggles of
+                splintered tools.
+            </p>
+            <p class="narr__block">
+                We connect your systems behind the scenes — powered by n8n AI
+                workflows that automate contract alerts, training certificates,
+                daily HR summaries, and smart notifications.
+            </p>
+            <p class="narr__block narr__block--wide">
+                Just ask for the insight that advances your work, and make better
+                decisions with more confidence. A platform completely integrated
+                with how your team thinks, feels and works.
+            </p>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+{# ══════════════════════════════════════
+   PLATFORM — Feature Cards
+   ══════════════════════════════════════ #}
+<section class="features mask-reveal mask-reveal--bottom" id="platform">
+    <div class="aurora aurora--4"></div>
+
+    <div class="features__inner">
+        <span class="features__eyebrow">Platform</span>
+        <h2 class="features__heading">
+            Everything your<br>team needs.
+        </h2>
+
+        <div class="features__grid">
+            <div class="feat-card">
+                <div class="feat-card__num">01</div>
+                <h3 class="feat-card__title">HR Management</h3>
+                <p class="feat-card__desc">
+                    Full employee lifecycle — attendance, leave management,
+                    payroll generation, and performance tracking in one place.
+                </p>
+            </div>
+
+            <div class="feat-card">
+                <div class="feat-card__num">02</div>
+                <h3 class="feat-card__title">Projects &amp; Tasks</h3>
+                <p class="feat-card__desc">
+                    Kanban boards, timelines, and team assignment. Every sprint
+                    visible, every deadline tracked.
+                </p>
+            </div>
+
+            <div class="feat-card">
+                <div class="feat-card__num">03</div>
+                <h3 class="feat-card__title">Contracts &amp; Offers</h3>
+                <p class="feat-card__desc">
+                    Digital signing, offer pipeline, and job applications —
+                    from posting to onboarding in one flow.
+                </p>
+            </div>
+
+            <div class="feat-card">
+                <div class="feat-card__num">04</div>
+                <h3 class="feat-card__title">AI Workflows</h3>
+                <p class="feat-card__desc">
+                    Powered by n8n — contract expiry alerts, training certificates,
+                    daily summaries, and smart notifications.
+                </p>
+            </div>
+
+            <div class="feat-card">
+                <div class="feat-card__num">05</div>
+                <h3 class="feat-card__title">Community Hub</h3>
+                <p class="feat-card__desc">
+                    Internal social feed, team posts, and messaging —
+                    culture without switching apps.
+                </p>
+            </div>
+
+            <div class="feat-card">
+                <div class="feat-card__num">06</div>
+                <h3 class="feat-card__title">Training &amp; Growth</h3>
+                <p class="feat-card__desc">
+                    Course management, enrollment tracking, and automated
+                    certification. Invest in your people.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+{# ══════════════════════════════════════
+   PRINCIPLES
+   ══════════════════════════════════════ #}
+<section class="principles mask-reveal mask-reveal--left" id="principles">
+    <div class="principles__inner">
+        <span class="principles__eyebrow">Our Values</span>
+        <h2 class="principles__heading">
+            How we build.
+        </h2>
+
+        <div class="principles__list">
+            <div class="princ">
+                <span class="princ__num">01</span>
+                <h3 class="princ__title">Execute with Vision</h3>
+                <div class="princ__body">
+                    <p class="princ__text">
+                        The greatest impact emerges when wild imagination meets
+                        calculated execution. We don't just ship features — we
+                        craft experiences.
+                    </p>
+                    <blockquote class="princ__quote">
+                        &ldquo;Vision without action is a daydream. Action without
+                        vision is a nightmare.&rdquo;
+                        <cite class="princ__author">Japanese Proverb</cite>
+                    </blockquote>
+                </div>
+            </div>
+
+            <div class="princ">
+                <span class="princ__num">02</span>
+                <h3 class="princ__title">Radical Simplicity</h3>
+                <div class="princ__body">
+                    <p class="princ__text">
+                        Have the confidence to strip away complexity until only
+                        what matters remains. Every screen, every interaction is
+                        engineered to feel effortless and intentional.
+                    </p>
+                    <blockquote class="princ__quote">
+                        &ldquo;Simplicity is the ultimate sophistication.&rdquo;
+                        <cite class="princ__author">Leonardo da Vinci</cite>
+                    </blockquote>
+                </div>
+            </div>
+
+            <div class="princ">
+                <span class="princ__num">03</span>
+                <h3 class="princ__title">Lead with Curiosity</h3>
+                <div class="princ__body">
+                    <p class="princ__text">
+                        The path to changing the world often begins with an
+                        earnestly spoken "why". We question everything, measure
+                        what matters, and iterate relentlessly.
+                    </p>
+                    <blockquote class="princ__quote">
+                        &ldquo;I just wondered how things were put together.&rdquo;
+                        <cite class="princ__author">Claude Shannon</cite>
+                    </blockquote>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+{# ══════════════════════════════════════
+   CTA
+   ══════════════════════════════════════ #}
+<section class="s-cta mask-reveal">
+    <div class="aurora aurora--1" style="top:auto;bottom:-20%;right:auto;left:-15%;"></div>
+    <div class="aurora aurora--3" style="bottom:auto;top:-15%;right:-10%;"></div>
+
+    <div class="s-cta__inner">
+        <h2 class="s-cta__heading">
+            Your team has the answer.<br>
+            Let <span class="grad">SynergyGig</span> find it.
+        </h2>
+        <p class="s-cta__text">
+            Join the teams already using SynergyGig to hire smarter,
+            manage better, and grow faster.
+        </p>
+        <div class="s-cta__btns">
+            <a href="{{ path('app_signup') }}" class="btn btn--glow">
+                Get Started
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+            </a>
+            <a href="{{ path('app_login') }}" class="btn btn--ghost">Sign In</a>
+        </div>
+    </div>
+</section>
+
+{# ══════════════════════════════════════
+   FOOTER
+   ══════════════════════════════════════ #}
+<footer class="lf">
+    <div class="lf__top">
+        <div>
+            <div class="lf__brand">SynergyGig</div>
+            <p class="lf__tagline">Workforce intelligence,<br>reimagined.</p>
+        </div>
+        <nav class="lf__nav">
+            <a href="#manifesto"  class="lf__nav-link">Manifesto</a>
+            <a href="#platform"   class="lf__nav-link">Platform</a>
+            <a href="#principles" class="lf__nav-link">Principles</a>
+            <a href="{{ path('app_login') }}"  class="lf__nav-link">Sign In</a>
+            <a href="{{ path('app_signup') }}" class="lf__nav-link">Get Started</a>
+        </nav>
+        <div class="lf__social">
+            <a href="#" class="lf__social-link" aria-label="LinkedIn">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 118.3 6.5a1.78 1.78 0 01-1.8 1.75zM19 19h-3v-4.74c0-1.42-.6-1.93-1.38-1.93A1.74 1.74 0 0013 14.19a.66.66 0 000 .14V19h-3v-9h2.9v1.3a3.11 3.11 0 012.7-1.4c1.55 0 3.36.86 3.36 3.66z"/></svg>
+            </a>
+        </div>
+    </div>
+
+    <div class="lf__bottom">
+        <span class="lf__copy">&copy; {{ 'now'|date('Y') }} SynergyGig. All rights reserved.</span>
+        <a href="#home" class="lf__totop">Back to top &uarr;</a>
+    </div>
+</footer>
+
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+    (function () {
+        var visual = document.getElementById('heroVisual');
+        var canvas = document.getElementById('heroGlobeCanvas');
+        var meterBar = document.getElementById('scrollMeterBar');
+        if (!visual || !canvas) {
+            return;
+        }
+
+        var items = visual.querySelectorAll('.orbit-item, .hero-chip');
+        var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        function initGlobe() {
+            var dpr = Math.min(window.devicePixelRatio || 1, 2);
+            var rect = canvas.getBoundingClientRect();
+            var width = Math.max(1, Math.floor(rect.width));
+            var height = Math.max(1, Math.floor(rect.height));
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            var ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return;
+            }
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            var points = [];
+            var total = 240;
+            for (var i = 0; i < total; i++) {
+                var phi = Math.acos(1 - (2 * (i + 0.5) / total));
+                var theta = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5);
+                points.push({
+                    x: Math.sin(phi) * Math.cos(theta),
+                    y: Math.cos(phi),
+                    z: Math.sin(phi) * Math.sin(theta)
+                });
+            }
+
+            var angleX = 0;
+            var angleY = 0;
+            var mouseX = 0;
+            var mouseY = 0;
+            var rafId = 0;
+
+            function rotate(point, ax, ay) {
+                var cosX = Math.cos(ax);
+                var sinX = Math.sin(ax);
+                var cosY = Math.cos(ay);
+                var sinY = Math.sin(ay);
+
+                var y = point.y * cosX - point.z * sinX;
+                var z = point.y * sinX + point.z * cosX;
+                var x = point.x * cosY + z * sinY;
+                z = -point.x * sinY + z * cosY;
+
+                return { x: x, y: y, z: z };
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, width, height);
+
+                var centerX = width / 2;
+                var centerY = height / 2;
+                var radius = Math.min(width, height) * 0.3;
+                var perspective = radius * 2.1;
+
+                var projected = [];
+                for (var i = 0; i < points.length; i++) {
+                    var p = rotate(points[i], angleX + mouseY, angleY + mouseX);
+                    var depth = (p.z + 1) / 2;
+                    var scale = perspective / (perspective - p.z * radius * 0.9);
+                    projected.push({
+                        x: centerX + p.x * radius * scale,
+                        y: centerY + p.y * radius * scale,
+                        z: p.z,
+                        depth: depth,
+                        scale: scale
+                    });
+                }
+
+                for (var a = 0; a < projected.length; a++) {
+                    for (var b = a + 1; b < projected.length; b++) {
+                        var dx = projected[a].x - projected[b].x;
+                        var dy = projected[a].y - projected[b].y;
+                        var dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 46) {
+                            var alpha = (1 - dist / 46) * 0.23 * (projected[a].depth + projected[b].depth);
+                            ctx.strokeStyle = 'rgba(176, 168, 255,' + alpha.toFixed(3) + ')';
+                            ctx.beginPath();
+                            ctx.moveTo(projected[a].x, projected[a].y);
+                            ctx.lineTo(projected[b].x, projected[b].y);
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                projected.sort(function (p1, p2) { return p1.z - p2.z; });
+                for (var j = 0; j < projected.length; j++) {
+                    var pt = projected[j];
+                    var dotSize = 0.9 + pt.depth * 2.2;
+                    var c1 = Math.floor(120 + 100 * pt.depth);
+                    var c2 = Math.floor(90 + 140 * pt.depth);
+                    var c3 = Math.floor(170 + 70 * (1 - pt.depth));
+                    ctx.fillStyle = 'rgba(' + c1 + ',' + c2 + ',' + c3 + ',0.92)';
+                    ctx.beginPath();
+                    ctx.arc(pt.x, pt.y, dotSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                angleY += 0.0036;
+                angleX += 0.0012;
+
+                if (!reduceMotion) {
+                    rafId = window.requestAnimationFrame(draw);
+                }
+            }
+
+            if (!reduceMotion) {
+                draw();
+            } else {
+                draw();
+                if (rafId) {
+                    window.cancelAnimationFrame(rafId);
+                }
+            }
+
+            visual.addEventListener('mousemove', function (event) {
+                var r = visual.getBoundingClientRect();
+                var nx = ((event.clientX - r.left) / r.width) - 0.5;
+                var ny = ((event.clientY - r.top) / r.height) - 0.5;
+                mouseX = nx * 0.3;
+                mouseY = ny * 0.3;
+            });
+
+            visual.addEventListener('mouseleave', function () {
+                mouseX = 0;
+                mouseY = 0;
+            });
+
+            window.addEventListener('resize', function () {
+                if (rafId) {
+                    window.cancelAnimationFrame(rafId);
+                }
+                initGlobe();
+            }, { once: true });
+        }
+
+        initGlobe();
+
+        var revealTargets = document.querySelectorAll(
+            '.hero__content, .hero-visual, .hero__loading, .narr__eyebrow, .narr__heading, .narr__block, .narr__stat, .narr__stat-label, .features__eyebrow, .features__heading, .feat-card, .principles__eyebrow, .principles__heading, .princ, .s-cta__inner, .lf__top, .lf__bottom'
+        );
+
+        revealTargets.forEach(function (el, idx) {
+            el.classList.add('reveal-on-scroll');
+            if (el.classList.contains('feat-card') || el.classList.contains('princ')) {
+                el.classList.add('reveal-hard');
+            } else {
+                el.classList.add('reveal-soft');
+            }
+            var groupIndex = idx % 6;
+            el.style.setProperty('--reveal-delay', String(groupIndex * 55) + 'ms');
+        });
+
+        function applyInView(entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-inview');
+                } else {
+                    entry.target.classList.remove('is-inview');
+                }
+            });
+        }
+
+        var observer = new IntersectionObserver(applyInView, {
+            threshold: 0.18,
+            rootMargin: '-6% 0px -10% 0px'
+        });
+
+        revealTargets.forEach(function (el) { observer.observe(el); });
+
+        var auroras = document.querySelectorAll('.aurora');
+
+        function onScroll() {
+            var doc = document.documentElement;
+            var maxScroll = Math.max(1, doc.scrollHeight - window.innerHeight);
+            var ratio = Math.min(1, Math.max(0, window.scrollY / maxScroll));
+
+            if (meterBar) {
+                meterBar.style.width = (ratio * 100).toFixed(2) + '%';
+            }
+
+            auroras.forEach(function (blob, index) {
+                var depth = (index % 2 === 0) ? 0.14 : 0.08;
+                var y = window.scrollY * depth;
+                blob.style.transform = 'translate3d(0,' + y.toFixed(2) + 'px,0)';
+            });
+        }
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+
+        /* ── Mask Reveal — scroll-driven clip-path ── */
+        var maskEls = document.querySelectorAll('.mask-reveal, .mask-reveal-text, .mask-reveal-diamond');
+
+        function updateMasks() {
+            var viewH = window.innerHeight;
+            maskEls.forEach(function (el) {
+                var rect = el.getBoundingClientRect();
+                // start revealing when top enters bottom 90% of viewport
+                // fully revealed when top reaches 30% from top
+                var start = viewH * 0.9;
+                var end = viewH * 0.3;
+                var progress = 0;
+                if (rect.top < start) {
+                    progress = Math.min(1, Math.max(0, (start - rect.top) / (start - end)));
+                }
+                // ease-out cubic for smoother feel
+                var eased = 1 - Math.pow(1 - progress, 3);
+                el.style.setProperty('--mask-progress', eased.toFixed(4));
+            });
+        }
+
+        window.addEventListener('scroll', updateMasks, { passive: true });
+        window.addEventListener('resize', updateMasks, { passive: true });
+        updateMasks();
+
+        if (window.matchMedia('(max-width: 500px)').matches) {
+            return;
+        }
+
+        visual.addEventListener('mousemove', function (event) {
+            var rect = visual.getBoundingClientRect();
+            var x = (event.clientX - rect.left) / rect.width - 0.5;
+            var y = (event.clientY - rect.top) / rect.height - 0.5;
+            var mx = Math.max(-1, Math.min(1, x)) * 24;
+            var my = Math.max(-1, Math.min(1, y)) * 24;
+            visual.style.setProperty('--mx', mx.toFixed(2) + 'px');
+            visual.style.setProperty('--my', my.toFixed(2) + 'px');
+
+            items.forEach(function (item) {
+                var depth = Number(item.getAttribute('data-depth') || 12);
+                var tx = (mx * depth) / 24;
+                var ty = (my * depth) / 24;
+                item.style.transform = 'translate3d(' + tx.toFixed(2) + 'px, ' + ty.toFixed(2) + 'px, 0)';
+            });
+        });
+
+        visual.addEventListener('mouseleave', function () {
+            visual.style.setProperty('--mx', '0px');
+            visual.style.setProperty('--my', '0px');
+            items.forEach(function (item) {
+                item.style.transform = 'translate3d(0,0,0)';
+            });
+        });
+    })();
+    </script>
+{% endblock %}

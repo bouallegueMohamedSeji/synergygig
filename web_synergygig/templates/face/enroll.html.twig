@@ -1,0 +1,238 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Enroll Face ID{% endblock %}
+
+{% block breadcrumb %}
+    <nav class="breadcrumb">
+        <a href="{{ path('app_dashboard') }}">Home</a>
+        <span class="sep">/</span>
+        <a href="{{ path('app_user_show', {id: app.user.id}) }}">Profile</a>
+        <span class="sep">/</span>
+        <span>Face Enrollment</span>
+    </nav>
+{% endblock %}
+
+{% block stylesheets %}
+{{ parent() }}
+<style>
+    .fe-wrap { max-width: 480px; margin: 0 auto; }
+    .fe-card { text-align: center; padding: var(--space-xl); }
+    .fe-video-box {
+        position: relative; border-radius: 14px; overflow: hidden;
+        background: #0a0a0a; aspect-ratio: 4/3; margin: var(--space-lg) 0;
+        border: 2px solid var(--border-color);
+    }
+    .fe-video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:block; }
+    .fe-oval {
+        position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+        width:54%; height:74%; border:2px dashed rgba(45,189,196,.65);
+        border-radius:50%; pointer-events:none;
+    }
+    .fe-hint {
+        position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+        font-size:.72rem; color:rgba(255,255,255,.5); pointer-events:none; white-space:nowrap;
+    }
+    .fe-preview { border-radius:14px; max-width:100%; margin:var(--space-lg) 0; display:none; }
+    .fe-status { font-size:.83rem; margin-bottom:var(--space-md); min-height:1.4em; color:var(--text-muted); }
+    .fe-status.err { color:#ef4444; }
+    .fe-actions { display:flex; gap:var(--space-md); justify-content:center; flex-wrap:wrap; }
+    .fe-err-box {
+        display:none; margin-bottom:var(--space-md); padding:.9rem 1rem;
+        border-radius:10px; border:1px solid #ef444460; background:rgba(239,68,68,.08);
+        color:#ef4444; font-size:.875rem; text-align:left; word-break:break-word;
+    }
+    .fe-ok-box {
+        margin-bottom:var(--space-md); padding:.9rem 1rem; border-radius:10px;
+        border:1px solid #10b98160; background:rgba(16,185,129,.08);
+        color:#10b981; font-size:.875rem; text-align:left;
+    }
+    .fe-warn-box {
+        margin-bottom:var(--space-md); padding:.9rem 1rem; border-radius:10px;
+        border:1px solid #f59e0b60; background:rgba(245,158,11,.08);
+        color:#f59e0b; font-size:.875rem; text-align:left;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fe-wrap">
+
+    {# Permanent inline flash messages (never auto-close) #}
+    {% for type, messages in app.flashes %}
+        {% for message in messages %}
+            {% if type == 'success' %}
+                <div class="fe-ok-box">✓ {{ message }}</div>
+            {% elseif type == 'warning' %}
+                <div class="fe-warn-box">⚠ {{ message }}</div>
+            {% else %}
+                <div class="fe-err-box" style="display:block"><strong>✕ Error:</strong> {{ message }}</div>
+            {% endif %}
+        {% endfor %}
+    {% endfor %}
+
+    <div class="card fe-card">
+        <h3 style="margin-bottom:.3rem">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:6px"><rect x="1" y="1" width="22" height="22" rx="3"/><circle cx="12" cy="10" r="3"/><path d="M7 20v-1a5 5 0 0 1 10 0v1"/></svg>
+            Face ID Enrollment
+        </h3>
+        <p class="text-muted" style="font-size:.82rem;margin-bottom:0">
+            Position your face in the oval, then click <strong>Capture</strong>.
+        </p>
+
+        <canvas id="feCanvas" style="display:none"></canvas>
+
+        <div class="fe-video-box" id="feVideoBox">
+            <video class="fe-video" id="feVideo" autoplay playsinline muted></video>
+            <div class="fe-oval"></div>
+            <div class="fe-hint">Center your face in the oval</div>
+        </div>
+
+        <img class="fe-preview" id="fePreview" alt="Captured">
+
+        <div class="fe-status" id="feStatus">Starting camera…</div>
+        <div class="fe-err-box" id="feCamError"></div>
+
+        <form method="post" action="{{ path('app_face_enroll_process') }}" id="feForm">
+            <input type="hidden" name="face_image" id="feImage">
+            <div class="fe-actions">
+                <button type="button" id="feCapture" class="btn btn-primary" disabled>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    Capture
+                </button>
+                <button type="button" id="feRetake" class="btn btn-secondary" style="display:none">Retake</button>
+                <button type="submit" id="feSubmit" class="btn btn-primary" style="display:none">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>
+                    Enroll Face
+                </button>
+                <button type="button" id="feRetry" class="btn btn-secondary" style="display:none">
+                    🔄 Allow Camera &amp; Retry
+                </button>
+            </div>
+        </form>
+
+        <a href="{{ path('app_user_show', {id: app.user.id}) }}" class="btn btn-ghost" style="margin-top:var(--space-md)">Cancel</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+{{ parent() }}
+<script>
+(function () {
+    var video    = document.getElementById('feVideo');
+    var canvas   = document.getElementById('feCanvas');
+    var preview  = document.getElementById('fePreview');
+    var videoBox = document.getElementById('feVideoBox');
+    var status   = document.getElementById('feStatus');
+    var camErr   = document.getElementById('feCamError');
+    var imgInput = document.getElementById('feImage');
+    var form     = document.getElementById('feForm');
+    var btnCap   = document.getElementById('feCapture');
+    var btnRet   = document.getElementById('feRetake');
+    var btnSub   = document.getElementById('feSubmit');
+    var btnRetry = document.getElementById('feRetry');
+    var stream   = null;
+    var ready    = false;
+
+    function setStatus(msg, isErr) {
+        status.textContent = msg;
+        status.className = 'fe-status' + (isErr ? ' err' : '');
+    }
+
+    function showCamError(msg) {
+        camErr.style.display = 'block';
+        camErr.innerHTML = '<strong>✕ Camera Error:</strong> ' + msg
+            + '<br><small style="opacity:.7;display:block;margin-top:.3rem">Click <strong>Allow Camera &amp; Retry</strong> after granting permission in the browser address bar.</small>';
+        setStatus('', false);
+        videoBox.style.display = 'none';
+        btnCap.style.display = 'none';
+        btnRetry.style.display = '';
+    }
+
+    function startCamera() {
+        camErr.style.display = 'none';
+        btnRetry.style.display = 'none';
+        videoBox.style.display = '';
+        btnCap.style.display = '';
+        btnCap.disabled = true;
+        ready = false;
+        setStatus('Requesting camera…', false);
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showCamError('Camera API not available. Make sure you are on HTTPS.');
+            return;
+        }
+
+        navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
+        }).then(function (s) {
+            if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+            stream = s;
+            video.srcObject = s;
+            video.play();
+            video.addEventListener('playing', function onPlaying() {
+                video.removeEventListener('playing', onPlaying);
+                ready = true;
+                btnCap.disabled = false;
+                setStatus('Camera ready — align your face in the oval, then click Capture.', false);
+            });
+        }).catch(function (err) {
+            var msg = err.name === 'NotAllowedError'
+                ? 'Permission denied. Please allow camera access in the address bar.'
+                : err.name === 'NotFoundError'
+                    ? 'No camera found on this device.'
+                    : (err.message || err.name || 'Unknown error');
+            showCamError(msg);
+        });
+    }
+
+    startCamera();
+
+    btnRetry.addEventListener('click', function () { startCamera(); });
+
+    btnCap.addEventListener('click', function () {
+        if (!ready || video.videoWidth === 0) {
+            setStatus('Camera not ready yet — please wait.', true);
+            return;
+        }
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        imgInput.value = dataUrl;
+        preview.src = dataUrl;
+        preview.style.display = 'block';
+        videoBox.style.display = 'none';
+        btnCap.style.display = 'none';
+        btnRet.style.display = '';
+        btnSub.style.display = '';
+        setStatus('Face captured. Click Enroll Face to save.', false);
+    });
+
+    btnRet.addEventListener('click', function () {
+        imgInput.value = '';
+        preview.style.display = 'none';
+        videoBox.style.display = '';
+        btnCap.style.display = '';
+        btnRet.style.display = 'none';
+        btnSub.style.display = 'none';
+        setStatus('Align your face in the oval, then click Capture.', false);
+    });
+
+    form.addEventListener('submit', function (e) {
+        if (!imgInput.value) {
+            e.preventDefault();
+            setStatus('Please capture your face first.', true);
+            return;
+        }
+        btnSub.disabled = true;
+        btnSub.textContent = 'Processing…';
+        if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    });
+
+    window.addEventListener('beforeunload', function () {
+        if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    });
+})();
+</script>
+{% endblock %}

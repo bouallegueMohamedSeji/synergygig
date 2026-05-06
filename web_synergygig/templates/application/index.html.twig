@@ -1,0 +1,94 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Applications{% endblock %}
+
+{% block content %}
+{# Filter bar #}
+<div class="card" style="padding:var(--space-md) var(--space-lg);margin-bottom:var(--space-lg);display:flex;align-items:center;gap:var(--space-md)">
+    <form method="get" action="{{ path('app_application_index') }}" style="flex:1;display:flex;align-items:center;gap:var(--space-md)">
+        <input type="text" name="q" value="{{ app.request.query.get('q') }}" placeholder="Search applicant or offer..." class="form-control" style="max-width:220px">
+        <select name="status" class="form-control form-select" style="width:auto;min-width:140px">
+            <option value="">All Status</option>
+            <option value="PENDING" {{ app.request.query.get('status') == 'PENDING' ? 'selected' }}>Pending</option>
+            <option value="REVIEWED" {{ app.request.query.get('status') == 'REVIEWED' ? 'selected' }}>Reviewed</option>
+            <option value="ACCEPTED" {{ app.request.query.get('status') == 'ACCEPTED' ? 'selected' }}>Accepted</option>
+            <option value="REJECTED" {{ app.request.query.get('status') == 'REJECTED' ? 'selected' }}>Rejected</option>
+        </select>
+        <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+        {% if app.request.query.get('q') or app.request.query.get('status') %}
+            <a href="{{ path('app_application_index') }}" class="btn btn-ghost btn-sm">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="card">
+    {% if applications|length > 0 %}
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Applicant</th>
+                    <th>Offer</th>
+                    <th>AI Score</th>
+                    <th>Status</th>
+                    <th>Applied At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in applications %}
+                <tr>
+                    <td class="text-muted">{{ a.id }}</td>
+                    <td>
+                        {% if a.applicant %}
+                            <div style="display:flex;align-items:center;gap:0.5rem">
+                                <div class="avatar avatar--sm">{{ a.applicant.firstName|first }}{{ a.applicant.lastName|first }}</div>
+                                {{ a.applicant.firstName }} {{ a.applicant.lastName }}
+                            </div>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>{% if a.offer %}<a href="{{ path('app_offer_show', {id: a.offer.id}) }}" style="color:var(--accent-blue)">{{ a.offer.title }}</a>{% else %}—{% endif %}</td>
+                    <td>
+                        {% if a.aiScore is not null %}
+                            <span style="font-weight:600;{% if a.aiScore >= 70 %}color:var(--color-success){% elseif a.aiScore >= 40 %}color:var(--color-warning){% else %}color:var(--color-danger){% endif %}">{{ a.aiScore }}%</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% set sc = {'PENDING': 'orange', 'REVIEWED': 'blue', 'SHORTLISTED': 'purple', 'ACCEPTED': 'green', 'REJECTED': 'red', 'WITHDRAWN': 'red'} %}
+                        <span class="badge badge--{{ sc[a.status] ?? 'blue' }}">{{ a.status ?? 'N/A' }}</span>
+                    </td>
+                    <td>{{ a.appliedAt ? a.appliedAt|date('M d, Y H:i') : '—' }}</td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:.5rem">
+                            <a href="{{ path('app_application_show', {id: a.id}) }}" class="btn btn-ghost btn-sm" title="View">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </a>
+                            {% if a.status == 'PENDING' or a.status == 'REVIEWED' %}
+                            <form method="post" action="{{ path('app_application_accept', {id: a.id}) }}" style="display:inline" onsubmit="event.preventDefault();showConfirm(this,{type:'success',title:'Accept Application',message:'Accept this application? You will be redirected to schedule an interview.',okText:'Accept'});return false">
+                                <input type="hidden" name="_token" value="{{ csrf_token('accept' ~ a.id) }}">
+                                <button type="submit" class="btn btn-sm" style="background:var(--color-success);color:#fff;padding:.25rem .5rem" title="Accept">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                </button>
+                            </form>
+                            <form method="post" action="{{ path('app_application_reject', {id: a.id}) }}" style="display:inline" onsubmit="event.preventDefault();showConfirm(this,{type:'danger',title:'Reject Application',message:'Are you sure you want to reject this application?',okText:'Reject'});return false">
+                                <input type="hidden" name="_token" value="{{ csrf_token('reject' ~ a.id) }}">
+                                <button type="submit" class="btn btn-sm" style="background:var(--color-danger);color:#fff;padding:.25rem .5rem" title="Reject">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:3rem">
+        <p class="text-muted">No applications yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

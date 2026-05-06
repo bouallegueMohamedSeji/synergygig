@@ -1,0 +1,122 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Leave #{{ leave.id }}{% endblock %}
+
+{% block header_actions %}
+    {% if is_granted('ROLE_HR') or (leave.user and leave.user.id == app.user.id and leave.status == 'PENDING') %}
+    <a href="{{ path('app_leave_edit', {id: leave.id}) }}" class="btn btn-ghost btn-sm">Edit</a>
+    {% endif %}
+    <a href="{{ path('app_leave_index') }}" class="btn btn-ghost btn-sm">Back</a>
+{% endblock %}
+
+{% block content %}
+<div class="bento-grid bento-grid--stats" style="grid-template-columns:repeat(5,1fr)">
+    <div class="card card--glow-blue">
+        <div class="card-body" style="text-align:center">
+            <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Employee</div>
+            {% if leave.user %}
+                <div class="avatar" style="margin:0 auto 0.5rem">{{ leave.user.firstName|first }}{{ leave.user.lastName|first }}</div>
+                <div style="font-weight:600">{{ leave.user.firstName }} {{ leave.user.lastName }}</div>
+            {% else %}<div class="text-muted">—</div>{% endif %}
+        </div>
+    </div>
+    <div class="card card--glow-purple">
+        <div class="card-body" style="text-align:center">
+            <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Type</div>
+            <span class="badge badge--purple" style="font-size:0.85rem">{{ leave.type ?? '—' }}</span>
+        </div>
+    </div>
+    <div class="card card--glow-green">
+        <div class="card-body" style="text-align:center">
+            <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Status</div>
+            {% set sc = {'PENDING': 'orange', 'APPROVED': 'green', 'REJECTED': 'red'} %}
+            <span class="badge badge--{{ sc[leave.status] ?? 'blue' }}" style="font-size:0.85rem">{{ leave.status ?? 'N/A' }}</span>
+        </div>
+    </div>
+    <div class="card card--glow-orange">
+        <div class="card-body" style="text-align:center">
+            <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Duration</div>
+            <div style="font-size:1.25rem;font-weight:700">{{ leave.startDate ? leave.startDate|date('M d') : '?' }} — {{ leave.endDate ? leave.endDate|date('M d') : '?' }}</div>
+        </div>
+    </div>
+    <div class="card card--glow-blue">
+        <div class="card-body" style="text-align:center">
+            <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Days Requested</div>
+            <div style="font-size:1.5rem;font-weight:700;color:var(--primary)">{{ days }}</div>
+        </div>
+    </div>
+</div>
+
+{# Balance Tracking Card #}
+{% if balance %}
+<div class="card" style="margin-top:1.5rem">
+    <div class="card-header"><h3>{{ leave.type }} Leave Balance ({{ leave.startDate ? leave.startDate|date('Y') : 'N/A' }})</h3></div>
+    <div class="card-body">
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem">
+            <span>Used: <strong>{{ balance.used }}</strong> / {{ balance.max }} days</span>
+            <span>Remaining: <strong style="color:{% if balance.remaining <= 3 %}var(--danger){% elseif balance.remaining <= 10 %}var(--warning){% else %}var(--success){% endif %}">{{ balance.remaining }}</strong> days</span>
+        </div>
+        {% set pct = balance.max > 0 ? (balance.used / balance.max * 100) : 0 %}
+        <div style="background:var(--bg-secondary);border-radius:8px;height:12px;overflow:hidden">
+            <div style="width:{{ pct|round }}%;height:100%;border-radius:8px;background:{% if pct > 90 %}var(--danger){% elseif pct > 70 %}var(--warning){% else %}var(--success){% endif %};transition:width 0.5s"></div>
+        </div>
+        <div class="text-muted" style="font-size:0.75rem;margin-top:0.5rem">
+            {% if days + balance.used > balance.max %}
+                <span style="color:var(--danger)">⚠ This request ({{ days }} days) would exceed the annual limit by {{ (days + balance.used) - balance.max }} day(s).</span>
+            {% else %}
+                After approval: {{ balance.used + days }}/{{ balance.max }} days used.
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:1.5rem">
+    <div class="card-header"><h3>Details</h3></div>
+    <div class="card-body">
+        <table class="table">
+            <tr><td class="text-muted" style="width:180px">Reason</td><td>{{ leave.reason ?? '—' }}</td></tr>
+            <tr><td class="text-muted">Rejection Reason</td><td>{{ leave.rejectionReason ?? '—' }}</td></tr>
+            <tr><td class="text-muted">Attachment</td><td>
+                {% if leave.attachment %}
+                    <a href="/uploads/leaves/{{ leave.attachment }}" target="_blank" class="btn btn-ghost btn-sm" style="padding:.2rem .6rem">📎 View Document</a>
+                {% else %}
+                    <span class="text-muted">—</span>
+                {% endif %}
+            </td></tr>
+            <tr><td class="text-muted">Created</td><td>{{ leave.createdAt ? leave.createdAt|date('M d, Y H:i') : '—' }}</td></tr>
+        </table>
+    </div>
+</div>
+
+{# Approve / Reject Actions (PENDING only) #}
+{% if leave.status == 'PENDING' and is_granted('ROLE_HR') %}
+<div class="card" style="margin-top:1.5rem">
+    <div class="card-header"><h3>Actions</h3></div>
+    <div class="card-body">
+        <div style="display:flex;gap:1rem;flex-wrap:wrap">
+            {# Approve #}
+            <form method="post" action="{{ path('app_leave_approve', {id: leave.id}) }}" style="flex:1;min-width:200px" onsubmit="return confirm('Approve this leave request?')">
+                <input type="hidden" name="_token" value="{{ csrf_token('approve' ~ leave.id) }}">
+                <button type="submit" class="btn btn-primary" style="width:100%;padding:0.75rem;font-size:1rem">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:0.5rem"><polyline points="20 6 9 17 4 12"/></svg>
+                    Approve
+                </button>
+            </form>
+
+            {# Reject #}
+            <form method="post" action="{{ path('app_leave_reject', {id: leave.id}) }}" style="flex:2;min-width:300px" novalidate>
+                <input type="hidden" name="_token" value="{{ csrf_token('reject' ~ leave.id) }}">
+                <div style="display:flex;gap:0.5rem">
+                    <input type="text" name="rejection_reason" placeholder="Rejection reason (min 5 chars)..." class="form-input" style="flex:1">
+                    <button type="submit" class="btn" style="background:var(--danger);color:#fff;padding:0.75rem 1.5rem;font-size:1rem">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:0.5rem"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        Reject
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

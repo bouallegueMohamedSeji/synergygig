@@ -1,0 +1,905 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Training Center{% endblock %}
+
+{% block header_actions %}
+    {% if is_granted('ROLE_HR') %}
+        <a href="{{ path('app_training_new') }}" class="btn btn-primary btn-sm">+ New Course</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+{# ====== Tab Navigation ====== #}
+<div class="card" style="padding:0;margin-bottom:var(--space-lg);overflow:visible">
+    <div style="display:flex;border-bottom:1px solid var(--glass-border);overflow-x:auto;padding:0 var(--space-sm)">
+        {% set tabs = [
+            {key:'dashboard', icon:'📊', label:'Dashboard'},
+            {key:'catalog', icon:'📚', label:'Catalog'},
+            {key:'learning', icon:'🎓', label:'My Learning'},
+            {key:'certificates', icon:'🏆', label:'Certificates'},
+        ] %}
+        {% for t in tabs %}
+            <a href="{{ path('app_training_index', {tab: t.key}) }}"
+               style="padding:.875rem 1.25rem;text-decoration:none;font-size:.85rem;font-weight:500;white-space:nowrap;border-bottom:2px solid {{ tab == t.key ? 'var(--accent)' : 'transparent' }};color:{{ tab == t.key ? 'var(--accent)' : 'var(--text-muted)' }};transition:all .2s"
+            >{{ t.icon }} {{ t.label }}</a>
+        {% endfor %}
+        {% if is_granted('ROLE_HR') %}
+            <a href="{{ path('app_training_index', {tab: 'manage'}) }}"
+               style="padding:.875rem 1.25rem;text-decoration:none;font-size:.85rem;font-weight:500;white-space:nowrap;border-bottom:2px solid {{ tab == 'manage' ? 'var(--accent)' : 'transparent' }};color:{{ tab == 'manage' ? 'var(--accent)' : 'var(--text-muted)' }};transition:all .2s"
+            >⚙️ Manage</a>
+        {% endif %}
+    </div>
+</div>
+
+{# ====== DASHBOARD TAB ====== #}
+{% if tab == 'dashboard' %}
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--space-md);margin-bottom:var(--space-lg)">
+    <div class="card" style="padding:var(--space-md);text-align:center">
+        <div style="font-size:1.5rem;font-weight:700;color:var(--accent-blue)">{{ totalCourses }}</div>
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:4px">Active Courses</div>
+    </div>
+    <div class="card" style="padding:var(--space-md);text-align:center">
+        <div style="font-size:1.5rem;font-weight:700;color:var(--accent)">{{ myEnrollmentCount }}</div>
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:4px">My Enrollments</div>
+    </div>
+    <div class="card" style="padding:var(--space-md);text-align:center">
+        <div style="font-size:1.5rem;font-weight:700;color:#10b981">{{ completedCount }}</div>
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:4px">Completed</div>
+    </div>
+    <div class="card" style="padding:var(--space-md);text-align:center">
+        <div style="font-size:1.5rem;font-weight:700;color:#f59e0b">{{ certCount }}</div>
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:4px">Certificates</div>
+    </div>
+    <div class="card" style="padding:var(--space-md);text-align:center">
+        <div style="font-size:1.5rem;font-weight:700;color:#8b5cf6">{{ avgProgress }}%</div>
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:4px">Avg Progress</div>
+    </div>
+</div>
+
+{# Recent Enrollments #}
+<div class="card" style="padding:var(--space-lg)">
+    <h3 style="margin-bottom:var(--space-md);font-size:1rem;color:var(--text-primary)">📋 Recent Enrollments</h3>
+    {% if recentEnrollments|length > 0 %}
+        <div style="display:flex;flex-direction:column;gap:var(--space-sm)">
+        {% for e in recentEnrollments %}
+            {% set cert = certificateByEnrollmentId[e.id] is defined ? certificateByEnrollmentId[e.id] : null %}
+            <div style="display:flex;align-items:center;gap:var(--space-md);padding:.75rem;border-radius:var(--radius-md);background:var(--bg-tertiary)">
+                <div style="flex:1;min-width:0">
+                    <div style="font-weight:600;font-size:.85rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                        <a href="{{ path('app_training_show', {id: e.course.id}) }}" style="color:var(--accent-blue);text-decoration:none">{{ e.course.title }}</a>
+                    </div>
+                    <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px">Enrolled {{ e.enrolledAt ? e.enrolledAt|date('M j, Y') : '—' }}</div>
+                </div>
+                <div style="width:120px">
+                    <div style="height:6px;background:var(--glass-border);border-radius:3px;overflow:hidden">
+                        <div style="height:100%;width:{{ e.progress ?? 0 }}%;background:{{ e.status == 'COMPLETED' ? '#10b981' : 'var(--accent)' }};border-radius:3px"></div>
+                    </div>
+                    <div style="font-size:.7rem;color:var(--text-muted);margin-top:2px;text-align:center">{{ e.progress ?? 0 }}%</div>
+                </div>
+                {% set esc = {'ENROLLED':'blue','IN_PROGRESS':'orange','COMPLETED':'green','DROPPED':'red'} %}
+                <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
+                    <span class="badge badge--{{ esc[e.status] ?? 'blue' }}" style="font-size:.7rem">{{ e.status }}</span>
+                    {% if e.status == 'COMPLETED' and cert %}
+                        <a href="{{ path('app_training_certificate_pdf', {id: cert.id}) }}" class="btn btn-ghost btn-sm" style="font-size:.72rem;white-space:nowrap" target="_blank">📄 Download</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+        </div>
+    {% else %}
+        <div style="text-align:center;padding:2rem;color:var(--text-muted)">
+            <div style="font-size:2rem;margin-bottom:.5rem">📚</div>
+            <p>No enrollments yet. <a href="{{ path('app_training_index', {tab:'catalog'}) }}" style="color:var(--accent)">Browse the catalog</a> to get started!</p>
+        </div>
+    {% endif %}
+</div>
+
+{# ── Dashboard row: Daily Trivia + Recommended Reading ── #}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);margin-top:var(--space-md)">
+
+    {# Daily Trivia Widget #}
+    <div class="card" style="padding:var(--space-lg)">
+        <h3 style="margin-bottom:var(--space-md);font-size:1rem;color:var(--text-primary)">🧠 Daily Trivia Challenge</h3>
+        <div id="triviaWidget">
+            <div id="triviaLoading" style="text-align:center;padding:2rem;color:var(--text-muted)">
+                <div style="font-size:1.5rem;margin-bottom:.5rem">⏳</div>
+                <p style="font-size:.85rem">Loading question…</p>
+            </div>
+            <div id="triviaContent" style="display:none">
+                <div id="triviaCat" class="badge badge--blue" style="font-size:.7rem;margin-bottom:.75rem"></div>
+                <p id="triviaQ" style="font-size:.9rem;color:var(--text-primary);font-weight:600;margin-bottom:1rem;line-height:1.55"></p>
+                <div id="triviaOptions" style="display:flex;flex-direction:column;gap:.5rem"></div>
+                <div id="triviaFb" style="display:none;margin-top:.75rem;padding:.6rem 1rem;border-radius:var(--radius-md);font-size:.85rem;font-weight:600"></div>
+                <button id="triviaNext" style="display:none;margin-top:.75rem;padding:.5rem 1.25rem;background:var(--accent-blue);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:.85rem;font-weight:600" onclick="loadTrivia()">Next Question →</button>
+            </div>
+            <div id="triviaError" style="display:none;text-align:center;padding:1.5rem;color:var(--text-muted);font-size:.85rem">
+                😕 Couldn't load trivia right now.
+            </div>
+        </div>
+    </div>
+
+    {# Recommended Reading Widget #}
+    <div class="card" style="padding:var(--space-lg)">
+        <h3 style="margin-bottom:var(--space-md);font-size:1rem;color:var(--text-primary)">📖 Recommended Reading</h3>
+        <div id="booksWidget">
+            <div id="booksLoading" style="text-align:center;padding:2rem;color:var(--text-muted)">
+                <div style="font-size:1.5rem;margin-bottom:.5rem">⏳</div>
+                <p style="font-size:.85rem">Finding books…</p>
+            </div>
+            <div id="booksContent" style="display:none;flex-direction:column;gap:.75rem"></div>
+            <div id="booksError" style="display:none;text-align:center;padding:1.5rem;color:var(--text-muted);font-size:.85rem">
+                😕 Couldn't load recommendations right now.
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── Dashboard row: AI Course Recommendations ── #}
+<div class="card" style="padding:var(--space-lg);margin-top:var(--space-md)" id="aiRecoWidget">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-md)">
+        <h3 style="margin:0;font-size:1rem;color:var(--text-primary)">🤖 AI-Recommended Courses For You</h3>
+        <span style="font-size:.72rem;color:var(--text-muted);background:var(--bg-tertiary);padding:2px 8px;border-radius:12px;border:1px solid var(--glass-border)">Powered by AI</span>
+    </div>
+    <div id="aiRecoLoading" style="text-align:center;padding:2rem;color:var(--text-muted)">
+        <div style="font-size:1.5rem;margin-bottom:.5rem">🔄</div>
+        <p style="font-size:.85rem">Analyzing your learning profile…</p>
+    </div>
+    <div id="aiRecoContent" style="display:none;flex-direction:column;gap:.65rem"></div>
+    <div id="aiRecoError" style="display:none;text-align:center;padding:1.5rem;color:var(--text-muted);font-size:.85rem">
+        😕 Couldn't load AI recommendations right now.
+    </div>
+</div>
+
+<script>
+// ─── Daily Trivia ───────────────────────────────────────────
+var triviaCorrect = null;
+
+function htmlDecode(s) {
+    var el = document.createElement('div');
+    el.innerHTML = s;
+    return el.textContent || el.innerText;
+}
+
+function loadTrivia() {
+    document.getElementById('triviaLoading').style.display = 'block';
+    document.getElementById('triviaContent').style.display = 'none';
+    document.getElementById('triviaError').style.display   = 'none';
+    document.getElementById('triviaFb').style.display      = 'none';
+    document.getElementById('triviaNext').style.display    = 'none';
+
+    fetch('https://opentdb.com/api.php?amount=1&type=multiple')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.results || data.results.length === 0) throw new Error('no results');
+            var q = data.results[0];
+            triviaCorrect = htmlDecode(q.correct_answer);
+
+            document.getElementById('triviaCat').textContent = htmlDecode(q.category);
+            document.getElementById('triviaQ').textContent   = htmlDecode(q.question);
+
+            var opts = q.incorrect_answers.concat([q.correct_answer]).map(htmlDecode);
+            opts.sort(function() { return Math.random() - 0.5; });
+
+            var container = document.getElementById('triviaOptions');
+            container.innerHTML = '';
+            opts.forEach(function(opt) {
+                var btn = document.createElement('button');
+                btn.textContent = opt;
+                btn.style.cssText = 'width:100%;text-align:left;padding:.5rem .85rem;background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--glass-border);border-radius:var(--radius-md);cursor:pointer;font-size:.85rem;transition:background .15s';
+                btn.onmouseover = function() { if(!btn.disabled) btn.style.background = 'var(--bg-secondary)'; };
+                btn.onmouseout  = function() { if(!btn.disabled) btn.style.background = 'var(--bg-tertiary)'; };
+                btn.onclick = function() { answerTrivia(opt, btn); };
+                container.appendChild(btn);
+            });
+
+            document.getElementById('triviaLoading').style.display = 'none';
+            document.getElementById('triviaContent').style.display = 'block';
+        })
+        .catch(function() {
+            document.getElementById('triviaLoading').style.display = 'none';
+            document.getElementById('triviaError').style.display   = 'block';
+        });
+}
+
+function answerTrivia(chosen, clickedBtn) {
+    var isCorrect = chosen === triviaCorrect;
+    // Disable all buttons
+    var btns = document.getElementById('triviaOptions').children;
+    for (var i = 0; i < btns.length; i++) {
+        btns[i].disabled = true;
+        btns[i].style.cursor = 'default';
+        if (btns[i].textContent === triviaCorrect) {
+            btns[i].style.background = 'rgba(74,222,128,0.15)';
+            btns[i].style.borderColor = '#4ADE80';
+            btns[i].style.color = '#4ADE80';
+            btns[i].style.fontWeight = '700';
+        }
+    }
+    if (!isCorrect) {
+        clickedBtn.style.background  = 'rgba(248,113,113,0.15)';
+        clickedBtn.style.borderColor = '#F87171';
+        clickedBtn.style.color       = '#F87171';
+    }
+    var fb = document.getElementById('triviaFb');
+    fb.textContent       = isCorrect ? '✅ Correct!' : '❌ Wrong — the correct answer was: ' + triviaCorrect;
+    fb.style.background  = isCorrect ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)';
+    fb.style.color       = isCorrect ? '#4ADE80' : '#F87171';
+    fb.style.display     = 'block';
+    document.getElementById('triviaNext').style.display = 'block';
+}
+
+// ─── Recommended Reading ────────────────────────────────────
+var BOOK_TOPICS = ['leadership', 'productivity', 'communication', 'management', 'professional development'];
+
+function loadBooks() {
+    var topic = BOOK_TOPICS[Math.floor(Math.random() * BOOK_TOPICS.length)];
+    var url   = 'https://openlibrary.org/search.json?q=' + encodeURIComponent(topic) +
+                '&limit=20&fields=title,author_name,first_publish_year,cover_i,key&language=eng';
+
+    fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data.docs || data.docs.length === 0) throw new Error('empty');
+
+            // Pick 3 random from top 20
+            var shuffled = data.docs.filter(function(b) { return b.title && b.author_name; });
+            shuffled.sort(function() { return Math.random() - 0.5; });
+            var picks = shuffled.slice(0, 3);
+
+            var container = document.getElementById('booksContent');
+            container.innerHTML = '';
+            picks.forEach(function(book) {
+                var coverUrl = book.cover_i
+                    ? 'https://covers.openlibrary.org/b/id/' + book.cover_i + '-S.jpg'
+                    : null;
+                var bookKey = book.key ? 'https://openlibrary.org' + book.key : '#';
+
+                var el = document.createElement('div');
+                el.style.cssText = 'display:flex;align-items:center;gap:.75rem;padding:.6rem;background:var(--bg-tertiary);border-radius:var(--radius-md)';
+                el.innerHTML =
+                    (coverUrl
+                        ? '<img src="' + coverUrl + '" alt="" style="width:38px;height:54px;object-fit:cover;border-radius:3px;flex-shrink:0">'
+                        : '<div style="width:38px;height:54px;background:var(--glass-border);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.2rem">📖</div>') +
+                    '<div style="min-width:0">' +
+                        '<a href="' + bookKey + '" target="_blank" rel="noopener noreferrer" style="color:var(--accent-blue);text-decoration:none;font-weight:600;font-size:.85rem;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + book.title + '</a>' +
+                        '<div style="font-size:.75rem;color:var(--text-muted);margin-top:2px">' + (book.author_name ? book.author_name[0] : 'Unknown') + (book.first_publish_year ? ' · ' + book.first_publish_year : '') + '</div>' +
+                    '</div>';
+                container.appendChild(el);
+            });
+
+            document.getElementById('booksLoading').style.display = 'none';
+            container.style.display = 'flex';
+
+            // Topic label at bottom
+            var lbl = document.createElement('div');
+            lbl.style.cssText = 'font-size:.72rem;color:var(--text-muted);margin-top:.5rem;text-align:center';
+            lbl.textContent = '📚 Topic: ' + topic.charAt(0).toUpperCase() + topic.slice(1);
+            container.appendChild(lbl);
+        })
+        .catch(function() {
+            document.getElementById('booksLoading').style.display = 'none';
+            document.getElementById('booksError').style.display   = 'block';
+        });
+}
+
+// Initialise both widgets on page load
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('triviaWidget')) loadTrivia();
+    if (document.getElementById('booksWidget'))  loadBooks();
+    if (document.getElementById('aiRecoWidget')) loadAiRecommendations();
+});
+
+// ─── AI Course Recommendations ──────────────────────────────
+function loadAiRecommendations() {
+    fetch('/training/recommendations-ai')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var recs = data.recommendations || [];
+            var container = document.getElementById('aiRecoContent');
+            var loading   = document.getElementById('aiRecoLoading');
+            var error     = document.getElementById('aiRecoError');
+
+            if (recs.length === 0) {
+                loading.style.display = 'none';
+                container.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-muted);font-size:.85rem">No recommendations yet — enroll in more courses first!</div>';
+                container.style.display = 'block';
+                return;
+            }
+
+            container.innerHTML = '';
+            recs.forEach(function(rec, i) {
+                var colors = ['#6366f1','#10b981','#f59e0b'];
+                var el = document.createElement('div');
+                el.style.cssText = 'display:flex;gap:.75rem;padding:.75rem;background:var(--bg-tertiary);border-radius:var(--radius-md);border-left:3px solid ' + colors[i % colors.length];
+                el.innerHTML =
+                    '<div style="font-size:1.3rem;flex-shrink:0">🤖</div>' +
+                    '<div style="min-width:0">' +
+                        '<div style="font-weight:600;font-size:.85rem;color:var(--text-primary)">' + (rec.title || '') + '</div>' +
+                        '<div style="font-size:.75rem;color:var(--text-muted);margin-top:3px">' + (rec.reason || '') + '</div>' +
+                        (rec.course_id
+                            ? '<a href="/training/' + rec.course_id + '" style="font-size:.72rem;color:var(--accent-blue);text-decoration:none;margin-top:4px;display:inline-block">View Course →</a>'
+                            : '') +
+                    '</div>';
+                container.appendChild(el);
+            });
+
+            loading.style.display = 'none';
+            container.style.display = 'flex';
+        })
+        .catch(function() {
+            document.getElementById('aiRecoLoading').style.display = 'none';
+            document.getElementById('aiRecoError').style.display   = 'block';
+        });
+}
+</script>
+
+{% endif %}
+
+{# ====== CATALOG TAB ====== #}
+{% if tab == 'catalog' %}
+{# Search + Filters #}
+<div class="card" style="padding:var(--space-md) var(--space-lg);margin-bottom:var(--space-lg)">
+    <form method="get" action="{{ path('app_training_index') }}" style="display:flex;align-items:center;gap:var(--space-md);flex-wrap:wrap">
+        <input type="hidden" name="tab" value="catalog">
+        <div style="position:relative;flex:1;min-width:200px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" name="q" id="catalogSearch" value="{{ app.request.query.get('q') }}" placeholder="Search courses..." class="form-control" style="padding-left:2.25rem">
+        </div>
+        <select name="category" id="catalogCategory" class="form-control" style="width:auto;min-width:140px">
+            <option value="">All Categories</option>
+            {% for cat in ['TECHNICAL','SOFT_SKILLS','COMPLIANCE','ONBOARDING','LEADERSHIP'] %}
+                <option value="{{ cat }}" {{ app.request.query.get('category') == cat ? 'selected' : '' }}>{{ cat|replace({'_': ' '})|title }}</option>
+            {% endfor %}
+        </select>
+        <select name="difficulty" id="catalogDifficulty" class="form-control" style="width:auto;min-width:130px">
+            <option value="">All Levels</option>
+            {% for d in ['BEGINNER','INTERMEDIATE','ADVANCED'] %}
+                <option value="{{ d }}" {{ app.request.query.get('difficulty') == d ? 'selected' : '' }}>{{ d|title }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-secondary btn-sm">Search</button>
+    </form>
+</div>
+
+{# Course Cards Grid #}
+{% if courses|length > 0 %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:var(--space-md);margin-bottom:var(--space-lg)">
+    {% for c in courses %}
+    {% set categoryColors = {'TECHNICAL':'#6366f1','SOFT_SKILLS':'#ec4899','COMPLIANCE':'#f59e0b','ONBOARDING':'#8b5cf6','LEADERSHIP':'#ef4444'} %}
+    {% set enrollment = enrollmentMap[c.id] is defined ? enrollmentMap[c.id] : null %}
+    <div class="catalog-card card" style="padding:0;overflow:hidden;display:flex;flex-direction:column"
+         data-title="{{ c.title|lower }}"
+         data-category="{{ c.category }}"
+         data-difficulty="{{ c.difficulty }}">
+        {# Category color banner #}
+        <div style="height:4px;background:{{ categoryColors[c.category] ?? '#6366f1' }}"></div>
+        <div style="padding:var(--space-md);flex:1;display:flex;flex-direction:column">
+            {# Badges #}
+            <div style="display:flex;gap:.375rem;flex-wrap:wrap;margin-bottom:var(--space-sm)">
+                {% set cc = {'TECHNICAL':'blue','SOFT_SKILLS':'green','COMPLIANCE':'orange','ONBOARDING':'purple','LEADERSHIP':'red'} %}
+                <span class="badge badge--{{ cc[c.category] ?? 'blue' }}" style="font-size:.7rem">{{ c.category|replace({'_': ' '}) }}</span>
+                {% set dc = {'BEGINNER':'green','INTERMEDIATE':'orange','ADVANCED':'red'} %}
+                <span class="badge badge--{{ dc[c.difficulty] ?? 'blue' }}" style="font-size:.7rem">{{ c.difficulty }}</span>
+                {% if enrollment %}
+                    <span class="badge badge--green" style="font-size:.7rem">✅ ENROLLED</span>
+                {% endif %}
+            </div>
+            {# Title + Description #}
+            <h4 style="margin:0 0 .375rem;font-size:.95rem;color:var(--text-primary)">
+                <a href="{{ path('app_training_show', {id: c.id}) }}" style="color:inherit;text-decoration:none">{{ c.title }}</a>
+            </h4>
+            <p style="font-size:.8rem;color:var(--text-muted);margin:0 0 var(--space-sm);flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ c.description|default('No description available.')|slice(0,100) }}</p>
+            {# Meta #}
+            <div style="display:flex;gap:var(--space-md);font-size:.75rem;color:var(--text-muted);margin-bottom:var(--space-sm)">
+                {% if c.durationHours %}<span>⏱ {{ c.durationHours }}h</span>{% endif %}
+                {% if c.instructorName %}<span>👤 {{ c.instructorName }}</span>{% endif %}
+                {% if c.quizTimerSeconds %}<span>⏰ {{ c.quizTimerSeconds }}s/Q</span>{% endif %}
+            </div>
+            {% if c.startDate or c.endDate %}
+            <div style="font-size:.7rem;color:var(--text-muted);margin-bottom:var(--space-sm)">
+                📅 {{ c.startDate ? c.startDate|date('M j') : '?' }} → {{ c.endDate ? c.endDate|date('M j, Y') : 'Ongoing' }}
+            </div>
+            {% endif %}
+            {# Action row #}
+            <div style="display:flex;gap:.5rem;margin-top:auto;padding-top:var(--space-sm);border-top:1px solid var(--glass-border)">
+                {% if enrollment %}
+                    {% if enrollment.status != 'COMPLETED' %}
+                        <a href="{{ path('app_training_show', {id: c.id}) }}" class="btn btn-primary btn-sm" style="flex:1;text-align:center;font-size:.8rem">Continue Learning</a>
+                    {% else %}
+                        <a href="{{ path('app_training_show', {id: c.id}) }}" class="btn btn-outline btn-sm" style="flex:1;text-align:center;font-size:.8rem">✅ Completed</a>
+                    {% endif %}
+                {% else %}
+                    <form method="post" action="{{ path('app_training_enroll', {id: c.id}) }}" style="flex:1"
+                          {% if c.difficulty == 'ADVANCED' %}data-advanced="true"{% endif %}>
+                        <input type="hidden" name="_token" value="{{ csrf_token('enroll' ~ c.id) }}">
+                        <button type="submit" class="btn btn-primary btn-sm" style="width:100%;font-size:.8rem">Enroll Now</button>
+                    </form>
+                {% endif %}
+                <a href="{{ path('app_training_show', {id: c.id}) }}" class="btn btn-ghost btn-sm" title="View details">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card" id="catalogNoResults" style="text-align:center;padding:3rem">
+    <div style="font-size:2rem;margin-bottom:.5rem">📚</div>
+    <p class="text-muted">No courses found.</p>
+</div>
+{% endif %}
+
+{% if pagination is defined %}{% include 'components/_pagination.html.twig' %}{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ── Advanced course warning ──
+    document.querySelectorAll('form[data-advanced="true"]').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            var ok = confirm(
+                '⚠️ Advanced Course Warning\n\n' +
+                'This is an ADVANCED level course. It is recommended to complete Beginner and Intermediate courses first.\n\n' +
+                'Are you sure you want to enroll?'
+            );
+            if (!ok) e.preventDefault();
+        });
+    });
+
+    // ── Live catalog filtering ──
+    var searchEl    = document.getElementById('catalogSearch');
+    var catEl       = document.getElementById('catalogCategory');
+    var diffEl      = document.getElementById('catalogDifficulty');
+    var cards       = document.querySelectorAll('.catalog-card');
+    var noResults   = document.getElementById('catalogNoResults');
+
+    function filterCatalog() {
+        var q    = searchEl ? searchEl.value.toLowerCase() : '';
+        var cat  = catEl    ? catEl.value : '';
+        var diff = diffEl   ? diffEl.value : '';
+        var visible = 0;
+
+        cards.forEach(function(card) {
+            var matchQ    = !q    || card.dataset.title.includes(q);
+            var matchCat  = !cat  || card.dataset.category === cat;
+            var matchDiff = !diff || card.dataset.difficulty === diff;
+            var show = matchQ && matchCat && matchDiff;
+            card.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+
+        if (noResults) noResults.style.display = visible === 0 ? 'block' : 'none';
+    }
+
+    if (searchEl) searchEl.addEventListener('input', filterCatalog);
+    if (catEl)    catEl.addEventListener('change', filterCatalog);
+    if (diffEl)   diffEl.addEventListener('change', filterCatalog);
+});
+</script>
+{% endif %}
+
+{# ====== MY LEARNING TAB ====== #}
+{% if tab == 'learning' %}
+{% if learningList|length > 0 %}
+<div style="display:flex;flex-direction:column;gap:var(--space-md)">
+    {% for e in learningList %}
+    {% set cert = certificateByEnrollmentId[e.id] is defined ? certificateByEnrollmentId[e.id] : null %}
+    {% set accentColor = e.status == 'COMPLETED' ? '#10b981' : (e.status == 'IN_PROGRESS' ? '#f59e0b' : '#6366f1') %}
+    <div class="card" style="padding:0;overflow:hidden;display:flex">
+        {# Left accent bar #}
+        <div style="width:4px;background:{{ accentColor }};flex-shrink:0"></div>
+        <div style="flex:1;padding:var(--space-md) var(--space-lg);display:flex;align-items:center;gap:var(--space-lg);flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+                <div style="display:flex;align-items:center;gap:var(--space-sm);margin-bottom:.375rem">
+                    <h4 style="margin:0;font-size:.95rem;color:var(--text-primary)">
+                        <a href="{{ path('app_training_show', {id: e.course.id}) }}" style="color:inherit;text-decoration:none">{{ e.course.title }}</a>
+                    </h4>
+                    {% if e.status == 'COMPLETED' %}<span style="font-size:.85rem">✅</span>{% endif %}
+                </div>
+                <div style="display:flex;gap:.375rem;flex-wrap:wrap;margin-bottom:.375rem">
+                    {% set cc = {'TECHNICAL':'blue','SOFT_SKILLS':'green','COMPLIANCE':'orange','ONBOARDING':'purple','LEADERSHIP':'red'} %}
+                    <span class="badge badge--{{ cc[e.course.category] ?? 'blue' }}" style="font-size:.65rem">{{ e.course.category|replace({'_': ' '}) }}</span>
+                    {% set dc = {'BEGINNER':'green','INTERMEDIATE':'orange','ADVANCED':'red'} %}
+                    <span class="badge badge--{{ dc[e.course.difficulty] ?? 'blue' }}" style="font-size:.65rem">{{ e.course.difficulty }}</span>
+                    {% if e.course.durationHours %}<span style="font-size:.7rem;color:var(--text-muted)">⏱ {{ e.course.durationHours }}h</span>{% endif %}
+                </div>
+                {% set esc = {'ENROLLED':'blue','IN_PROGRESS':'orange','COMPLETED':'green'} %}
+                <span class="badge badge--{{ esc[e.status] ?? 'blue' }}" style="font-size:.7rem">{{ e.status }}</span>
+            </div>
+            {# Progress + Score + slider #}
+            <div style="width:180px;text-align:center">
+                <div style="height:8px;background:var(--glass-border);border-radius:4px;overflow:hidden;margin-bottom:4px">
+                    <div id="progBar_{{ e.id }}" style="height:100%;width:{{ e.progress ?? 0 }}%;background:{{ accentColor }};border-radius:4px;transition:width .3s"></div>
+                </div>
+                <span id="progLabel_{{ e.id }}" style="font-size:.75rem;color:var(--text-muted)">{{ e.progress ?? 0 }}% progress</span>
+                {% if e.score is not null %}
+                    <div style="font-size:.8rem;color:{{ e.score >= 70 ? '#10b981' : '#ef4444' }};font-weight:600;margin-top:2px">🏆 {{ e.score|number_format(0) }}%</div>
+                {% endif %}
+                {% if e.status != 'COMPLETED' %}
+                <div style="margin-top:.5rem;display:flex;align-items:center;gap:.375rem">
+                    <input type="range" min="0" max="100" value="{{ e.progress ?? 0 }}"
+                           id="progSlider_{{ e.id }}"
+                           style="flex:1;cursor:pointer;accent-color:{{ accentColor }}"
+                           oninput="document.getElementById('progLabel_{{ e.id }}').textContent=this.value+'% progress';document.getElementById('progBar_{{ e.id }}').style.width=this.value+'%'">
+                    <button type="button"
+                            style="padding:2px 7px;font-size:.7rem;background:var(--accent-blue);color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer"
+                            onclick="saveProgress({{ e.id }},'{{ csrf_token('progress' ~ e.id) }}')">✓</button>
+                </div>
+                {% endif %}
+            </div>
+            {# Actions #}
+            <div style="display:flex;gap:.5rem;flex-shrink:0">
+                {% if e.status != 'COMPLETED' %}
+                    <a href="{{ path('app_training_quiz', {id: e.course.id}) }}" class="btn btn-primary btn-sm" style="font-size:.8rem">Take Quiz</a>
+                    <a href="{{ path('app_training_quiz_ai', {id: e.course.id}) }}" class="btn btn-outline btn-sm" style="font-size:.8rem" title="Try AI-generated quiz">🤖 AI Quiz</a>
+                    <form method="post" action="{{ path('app_training_drop', {id: e.course.id}) }}" onsubmit="return confirm('Drop this course?')">
+                        <input type="hidden" name="_token" value="{{ csrf_token('drop' ~ e.course.id) }}">
+                        <button type="submit" class="btn btn-ghost btn-sm" style="font-size:.8rem;color:#ef4444" title="Drop course">✕</button>
+                    </form>
+                {% else %}
+                    <a href="{{ path('app_training_show', {id: e.course.id}) }}" class="btn btn-outline btn-sm" style="font-size:.8rem">View Course</a>
+                    {% if cert %}
+                        <a href="{{ path('app_training_certificate_pdf', {id: cert.id}) }}" class="btn btn-ghost btn-sm" style="font-size:.8rem" target="_blank">📄 Download</a>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:3rem">
+    <div style="font-size:2rem;margin-bottom:.5rem">🎓</div>
+    <p class="text-muted">You're not enrolled in any courses yet.</p>
+    <a href="{{ path('app_training_index', {tab:'catalog'}) }}" class="btn btn-primary" style="margin-top:1rem">Browse Catalog</a>
+</div>
+{% endif %}
+
+<script>
+function saveProgress(enrollmentId, csrfToken) {
+    var slider = document.getElementById('progSlider_' + enrollmentId);
+    if (!slider) return;
+    var progress = parseInt(slider.value, 10);
+    var btn = slider.nextElementSibling;
+    btn.textContent = '…';
+    btn.disabled = true;
+
+    var fd = new FormData();
+    fd.append('_token', csrfToken);
+    fd.append('progress', progress);
+
+    fetch('/training/enrollment/' + enrollmentId + '/progress', { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.ok) {
+                btn.textContent = '✅';
+                document.getElementById('progLabel_' + enrollmentId).textContent = data.progress + '% progress';
+                document.getElementById('progBar_' + enrollmentId).style.width = data.progress + '%';
+                setTimeout(function(){ btn.textContent = '✓'; btn.disabled = false; }, 1500);
+            } else {
+                btn.textContent = '✕';
+                btn.disabled = false;
+            }
+        })
+        .catch(function() { btn.textContent = '✕'; btn.disabled = false; });
+}
+</script>
+{% endif %}
+
+{# ====== CERTIFICATES TAB ====== #}
+{% if tab == 'certificates' %}
+{% if certificates|length > 0 %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:var(--space-md)">
+    {% for cert in certificates %}
+    {% set isSigned = cert.signatureData or cert.signedAt %}
+    <div class="card" style="padding:var(--space-lg);position:relative;overflow:hidden">
+        {# Gold accent #}
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#f59e0b,#fbbf24,#f59e0b)"></div>
+        <div style="display:flex;align-items:flex-start;gap:var(--space-md)">
+            <span style="font-size:2rem">🏆</span>
+            <div style="flex:1;min-width:0">
+                <h4 style="margin:0 0 .375rem;font-size:.95rem;color:var(--text-primary)">{{ cert.course.title }}</h4>
+                <div style="font-size:.8rem;color:var(--text-muted)">Awarded to <strong>{{ cert.user.firstName }} {{ cert.user.lastName }}</strong></div>
+                <div style="font-size:.75rem;color:var(--text-muted);margin-top:4px">
+                    <span>📋 {{ cert.certificateNumber }}</span>
+                </div>
+                <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px">
+                    📅 Issued {{ cert.issuedAt ? cert.issuedAt|date('M j, Y') : '—' }}
+                </div>
+                {# Signature status #}
+                <div style="margin-top:.5rem">
+                    {% if isSigned %}
+                        <span class="badge badge--green" style="font-size:.7rem">✅ {{ cert.signatureData ? 'Signed' : 'Auto-signed' }}{{ cert.signedAt ? ' on ' ~ cert.signedAt|date('M j, Y') : '' }}</span>
+                    {% else %}
+                        <span class="badge badge--orange" style="font-size:.7rem">⏳ Pending Signature</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {# Actions #}
+        <div style="display:flex;gap:.5rem;margin-top:var(--space-md);padding-top:var(--space-sm);border-top:1px solid var(--glass-border)">
+            <a href="{{ path('app_training_show', {id: cert.course.id}) }}" class="btn btn-outline btn-sm" style="font-size:.8rem;flex:1;text-align:center">View</a>
+            <a href="{{ path('app_training_certificate_pdf', {id: cert.id}) }}" class="btn btn-ghost btn-sm" style="font-size:.8rem" title="Download PDF" target="_blank">📄 PDF</a>
+            {% if is_granted('ROLE_HR') and not isSigned %}
+                <button type="button" class="btn btn-primary btn-sm sign-cert-btn" style="font-size:.8rem;flex:1" data-cert-id="{{ cert.id }}" data-course-id="{{ cert.course.id }}">✍️ Sign</button>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:3rem">
+    <div style="font-size:2rem;margin-bottom:.5rem">🏆</div>
+    <p class="text-muted">No certificates earned yet. Complete courses with a score of 70% or higher!</p>
+    <a href="{{ path('app_training_index', {tab:'catalog'}) }}" class="btn btn-primary" style="margin-top:1rem">Browse Courses</a>
+</div>
+{% endif %}
+
+{# Signature Modal for HR/Admin #}
+{% if is_granted('ROLE_HR') %}
+<div id="signModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+    <div class="card" style="width:520px;max-width:95vw;padding:var(--space-lg)">
+        <h3 style="margin:0 0 var(--space-md);color:var(--text-primary)">✍️ Sign Certificate</h3>
+        <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:var(--space-md)">Draw your signature below</p>
+        <canvas id="signCanvas" width="460" height="140" style="border:2px dashed var(--glass-border);border-radius:var(--radius-md);cursor:crosshair;background:rgba(255,255,255,.05);display:block;width:100%"></canvas>
+        <div style="display:flex;gap:.5rem;margin-top:var(--space-md);justify-content:flex-end">
+            <button type="button" class="btn btn-ghost btn-sm" id="signClear">Clear</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="signCancel">Cancel</button>
+            <button type="button" class="btn btn-primary btn-sm" id="signConfirm">Confirm & Sign</button>
+        </div>
+        <form id="signForm" method="post" style="display:none">
+            <input type="hidden" name="_token" id="signToken">
+            <input type="hidden" name="signature_data" id="signData">
+        </form>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var modal = document.getElementById('signModal');
+    var canvas = document.getElementById('signCanvas');
+    var ctx = canvas.getContext('2d');
+    var drawing = false;
+    var currentCertId = null;
+
+    document.querySelectorAll('.sign-cert-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){
+            currentCertId = this.dataset.certId;
+            document.getElementById('signForm').action = '/training/certificate/' + currentCertId + '/sign';
+            // Generate proper CSRF token via a hidden field
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            modal.style.display = 'flex';
+        });
+    });
+
+    canvas.addEventListener('mousedown', function(e){ drawing = true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); });
+    canvas.addEventListener('mousemove', function(e){ if(!drawing) return; ctx.lineWidth = 2; ctx.strokeStyle = '#fff'; ctx.lineCap = 'round'; ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); });
+    canvas.addEventListener('mouseup', function(){ drawing = false; });
+    canvas.addEventListener('mouseleave', function(){ drawing = false; });
+
+    document.getElementById('signClear').addEventListener('click', function(){ ctx.clearRect(0, 0, canvas.width, canvas.height); });
+    document.getElementById('signCancel').addEventListener('click', function(){ modal.style.display = 'none'; });
+    document.getElementById('signConfirm').addEventListener('click', function(){
+        document.getElementById('signData').value = canvas.toDataURL('image/png');
+        document.getElementById('signToken').value = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        document.getElementById('signForm').submit();
+    });
+});
+</script>
+{% endif %}
+{% endif %}
+
+{# ====== MANAGE TAB (HR/Admin only) ====== #}
+{% if tab == 'manage' %}
+{% if is_granted('ROLE_HR') %}
+
+{# ── AI Generate modal ── #}
+<div id="aiGenModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+    <div class="card" style="width:min(520px,95vw);padding:var(--space-xl);position:relative">
+        <h2 style="margin:0 0 var(--space-md);font-size:1.1rem;display:flex;align-items:center;gap:.5rem">🤖 AI Course Generator</h2>
+        <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:var(--space-lg)">
+            Describe a topic and optionally paste a Mega.nz folder link. AI will generate complete course entries instantly.
+        </p>
+        <form method="post" action="{{ path('app_training_generate_ai') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('generate_ai_courses') }}">
+            <div style="margin-bottom:var(--space-md)">
+                <label style="font-size:.85rem;font-weight:600;display:block;margin-bottom:.375rem">Topic / Subject *</label>
+                <textarea name="topic" rows="2" required placeholder="e.g. Cybersecurity fundamentals for remote workers" class="form-control" style="resize:none"></textarea>
+            </div>
+            <div style="margin-bottom:var(--space-md)">
+                <label style="font-size:.85rem;font-weight:600;display:block;margin-bottom:.375rem">Mega.nz Link <span style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
+                <input type="url" name="mega_link" class="form-control" placeholder="https://mega.nz/folder/...">
+                <p style="font-size:.72rem;color:var(--text-muted);margin-top:.3rem">This link will be stored on every generated course as the course material.</p>
+            </div>
+            <div style="margin-bottom:var(--space-lg)">
+                <label style="font-size:.85rem;font-weight:600;display:block;margin-bottom:.375rem">Number of courses</label>
+                <select name="count" class="form-control" style="width:auto">
+                    <option value="3">3 courses</option>
+                    <option value="5" selected>5 courses</option>
+                    <option value="8">8 courses</option>
+                    <option value="10">10 courses</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:.75rem;justify-content:flex-end">
+                <button type="button" class="btn btn-ghost" onclick="document.getElementById('aiGenModal').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary">🤖 Generate Courses</button>
+            </div>
+        </form>
+        <button onclick="document.getElementById('aiGenModal').style.display='none'"
+                style="position:absolute;top:.75rem;right:.75rem;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;line-height:1">✕</button>
+    </div>
+</div>
+<script>
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') document.getElementById('aiGenModal').style.display = 'none';
+});
+document.getElementById('aiGenModal').addEventListener('click', function(e) {
+    if (e.target === this) this.style.display = 'none';
+});
+</script>
+
+{# ── Manage header ── #}
+<div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-md)">
+    <h2 style="margin:0;font-size:1rem;color:var(--text-muted)">{{ manageCourses|length }} course{{ manageCourses|length != 1 ? 's' : '' }}</h2>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button onclick="document.getElementById('aiGenModal').style.display='flex'" class="btn btn-primary btn-sm">
+            🤖 Generate AI Courses
+        </button>
+        <a href="{{ path('app_training_new') }}" class="btn btn-secondary btn-sm">+ New Course</a>
+    </div>
+</div>
+
+<div class="card">
+    {% if manageCourses|length > 0 %}
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th style="width:32px"></th>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Difficulty</th>
+                    <th>Duration</th>
+                    <th>Instructor</th>
+                    <th style="text-align:center">Enrollees</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in manageCourses %}
+                {% set enrolleeCount = c.enrollments|length %}
+                <tr id="row_{{ c.id }}">
+                    <td>
+                        {% if enrolleeCount > 0 %}
+                        <button onclick="toggleEnrollees({{ c.id }})"
+                                id="tog_{{ c.id }}"
+                                style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:.8rem;padding:2px 4px;border-radius:var(--radius-sm);transition:transform .2s"
+                                title="Show/hide enrollees">▶</button>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted">{{ c.id }}</td>
+                    <td>
+                        <div>
+                            <a href="{{ path('app_training_show', {id: c.id}) }}" style="color:var(--accent-blue);font-weight:600">{{ c.title }}</a>
+                            {% if c.megaLink %}
+                                <a href="{{ c.megaLink }}" target="_blank" rel="noopener noreferrer" title="Mega.nz material" style="margin-left:.35rem;font-size:.75rem;color:var(--text-muted);text-decoration:none">🔗</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% set cc = {'TECHNICAL':'blue','SOFT_SKILLS':'green','COMPLIANCE':'orange','ONBOARDING':'purple','LEADERSHIP':'red'} %}
+                        <span class="badge badge--{{ cc[c.category] ?? 'blue' }}">{{ c.category|replace({'_': ' '}) }}</span>
+                    </td>
+                    <td>
+                        {% set sc = {'DRAFT':'blue','ACTIVE':'green','COMPLETED':'orange','CANCELLED':'red'} %}
+                        <span class="badge badge--{{ sc[c.status] ?? 'blue' }}">{{ c.status ?? 'N/A' }}</span>
+                    </td>
+                    <td>
+                        {% set dc = {'BEGINNER':'green','INTERMEDIATE':'orange','ADVANCED':'red'} %}
+                        <span class="badge badge--{{ dc[c.difficulty] ?? 'blue' }}">{{ c.difficulty }}</span>
+                    </td>
+                    <td>{{ c.durationHours ? c.durationHours ~ 'h' : '—' }}</td>
+                    <td>{{ c.instructorName ?? '—' }}</td>
+                    <td style="text-align:center">
+                        <span style="font-weight:700;color:{{ enrolleeCount > 0 ? 'var(--accent-blue)' : 'var(--text-muted)' }}">{{ enrolleeCount }}</span>
+                    </td>
+                    <td>
+                        <div style="display:flex;gap:.375rem">
+                            <a href="{{ path('app_training_edit', {id: c.id}) }}" class="btn btn-ghost btn-sm" title="Edit">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </a>
+                            <form method="post" action="{{ path('app_training_delete', {id: c.id}) }}" onsubmit="return confirm('Delete this course?')">
+                                <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ c.id) }}">
+                                <button type="submit" class="btn btn-ghost btn-sm" style="color:#ef4444" title="Delete">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {# Expandable enrollment sub-rows #}
+                {% if enrolleeCount > 0 %}
+                <tr id="enrollees_{{ c.id }}" style="display:none">
+                    <td colspan="10" style="padding:0">
+                        <div style="background:var(--bg-tertiary);border-top:1px solid var(--glass-border);padding:.75rem 1rem">
+                            <table style="width:100%;border-collapse:collapse;font-size:.8rem">
+                                <thead>
+                                    <tr style="color:var(--text-muted)">
+                                        <th style="text-align:left;padding:.3rem .5rem;font-weight:500">Employee</th>
+                                        <th style="text-align:left;padding:.3rem .5rem;font-weight:500">Status</th>
+                                        <th style="text-align:left;padding:.3rem .5rem;font-weight:500;width:160px">Progress</th>
+                                        <th style="text-align:left;padding:.3rem .5rem;font-weight:500">Score</th>
+                                        <th style="text-align:left;padding:.3rem .5rem;font-weight:500">Enrolled</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for enr in c.enrollments %}
+                                    <tr>
+                                        <td style="padding:.4rem .5rem">
+                                            <span style="font-weight:600;color:var(--text-primary)">
+                                                {{ enr.user.firstName ?? '' }} {{ enr.user.lastName ?? '' }}
+                                            </span>
+                                        </td>
+                                        <td style="padding:.4rem .5rem">
+                                            {% set es = {'ENROLLED':'blue','IN_PROGRESS':'orange','COMPLETED':'green','DROPPED':'red'} %}
+                                            <span class="badge badge--{{ es[enr.status] ?? 'blue' }}" style="font-size:.7rem">{{ enr.status }}</span>
+                                        </td>
+                                        <td style="padding:.4rem .5rem">
+                                            <div style="display:flex;align-items:center;gap:.5rem">
+                                                <div style="flex:1;height:6px;background:var(--glass-border);border-radius:3px;overflow:hidden">
+                                                    <div style="height:100%;width:{{ enr.progress ?? 0 }}%;background:{{ accentColor }};border-radius:3px"></div>
+                                                </div>
+                                                <span style="font-size:.72rem;color:var(--text-muted);white-space:nowrap">{{ enr.progress ?? 0 }}%</span>
+                                            </div>
+                                        </td>
+                                        <td style="padding:.4rem .5rem">
+                                            {% if enr.score is not null %}
+                                                <span style="color:{{ enr.score >= 70 ? '#10b981' : '#ef4444' }};font-weight:600">{{ enr.score|number_format(0) }}%</span>
+                                            {% else %}—{% endif %}
+                                        </td>
+                                        <td style="padding:.4rem .5rem;color:var(--text-muted)">
+                                            {{ enr.enrolledAt ? enr.enrolledAt|date('M j, Y') : '—' }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:3rem">
+        <div style="font-size:2.5rem;margin-bottom:.75rem">📚</div>
+        <p class="text-muted">No courses created yet.</p>
+        <div style="display:flex;gap:.75rem;justify-content:center;margin-top:1rem;flex-wrap:wrap">
+            <a href="{{ path('app_training_new') }}" class="btn btn-primary">+ Create Course</a>
+            <button onclick="document.getElementById('aiGenModal').style.display='flex'" class="btn btn-secondary">🤖 Generate with AI</button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function toggleEnrollees(courseId) {
+    var row = document.getElementById('enrollees_' + courseId);
+    var tog = document.getElementById('tog_' + courseId);
+    if (!row) return;
+    var open = row.style.display !== 'none';
+    row.style.display = open ? 'none' : 'table-row';
+    tog.style.transform = open ? '' : 'rotate(90deg)';
+}
+</script>
+
+{% else %}
+<div class="card" style="text-align:center;padding:3rem">
+    <p class="text-muted">This section is restricted to HR and Admin users.</p>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

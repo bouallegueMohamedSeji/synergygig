@@ -1,0 +1,299 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Messages{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="{{ asset('css/chat.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="chat">
+    {# ── SIDEBAR ── #}
+    <aside class="chat__sidebar">
+        <div class="chat__sidebar-header">
+            <h3 style="margin:0;font-size:1rem;color:var(--text-primary)">Chats</h3>
+            <div style="display:flex;gap:0.5rem">
+                {# New DM dropdown #}
+                <details class="chat__dropdown">
+                    <summary class="btn btn-ghost btn-sm" title="New DM">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    </summary>
+                    <div class="chat__dropdown-menu">
+                        <div style="padding:0.5rem 0.75rem;border-bottom:1px solid var(--border-primary)">
+                            <strong style="font-size:0.75rem;color:var(--text-secondary)">Start conversation</strong>
+                        </div>
+                        {% for u in users %}
+                            {% if u.id != app.user.id %}
+                            <a href="{{ path('app_chat_dm', {id: u.id}) }}" class="chat__dropdown-item">
+                                <div class="avatar avatar--sm">{{ u.firstName|first }}{{ u.lastName|first }}</div>
+                                {{ u.firstName }} {{ u.lastName }}
+                            </a>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </details>
+                {# New Group #}
+                <details class="chat__dropdown">
+                    <summary class="btn btn-ghost btn-sm" title="New group">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </summary>
+                    <div class="chat__dropdown-menu">
+                        <form method="post" action="{{ path('app_chat_create_room') }}" style="padding:0.75rem" novalidate>
+                            <input type="text" name="name" class="form-widget" placeholder="Group name..." style="margin-bottom:0.5rem">
+                            <button type="submit" class="btn btn-primary btn-sm" style="width:100%">Create Group</button>
+                        </form>
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <div class="chat__room-list">
+            {% for r in rooms %}
+            <a href="{{ path('app_chat_room', {id: r.room.id}) }}"
+               class="chat__room-item{% if activeRoom and activeRoom.id == r.room.id %} chat__room-item--active{% endif %}">
+                <div class="avatar">
+                    {% if r.room.type == 'DIRECT' %}
+                        {{ r.displayName|split(' ')|first|first }}{{ r.displayName|split(' ')|last|first }}
+                    {% else %}
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    {% endif %}
+                </div>
+                <div class="chat__room-info">
+                    <div class="chat__room-name">{{ r.displayName }}</div>
+                    <div class="chat__room-preview">
+                        {% if r.lastMessage %}
+                            {{ r.lastMessage.content|length > 40 ? r.lastMessage.content|slice(0,40) ~ '...' : r.lastMessage.content }}
+                        {% else %}
+                            <span class="text-muted">No messages yet</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if r.lastMessage %}
+                <span class="chat__room-time">{{ r.lastMessage.timestamp|date('H:i') }}</span>
+                {% endif %}
+            </a>
+            {% else %}
+            <div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:0.85rem">
+                No conversations yet.<br>Start a DM or create a group.
+            </div>
+            {% endfor %}
+        </div>
+    </aside>
+
+    {# ── MAIN CHAT AREA ── #}
+    <main class="chat__main">
+        {% if activeRoom %}
+            {# Header #}
+            <div class="chat__header">
+                <div style="display:flex;align-items:center;gap:0.75rem">
+                    <div class="avatar">
+                        {% if activeRoom.type == 'DIRECT' %}
+                            {{ activeDisplayName|split(' ')|first|first }}{{ activeDisplayName|split(' ')|last|first }}
+                        {% else %}
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <div style="font-weight:600;color:var(--text-primary);font-size:0.95rem">{{ activeDisplayName }}</div>
+                        {% if activeRoom.type == 'GROUP' and members is defined %}
+                            <div class="text-muted" style="font-size:0.75rem">{{ members|length }} member{{ members|length != 1 ? 's' : '' }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div style="display:flex;gap:0.5rem">
+                    {# Audio Call (popup) #}
+                    <button type="button" class="btn btn-ghost btn-sm" title="Audio call"
+                            onclick="startCallPopup({{ activeRoom.id }}, 'audio')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    </button>
+                    {# Video Call (popup) #}
+                    <button type="button" class="btn btn-ghost btn-sm" title="Video call"
+                            onclick="startCallPopup({{ activeRoom.id }}, 'video')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                    </button>
+                    {# Members (group only) #}
+                    {% if activeRoom.type == 'GROUP' %}
+                    <details class="chat__dropdown chat__dropdown--right">
+                        <summary class="btn btn-ghost btn-sm" title="Members">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </summary>
+                        <div class="chat__dropdown-menu" style="width:240px">
+                            <div style="padding:0.5rem 0.75rem;border-bottom:1px solid var(--border-primary)">
+                                <strong style="font-size:0.75rem;color:var(--text-secondary)">Members</strong>
+                            </div>
+                            {% for m in members %}
+                            <div class="chat__dropdown-item" style="pointer-events:none">
+                                <div class="avatar avatar--sm">{{ m.user.firstName|first }}{{ m.user.lastName|first }}</div>
+                                {{ m.user.firstName }} {{ m.user.lastName }}
+                                <span class="badge" style="margin-left:auto;font-size:0.6rem">{{ m.role }}</span>
+                            </div>
+                            {% endfor %}
+                            <div style="padding:0.5rem 0.75rem;border-top:1px solid var(--border-primary)">
+                                <form method="post" action="{{ path('app_chat_add_member', {id: activeRoom.id}) }}" style="display:flex;gap:0.5rem" novalidate>
+                                    <select name="user_id" class="form-widget" style="flex:1;font-size:0.8rem;padding:0.3rem">
+                                        <option value="">Add member...</option>
+                                        {% for u in users %}
+                                            {% set isMember = false %}
+                                            {% for m in members %}
+                                                {% if m.user.id == u.id %}{% set isMember = true %}{% endif %}
+                                            {% endfor %}
+                                            {% if not isMember %}
+                                                <option value="{{ u.id }}">{{ u.firstName }} {{ u.lastName }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-primary btn-sm">Add</button>
+                                </form>
+                            </div>
+                        </div>
+                    </details>
+                    {% endif %}
+                </div>
+            </div>
+
+            {# Messages #}
+            <div class="chat__messages" id="chatMessages">
+                {% set lastDate = null %}
+                {% for msg in messages %}
+                    {% set msgDate = msg.timestamp|date('Y-m-d') %}
+                    {% if msgDate != lastDate %}
+                        <div class="chat__date-divider">
+                            <span>{{ msg.timestamp|date('M d, Y') }}</span>
+                        </div>
+                        {% set lastDate = msgDate %}
+                    {% endif %}
+                    <div class="chat__msg {% if msg.sender.id == app.user.id %}chat__msg--own{% endif %}">
+                        {% if msg.sender.id != app.user.id %}
+                        <div class="avatar avatar--sm">{{ msg.sender.firstName|first }}{{ msg.sender.lastName|first }}</div>
+                        {% endif %}
+                        <div class="chat__msg-bubble">
+                            {% if msg.sender.id != app.user.id %}
+                            <div class="chat__msg-sender">{{ msg.sender.firstName }} {{ msg.sender.lastName }}</div>
+                            {% endif %}
+
+                            {# Attachment (image or file) #}
+                            {% if msg.attachment %}
+                                {% set ext = msg.attachment|split('.')|last|lower %}
+                                {% if ext in ['jpg','jpeg','png','gif','webp'] %}
+                                    <a href="{{ asset('uploads/chat/' ~ msg.attachment) }}" target="_blank">
+                                        <img src="{{ asset('uploads/chat/' ~ msg.attachment) }}" alt="{{ msg.attachmentOriginalName }}" class="chat__msg-image">
+                                    </a>
+                                {% else %}
+                                    <a href="{{ asset('uploads/chat/' ~ msg.attachment) }}" class="chat__msg-file" download="{{ msg.attachmentOriginalName }}">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                        {{ msg.attachmentOriginalName ?? msg.attachment }}
+                                    </a>
+                                {% endif %}
+                            {% endif %}
+
+                            {% if msg.content %}
+                            <div class="chat__msg-text">{{ msg.content }}</div>
+                            {% endif %}
+
+                            <div class="chat__msg-time">
+                                {{ msg.timestamp|date('H:i') }}
+                                {% if msg.isEdited %}<span class="chat__msg-edited">(edited)</span>{% endif %}
+                            </div>
+                        </div>
+
+                        {# 3-dot menu on own messages #}
+                        {% if msg.sender.id == app.user.id %}
+                        <details class="chat__msg-menu">
+                            <summary title="Actions">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                            </summary>
+                            <div class="chat__msg-menu-dropdown">
+                                <details class="chat__msg-edit-details">
+                                    <summary class="chat__msg-menu-item">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        Edit
+                                    </summary>
+                                    <form method="post" action="{{ path('app_chat_edit_message', {id: msg.id}) }}" class="chat__msg-edit-form" novalidate>
+                                        <input type="text" name="content" value="{{ msg.content }}" class="chat__msg-edit-input">
+                                        <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                    </form>
+                                </details>
+                                <form method="post" action="{{ path('app_chat_delete_message', {id: msg.id}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ msg.id) }}">
+                                    <button type="submit" class="chat__msg-menu-item chat__msg-menu-danger" onclick="return confirm('Delete this message?')">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </details>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="chat__empty">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <p>No messages yet. Say hi!</p>
+                    </div>
+                {% endfor %}
+            </div>
+
+            {# Input area with emoji picker & file upload #}
+            <form class="chat__input" method="post" action="{{ path('app_chat_send', {id: activeRoom.id}) }}" enctype="multipart/form-data" novalidate>
+                <input type="hidden" name="_token" value="{{ csrf_token('chat_send') }}">
+                {# Emoji picker #}
+                <details class="chat__emoji-picker">
+                    <summary class="btn btn-ghost btn-sm" title="Emoji">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                    </summary>
+                    <div class="chat__emoji-grid">
+                        {% for em in ['😀','😂','😍','🥰','😎','🤔','😢','😡','👍','👎','❤️','🔥','🎉','✅','💯','🙏','👋','🤝','💪','⭐','🚀','💡','📎','☕'] %}
+                        <button type="button" class="chat__emoji-btn" onclick="document.getElementById('chatInput{{ activeRoom.id }}').value+=this.textContent;this.closest('details').open=false">{{ em }}</button>
+                        {% endfor %}
+                    </div>
+                </details>
+
+                {# File upload #}
+                <label class="btn btn-ghost btn-sm chat__file-label" title="Attach file">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                    <input type="file" name="attachment" style="display:none" onchange="this.form.querySelector('.chat__file-name').textContent=this.files[0]?.name||''">
+                </label>
+
+                <input type="text" name="content" id="chatInput{{ activeRoom.id }}" class="chat__input-field" placeholder="Type a message..." autocomplete="off">
+                <span class="chat__file-name"></span>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </button>
+            </form>
+        {% else %}
+            {# No room selected #}
+            <div class="chat__empty" style="height:100%">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <h3 style="color:var(--text-secondary);margin:1rem 0 0.5rem">Select a conversation</h3>
+                <p class="text-muted" style="font-size:0.85rem">
+                    Choose a chat from the sidebar or start a new conversation.
+                </p>
+            </div>
+        {% endif %}
+    </main>
+</div>
+<script>
+(function(){var m=document.getElementById('chatMessages');if(m)m.scrollTop=m.scrollHeight;})();
+
+/* ── Open call in popup window (Messenger/WhatsApp style) ── */
+async function startCallPopup(roomId, type) {
+    try {
+        const res = await fetch('/call/start-ajax/' + roomId + '/' + type, { method: 'POST' });
+        const data = await res.json();
+        if (data.error) { alert(data.error); return; }
+        const w = type === 'video' ? 520 : 400;
+        const h = type === 'video' ? 700 : 550;
+        const left = (screen.width - w) / 2;
+        const top  = (screen.height - h) / 2;
+        window.open(
+            '/call/popup/' + data.callId,
+            'synergy_call_' + data.callId,
+            'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top + ',resizable=yes,scrollbars=no,toolbar=no,menubar=no,status=no'
+        );
+    } catch(e) {
+        console.error('Failed to start call:', e);
+        alert('Failed to start call');
+    }
+}
+</script>
+{% endblock %}

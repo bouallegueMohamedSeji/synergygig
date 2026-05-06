@@ -1,0 +1,72 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}{{ contract is defined and contract.id ? 'Edit Contract' : 'New Contract' }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:900px">
+    <div class="card__header">
+        <h3>{{ contract is defined and contract.id ? 'Edit Contract' : 'Create Contract' }}</h3>
+    </div>
+    <div class="card__body">
+        {{ form_start(form, {'attr': {'class': 'form', 'novalidate': 'novalidate'}}) }}
+
+        <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div class="form-group">
+                {{ form_label(form.offer) }}
+                {{ form_widget(form.offer, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.offer) }}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.status) }}
+                {{ form_widget(form.status, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.status) }}
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.applicant) }}
+                {{ form_widget(form.applicant, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.applicant) }}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.owner) }}
+                {{ form_widget(form.owner, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.owner) }}
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.amount) }}
+                {{ form_widget(form.amount, {'attr': {'class': 'form-control', 'step': '0.01'}}) }}
+                {{ form_errors(form.amount) }}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.currency) }}
+                {{ form_widget(form.currency, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.currency) }}
+            </div>
+
+            <div class="form-group">
+                {{ form_label(form.start_date) }}
+                {{ form_widget(form.start_date, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.start_date) }}
+            </div>
+            <div class="form-group">
+                {{ form_label(form.end_date) }}
+                {{ form_widget(form.end_date, {'attr': {'class': 'form-control'}}) }}
+                {{ form_errors(form.end_date) }}
+            </div>
+
+            <div class="form-group" style="grid-column:1/-1">
+                {{ form_label(form.terms) }}
+                {{ form_widget(form.terms, {'attr': {'class': 'form-control', 'rows': '5'}}) }}
+                {{ form_errors(form.terms) }}
+            </div>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;margin-top:1.5rem">
+            <button type="submit" class="btn btn-primary">Save Contract</button>
+            <a href="{{ path('app_contract_index') }}" class="btn btn-ghost">Cancel</a>
+        </div>
+        {{ form_end(form) }}
+    </div>
+</div>
+{% endblock %}

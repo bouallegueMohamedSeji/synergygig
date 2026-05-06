@@ -1,0 +1,38 @@
+{% extends 'layouts/auth.html.twig' %}
+
+{% block title %}Check Your Email | SynergyGig{% endblock %}
+
+{% block auth_body %}
+    <div style="text-align:center;margin-bottom:var(--space-xl)">
+        <div style="width:56px;height:56px;margin:0 auto var(--space-md);background:linear-gradient(135deg,rgba(13,148,136,.12),rgba(59,130,246,.12));border-radius:50%;display:flex;align-items:center;justify-content:center">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-teal, #0d9488)" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <h2 style="font-family:var(--font-heading);margin:0 0 var(--space-xs)">Check Your Email</h2>
+        <p style="color:var(--text-secondary);font-size:0.875rem;margin:0">
+            We sent a verification link to<br>
+            <strong style="color:var(--accent-blue)">{{ email }}</strong>
+        </p>
+    </div>
+
+    <div style="padding:16px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.15);border-radius:var(--radius-md);margin-bottom:var(--space-lg);font-size:0.85rem;color:var(--text-secondary);line-height:1.6">
+        <p style="margin:0 0 8px"><strong style="color:var(--text-primary)">Next steps:</strong></p>
+        <ol style="margin:0;padding-left:20px">
+            <li>Open your email inbox</li>
+            <li>Click the <strong>"Verify My Email"</strong> button</li>
+            <li>Sign in with your credentials</li>
+        </ol>
+    </div>
+
+    <p style="text-align:center;font-size:0.8rem;color:var(--text-muted);margin-bottom:var(--space-md)">
+        Didn't receive the email? Check your spam folder or resend below.
+    </p>
+
+    <form method="post" action="{{ path('app_resend_verification') }}" style="text-align:center">
+        <input type="hidden" name="email" value="{{ email }}">
+        <button type="submit" class="btn btn-primary" style="width:100%">Resend Verification Email</button>
+    </form>
+{% endblock %}
+
+{% block footer_links %}
+    <a href="{{ path('app_login') }}">← Back to Sign In</a>
+{% endblock %}

@@ -1,0 +1,24 @@
+{# Pagination controls - pass 'pagination' variable #}
+{% if pagination.pageCount is defined and pagination.pageCount > 1 %}
+<div style="display:flex;justify-content:center;align-items:center;gap:var(--space-sm);margin-top:var(--space-xl);padding:var(--space-md) 0">
+    {% if pagination.currentPageNumber > 1 %}
+        <a href="{{ path(app.request.attributes.get('_route'), app.request.query.all|merge({page: pagination.currentPageNumber - 1})) }}" class="btn btn-ghost btn-sm">&laquo; Prev</a>
+    {% endif %}
+
+    {% for p in 1..pagination.pageCount %}
+        {% if p == pagination.currentPageNumber %}
+            <span class="btn btn-sm" style="background:var(--accent-primary);color:#fff;pointer-events:none">{{ p }}</span>
+        {% elseif p >= pagination.currentPageNumber - 2 and p <= pagination.currentPageNumber + 2 %}
+            <a href="{{ path(app.request.attributes.get('_route'), app.request.query.all|merge({page: p})) }}" class="btn btn-ghost btn-sm">{{ p }}</a>
+        {% elseif p == 1 or p == pagination.pageCount %}
+            <a href="{{ path(app.request.attributes.get('_route'), app.request.query.all|merge({page: p})) }}" class="btn btn-ghost btn-sm">{{ p }}</a>
+        {% elseif p == pagination.currentPageNumber - 3 or p == pagination.currentPageNumber + 3 %}
+            <span class="text-muted">…</span>
+        {% endif %}
+    {% endfor %}
+
+    {% if pagination.currentPageNumber < pagination.pageCount %}
+        <a href="{{ path(app.request.attributes.get('_route'), app.request.query.all|merge({page: pagination.currentPageNumber + 1})) }}" class="btn btn-ghost btn-sm">Next &raquo;</a>
+    {% endif %}
+</div>
+{% endif %}

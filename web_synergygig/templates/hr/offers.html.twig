@@ -1,0 +1,105 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}HR — Offer Review{% endblock %}
+
+{% block content %}
+{# Tabs #}
+<div style="display:flex;gap:0;margin-bottom:1.5rem;border-bottom:2px solid var(--border-subtle)">
+    <a href="{{ path('app_hr_offers', {tab: 'pending'}) }}" style="padding:.75rem 1.5rem;font-weight:600;text-decoration:none;border-bottom:2px solid {{ tab == 'pending' ? 'var(--accent-blue)' : 'transparent' }};color:{{ tab == 'pending' ? 'var(--accent-blue)' : 'var(--text-secondary)' }};margin-bottom:-2px">
+        Pending Drafts
+        {% if pendingCount > 0 %}<span class="badge badge--orange" style="margin-left:.5rem">{{ pendingCount }}</span>{% endif %}
+    </a>
+    <a href="{{ path('app_hr_offers', {tab: 'published'}) }}" style="padding:.75rem 1.5rem;font-weight:600;text-decoration:none;border-bottom:2px solid {{ tab == 'published' ? 'var(--accent-blue)' : 'transparent' }};color:{{ tab == 'published' ? 'var(--accent-blue)' : 'var(--text-secondary)' }};margin-bottom:-2px">
+        Published
+        <span class="badge badge--green" style="margin-left:.5rem">{{ publishedCount }}</span>
+    </a>
+</div>
+
+<div class="card">
+    {% if offers|length > 0 %}
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Owner</th>
+                    <th>Type</th>
+                    <th>Budget</th>
+                    <th>Applicants</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for o in offers %}
+                <tr>
+                    <td class="text-muted">{{ o.id }}</td>
+                    <td style="font-weight:500">{{ o.title }}</td>
+                    <td>
+                        {% if o.owner %}
+                            <div style="display:flex;align-items:center;gap:0.5rem">
+                                <div class="avatar avatar--sm">{{ o.owner.firstName|first }}{{ o.owner.lastName|first }}</div>
+                                {{ o.owner.firstName }} {{ o.owner.lastName }}
+                            </div>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% set tc = {'FULL_TIME': 'green', 'PART_TIME': 'blue', 'FREELANCE': 'purple', 'INTERNSHIP': 'orange', 'CONTRACT': 'blue'} %}
+                        <span class="badge badge--{{ tc[o.offerType] ?? 'blue' }}">{{ o.offerType ? o.offerType|replace({'_': ' '}) : '—' }}</span>
+                    </td>
+                    <td>{% if o.amount %}{{ o.amount|number_format(2) }} {{ o.currency ?? 'TND' }}{% else %}—{% endif %}</td>
+                    <td>
+                        {% if appCounts[o.id] is defined and appCounts[o.id] > 0 %}
+                            <a href="{{ path('app_application_index', {offer: o.id}) }}" style="color:var(--accent-blue);text-decoration:none;font-weight:500" title="{{ applicants[o.id]|join(', ') }}">
+                                {{ appCounts[o.id] }} applicant{{ appCounts[o.id] > 1 ? 's' : '' }}
+                            </a>
+                            <div style="font-size:.75rem;color:var(--text-muted);margin-top:.15rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ applicants[o.id]|join(', ') }}">
+                                {{ applicants[o.id]|join(', ') }}
+                            </div>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% set sc = {'DRAFT': 'blue', 'OPEN': 'green', 'CLOSED': 'red', 'CANCELLED': 'orange'} %}
+                        <span class="badge badge--{{ sc[o.status] ?? 'blue' }}">{{ o.status }}</span>
+                    </td>
+                    <td>{{ o.createdAt ? o.createdAt|date('M d, Y') : '—' }}</td>
+                    <td>
+                        <details class="crud-actions-menu">
+                            <summary class="btn btn-ghost btn-sm" title="Actions"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></summary>
+                            <div class="crud-actions-dropdown">
+                                {% if tab == 'pending' %}
+                                <form method="post" action="{{ path('app_hr_offer_publish', {id: o.id}) }}" onsubmit="event.preventDefault();showConfirm(this,{type:'success',title:'Publish Offer',message:'Publish this offer to the marketplace?',okText:'Publish'});return false">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('publish' ~ o.id) }}">
+                                    <button type="submit" class="crud-action-item" style="color:var(--color-success)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Publish</button>
+                                </form>
+                                {% endif %}
+                                <a href="{{ path('app_hr_offer_edit', {id: o.id}) }}" class="crud-action-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Edit</a>
+                                {% if tab == 'pending' %}
+                                <form method="post" action="{{ path('app_hr_offer_decline', {id: o.id}) }}" onsubmit="event.preventDefault();showConfirm(this,{type:'danger',title:'Decline Offer',message:'Decline this offer? It will be cancelled.',okText:'Decline'});return false">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('decline' ~ o.id) }}">
+                                    <button type="submit" class="crud-action-item crud-action-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Decline</button>
+                                </form>
+                                {% endif %}
+                                <form method="post" action="{{ path('app_hr_offer_delete', {id: o.id}) }}" onsubmit="event.preventDefault();showConfirm(this,{type:'danger',title:'Delete Offer',message:'Permanently delete this offer? This cannot be undone.',okText:'Delete'});return false">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ o.id) }}">
+                                    <button type="submit" class="crud-action-item crud-action-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Delete</button>
+                                </form>
+                            </div>
+                        </details>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:3rem">
+        <p class="text-muted">{{ tab == 'pending' ? 'No pending drafts to review.' : 'No published offers yet.' }}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

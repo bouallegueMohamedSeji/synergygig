@@ -1,0 +1,77 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Offer Marketplace{% endblock %}
+
+{% block content %}
+{# Search & Filter bar #}
+<div class="card" style="padding:var(--space-md) var(--space-lg);margin-bottom:var(--space-lg);display:flex;align-items:center;gap:var(--space-md)">
+    <form method="get" action="{{ path('app_offer_index') }}" style="flex:1;display:flex;align-items:center;gap:var(--space-md);flex-wrap:wrap">
+        <div style="position:relative;flex:1;min-width:180px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" name="q" value="{{ app.request.query.get('q') }}" placeholder="Search offers..." class="form-control" style="padding-left:2.25rem">
+        </div>
+        <select name="type" class="form-control form-select" style="width:auto;min-width:120px">
+            <option value="">All Types</option>
+            <option value="FULL_TIME" {{ app.request.query.get('type') == 'FULL_TIME' ? 'selected' }}>Full Time</option>
+            <option value="PART_TIME" {{ app.request.query.get('type') == 'PART_TIME' ? 'selected' }}>Part Time</option>
+            <option value="FREELANCE" {{ app.request.query.get('type') == 'FREELANCE' ? 'selected' }}>Freelance</option>
+            <option value="INTERNSHIP" {{ app.request.query.get('type') == 'INTERNSHIP' ? 'selected' }}>Internship</option>
+            <option value="CONTRACT" {{ app.request.query.get('type') == 'CONTRACT' ? 'selected' }}>Contract</option>
+        </select>
+        <button type="submit" class="btn btn-secondary btn-sm">Filter</button>
+        {% if app.request.query.get('q') or app.request.query.get('type') %}
+            <a href="{{ path('app_offer_index') }}" class="btn btn-ghost btn-sm">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="card">
+    {% if offers|length > 0 %}
+    <div class="table-wrap">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Department</th>
+                    <th>Location</th>
+                    <th>Budget</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for o in offers %}
+                <tr>
+                    <td><a href="{{ path('app_offer_show', {id: o.id}) }}" style="color:var(--accent-blue);font-weight:600">{{ o.title }}</a></td>
+                    <td>
+                        {% set tc = {'FULL_TIME': 'green', 'PART_TIME': 'blue', 'FREELANCE': 'purple', 'INTERNSHIP': 'orange', 'CONTRACT': 'blue'} %}
+                        <span class="badge badge--{{ tc[o.offerType] ?? 'blue' }}">{{ o.offerType ? o.offerType|replace({'_': ' '}) : '—' }}</span>
+                    </td>
+                    <td>{% if o.department %}{{ o.department.name }}{% else %}—{% endif %}</td>
+                    <td>{{ o.location ?? '—' }}</td>
+                    <td>{% if o.amount %}{{ o.amount|number_format(2) }} {{ o.currency ?? 'TND' }}{% else %}—{% endif %}</td>
+                    <td>
+                        <span class="badge badge--green">OPEN</span>
+                        {% if appliedOfferIds is defined and o.id in appliedOfferIds %}
+                            <span class="badge badge--purple" style="margin-left:.25rem">Applied</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ path('app_offer_show', {id: o.id}) }}" class="btn btn-ghost btn-sm" title="View">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:3rem">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+        <p class="text-muted" style="margin-top:1rem">No open offers at the moment.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

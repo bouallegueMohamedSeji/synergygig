@@ -1,0 +1,114 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block title %}Code Review | AI Tools{% endblock %}
+{% block page_title %}AI Code Review{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_ai_index') }}" class="btn btn-ghost btn-sm">← All Tools</a>
+{% endblock %}
+
+{% block content %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;height:calc(100vh - 200px);min-height:500px">
+    {# ── Input Panel ── #}
+    <div class="card" style="display:flex;flex-direction:column;padding:1.25rem;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <h3 style="margin:0;font-size:1rem">Source Code</h3>
+            <span id="lineCount" class="text-muted" style="font-size:0.75rem">0 lines</span>
+        </div>
+
+        <div style="margin-bottom:1rem">
+            <label class="form-label">Language</label>
+            <select id="langSelect" class="form-input" style="max-width:200px">
+                {% for l in ['Java','Python','JavaScript','TypeScript','PHP','C#','C++','Go','Rust','Ruby','Swift','Kotlin','SQL','HTML/CSS','Other'] %}
+                <option{{ l == 'Java' ? ' selected' : '' }}>{{ l }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <textarea id="codeInput" class="form-input" placeholder="Paste your code here…"
+            style="flex:1;font-family:'Fira Code',monospace;font-size:0.85rem;resize:none;line-height:1.6;tab-size:4"></textarea>
+
+        <div style="display:flex;gap:0.75rem;margin-top:1rem">
+            <button id="btnReview" class="btn btn-primary" onclick="runReview()">🔍 Review Code</button>
+            <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
+        </div>
+    </div>
+
+    {# ── Result Panel ── #}
+    <div class="card" style="display:flex;flex-direction:column;padding:1.25rem;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <h3 style="margin:0;font-size:1rem">Review Results</h3>
+            <button id="btnCopy" class="btn btn-ghost btn-sm" onclick="copyResult()" style="display:none">📋 Copy</button>
+        </div>
+
+        <div id="resultArea" style="flex:1;overflow-y:auto;padding-right:0.5rem">
+            <div id="placeholder" class="text-muted" style="display:flex;align-items:center;justify-content:center;height:100%;text-align:center">
+                <div>
+                    <div style="font-size:3rem;margin-bottom:1rem">🔍</div>
+                    <p>Paste your code and click <strong>Review Code</strong> to get started.</p>
+                </div>
+            </div>
+            <div id="reviewContent" style="display:none;line-height:1.7"></div>
+            <div id="loading" style="display:none;text-align:center;padding:2rem">
+                <div class="spinner"></div>
+                <p class="text-muted" style="margin-top:1rem">Analyzing code…</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.spinner{width:32px;height:32px;border:3px solid var(--border-primary);border-top-color:var(--accent-primary);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+#reviewContent h2,#reviewContent h3{margin:1.25rem 0 .5rem;color:var(--text-primary)}
+#reviewContent h2{font-size:1.1rem}#reviewContent h3{font-size:1rem}
+#reviewContent ul,#reviewContent ol{padding-left:1.25rem}
+#reviewContent li{margin:.35rem 0}
+#reviewContent code{background:var(--bg-tertiary);padding:.15rem .4rem;border-radius:4px;font-size:.85rem}
+</style>
+
+<script>
+const codeInput=document.getElementById('codeInput'),lineCount=document.getElementById('lineCount');
+codeInput.addEventListener('input',()=>{lineCount.textContent=(codeInput.value.split('\n').length)+' lines'});
+
+let lastReview='';
+
+async function runReview(){
+    const code=codeInput.value.trim();
+    if(code.length<10){alert('Please enter at least 10 characters of code.');return}
+    const lang=document.getElementById('langSelect').value;
+    document.getElementById('placeholder').style.display='none';
+    document.getElementById('reviewContent').style.display='none';
+    document.getElementById('loading').style.display='block';
+    document.getElementById('btnReview').disabled=true;
+
+    try{
+        const r=await fetch('{{ path("app_ai_code_review_process") }}',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,language:lang})});
+        const d=await r.json();
+        if(d.error){alert(d.error);return}
+        lastReview=d.review;
+        document.getElementById('reviewContent').innerHTML=marked(d.review);
+        document.getElementById('reviewContent').style.display='block';
+        document.getElementById('btnCopy').style.display='inline-flex';
+    }catch(e){alert('Error: '+e.message)}
+    finally{document.getElementById('loading').style.display='none';document.getElementById('btnReview').disabled=false}
+}
+
+function clearAll(){codeInput.value='';lineCount.textContent='0 lines';document.getElementById('placeholder').style.display='flex';document.getElementById('reviewContent').style.display='none';document.getElementById('btnCopy').style.display='none';lastReview=''}
+function copyResult(){navigator.clipboard.writeText(lastReview).then(()=>{const b=document.getElementById('btnCopy');b.textContent='✅ Copied!';setTimeout(()=>b.textContent='📋 Copy',1500)})}
+
+/* Minimal Markdown → HTML */
+function marked(md){
+    return md
+        .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+        .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+        .replace(/`([^`]+)`/g,'<code>$1</code>')
+        .replace(/^- (.+)$/gm,'<li>$1</li>')
+        .replace(/^(\d+)\. (.+)$/gm,'<li>$2</li>')
+        .replace(/(<li>.*<\/li>)/s,m=>'<ul>'+m+'</ul>')
+        .replace(/\n{2,}/g,'<br><br>')
+        .replace(/\n/g,'<br>');
+}
+</script>
+{% endblock %}

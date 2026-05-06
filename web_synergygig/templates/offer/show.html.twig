@@ -1,0 +1,86 @@
+{% extends 'layouts/admin.html.twig' %}
+
+{% block page_title %}Offer: {{ offer.title }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path('app_offer_index') }}" class="btn btn-ghost btn-sm">Back to Marketplace</a>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:900px">
+    {# Stat cards #}
+    <div class="bento-grid" style="grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem">
+        <div class="card" style="padding:1.25rem;text-align:center">
+            <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Status</div>
+            {% set sc = {'DRAFT': 'blue', 'OPEN': 'green', 'CLOSED': 'red', 'CANCELLED': 'orange'} %}
+            <span class="badge badge--{{ sc[offer.status] ?? 'blue' }}">{{ offer.status ?? 'N/A' }}</span>
+        </div>
+        <div class="card" style="padding:1.25rem;text-align:center">
+            <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Type</div>
+            <span class="badge badge--blue">{{ offer.offerType ? offer.offerType|replace({'_': ' '}) : '—' }}</span>
+        </div>
+        <div class="card" style="padding:1.25rem;text-align:center">
+            <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Department</div>
+            <div style="font-weight:600;color:var(--text-primary)">{{ offer.department ? offer.department.name : '—' }}</div>
+        </div>
+        <div class="card" style="padding:1.25rem;text-align:center">
+            <div class="text-muted" style="font-size:0.75rem;margin-bottom:0.25rem">Budget</div>
+            <div style="font-weight:600;color:var(--accent-blue)">{% if offer.amount %}{{ offer.amount|number_format(2) }} {{ offer.currency ?? 'TND' }}{% else %}—{% endif %}</div>
+        </div>
+    </div>
+
+    {# Description #}
+    {% if offer.description %}
+    <div class="card" style="margin-bottom:1.5rem">
+        <div class="card__header"><h4>Description</h4></div>
+        <div class="card__body"><p style="white-space:pre-wrap">{{ offer.description }}</p></div>
+    </div>
+    {% endif %}
+
+    {# Details table #}
+    <div class="card" style="margin-bottom:1.5rem">
+        <div class="card__header"><h4>Details</h4></div>
+        <div class="table-wrap">
+            <table class="table">
+                <tr><td class="text-muted" style="width:200px">Owner</td><td>{% if offer.owner %}{{ offer.owner.firstName }} {{ offer.owner.lastName }}{% else %}—{% endif %}</td></tr>
+                <tr><td class="text-muted">Location</td><td>{{ offer.location ?? '—' }}</td></tr>
+                <tr><td class="text-muted">Required Skills</td><td>{{ offer.requiredSkills ?? '—' }}</td></tr>
+                <tr><td class="text-muted">Start Date</td><td>{{ offer.startDate ? offer.startDate|date('M d, Y') : '—' }}</td></tr>
+                <tr><td class="text-muted">End Date</td><td>{{ offer.endDate ? offer.endDate|date('M d, Y') : '—' }}</td></tr>
+                <tr><td class="text-muted">Created</td><td>{{ offer.createdAt ? offer.createdAt|date('M d, Y H:i') : '—' }}</td></tr>
+            </table>
+        </div>
+    </div>
+
+    {# Apply / Already Applied (for Gig Workers) #}
+    {% if offer.status == 'OPEN' and app.user and (not offer.owner or offer.owner.id != app.user.id) %}
+    <div class="card" style="margin-bottom:1.5rem;padding:1.5rem">
+        {% if alreadyApplied is defined and alreadyApplied %}
+            <div style="display:flex;align-items:center;gap:.75rem">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <div>
+                    <div style="font-weight:600;color:var(--text-primary)">You already applied</div>
+                    <div class="text-muted" style="font-size:.85rem">
+                        Status:
+                        {% set asc = {'PENDING': 'orange', 'REVIEWED': 'blue', 'ACCEPTED': 'green', 'REJECTED': 'red'} %}
+                        <span class="badge badge--{{ asc[existingApplication.status] ?? 'blue' }}">{{ existingApplication.status }}</span>
+                        {% if existingApplication.appliedAt %} — {{ existingApplication.appliedAt|date('M d, Y') }}{% endif %}
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <form method="post" action="{{ path('app_offer_apply', {id: offer.id}) }}">
+                <div style="margin-bottom:1rem">
+                    <label style="font-weight:600;color:var(--text-primary);display:block;margin-bottom:.5rem">Cover Letter (optional)</label>
+                    <textarea name="cover_letter" class="form-control" rows="4" placeholder="Why are you a great fit for this role?"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;text-align:center;font-size:1rem;padding:.75rem">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:.5rem"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    Apply to this Offer
+                </button>
+            </form>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
