@@ -1,11 +1,15 @@
-# SynergyGig
+# Esprit-PIDEV-3A16-2026-SynergyGig
 
-> A comprehensive HR & Workforce Management platform built with **JavaFX 21** — featuring real-time messaging, audio/video calls with live transcription, AI-powered HR tools, job scanning, training & certification, and community features.
+> **SynergyGig** — A comprehensive HR & Workforce Management platform built with **JavaFX 21**, featuring real-time messaging, audio/video calls with live transcription, AI-powered HR tools, job scanning, training & certification, and community features.
+>
+> Developed at **Esprit School of Engineering** – Tunisia | Academic Year 2025–2026
 
 ![Java](https://img.shields.io/badge/Java-17-orange?logo=openjdk)
 ![JavaFX](https://img.shields.io/badge/JavaFX-21.0.2-blue?logo=java)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white)
-![License](https://img.shields.io/badge/License-Private-red)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688?logo=fastapi&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Deployed-2496ED?logo=docker&logoColor=white)
+![License](https://img.shields.io/badge/License-Academic-red)
 
 ---
 
@@ -20,7 +24,9 @@
 - [Project Structure](#project-structure)
 - [Modules](#modules)
 - [Screenshots](#screenshots)
-- [Authors](#authors)
+- [Contributors](#contributors)
+- [Academic Context](#academic-context)
+- [Acknowledgments](#acknowledgments)
 
 ---
 
@@ -28,7 +34,7 @@
 
 **SynergyGig** is a full-featured desktop application designed for modern HR and workforce management. It combines traditional HR operations (leave, attendance, payroll) with gig-economy tools (job offers, contracts, freelancer management) and modern collaboration features (real-time chat, video calls, AI assistants).
 
-Built as a university capstone project at **ESPRIT** (Tunisia), SynergyGig demonstrates enterprise-level JavaFX development with REST API integration, WebSocket real-time communication, AI/ML services, and a rich modular UI.
+Built as a **PIDEV** (Projet Intégré de Développement) capstone project at **Esprit School of Engineering** (Tunisia), SynergyGig demonstrates enterprise-level JavaFX development with REST API integration, WebSocket real-time communication, AI/ML services, and a rich modular UI.
 
 ---
 
@@ -313,14 +319,37 @@ SynergyGig/
 
 ---
 
-## Authors
+## Contributors
 
-- **Mohamed Seji Bouallegue** — Full-stack development, architecture, deployment
+| Name | GitHub |
+|------|--------|
+| **Seji** (Mohamed Seji Bouallegue) | [@bouallegueMohamedSeji](https://github.com/bouallegueMohamedSeji) |
+| **Anas** | |
+| **Med_Anas** | |
+| **Youssef** | |
+| **Syrine** | |
+| **Amine** | |
 
-**ESPRIT** — École Supérieure Privée d'Ingénierie et de Technologies, Tunisia
+---
+
+## Academic Context
+
+| | |
+|---|---|
+| **Institution** | Esprit School of Engineering — École Supérieure Privée d'Ingénierie et de Technologies, Tunisia |
+| **Project Type** | PIDEV — Projet Intégré de Développement |
+| **Class** | 3A16 |
+| **Academic Year** | 2025–2026 |
+| **Coaches** | **Sana Fayechi** · **Fakhreddine GHALLEB** (Enseignant) |
+
+---
+
+## Acknowledgments
+
+We would like to thank our coaches **Sana Fayechi** and **Fakhreddine GHALLEB** for their guidance and support throughout this project, and **Esprit School of Engineering** for providing the academic framework.
 
 ---
 
 ## License
 
-This project is proprietary and developed as part of an academic curriculum at ESPRIT.
+This project is proprietary and developed as part of the **PIDEV** academic curriculum at **Esprit School of Engineering**, Tunisia.

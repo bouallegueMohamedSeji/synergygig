@@ -643,9 +643,16 @@ public class ChatController implements Stoppable {
         int a = Math.min(me.getId(), other.getId());
         int b = Math.max(me.getId(), other.getId());
         String roomName = "dm_" + a + "_" + b;
+        int userId1 = me.getId();
+        int userId2 = other.getId();
         AppThreadPool.io(() -> {
             try {
-                serviceChat.getOrCreateRoom(roomName);
+                ChatRoom room = serviceChat.getOrCreateRoom(roomName);
+                // Ensure both users are members (needed for web's findDirectRoom query)
+                if (room != null && room.getId() > 0) {
+                    serviceMember.addMember(room.getId(), userId1, "MEMBER");
+                    serviceMember.addMember(room.getId(), userId2, "MEMBER");
+                }
                 Platform.runLater(() -> {
                     loadRooms();
                     for (ChatRoom r : roomsList.getItems()) {

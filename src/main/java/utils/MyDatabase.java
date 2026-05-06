@@ -28,16 +28,24 @@ public class MyDatabase {
     private MyDatabase() {
         // Skip pool init in API mode — JDBC is not used
         if (!AppConfig.isApiMode()) {
-            initPool();
+            // Open SSH tunnel if needed (remote MySQL behind firewall)
+            int tunnelPort = SshTunnel.open();
+            initPool(tunnelPort);
         } else {
             System.out.println("ℹ API mode — skipping HikariCP pool (using REST API)");
         }
     }
 
-    private void initPool() {
+    private void initPool(int tunnelPort) {
         String url = AppConfig.getDbUrl();
         String user = AppConfig.getDbUser();
         String password = AppConfig.getDbPassword();
+
+        // If SSH tunnel is open, rewrite JDBC URL to go through localhost tunnel
+        if (tunnelPort > 0) {
+            url = url.replaceFirst("//[^/]+:\\d+/", "//localhost:" + tunnelPort + "/");
+            System.out.println("🔗 JDBC URL rewritten for SSH tunnel: " + url);
+        }
 
         HikariConfig cfg = new HikariConfig();
         cfg.setJdbcUrl(url);
@@ -100,11 +108,12 @@ public class MyDatabase {
         }
     }
 
-    /** Shuts down the pool (call on app exit). */
+    /** Shuts down the pool and SSH tunnel (call on app exit). */
     public void shutdown() {
         if (dataSource != null && !dataSource.isClosed()) {
             dataSource.close();
             System.out.println("HikariCP pool closed.");
         }
+        SshTunnel.close();
     }
 }

@@ -226,5 +226,50 @@
         </VBox>
     </VBox>
 
+    <!-- ═══════════════ CV / RESUME CARD ═══════════════ -->
+    <VBox styleClass="profile-card" spacing="16">
+        <Label text="&#x1F4C4;  Resume / CV" styleClass="section-title"/>
+        <Separator styleClass="card-separator"/>
+
+        <!-- CV info row (shown when CV uploaded) -->
+        <HBox fx:id="cvInfoBox" spacing="12" alignment="CENTER_LEFT" managed="false" visible="false">
+            <StackPane alignment="CENTER" minWidth="44" minHeight="44" maxWidth="44" maxHeight="44"
+                       styleClass="face-id-icon-circle">
+                <Label text="&#x1F4CB;" style="-fx-font-size: 22;"/>
+            </StackPane>
+            <VBox spacing="3" HBox.hgrow="ALWAYS">
+                <Label fx:id="cvFileName" text="" styleClass="account-name" style="-fx-font-size: 13;"/>
+                <Label fx:id="cvUploadDate" text="" styleClass="account-email"/>
+            </VBox>
+            <Button fx:id="cvDownloadBtn" text="&#x2B07; Download"
+                    onAction="#handleCvDownload" styleClass="btn-secondary" prefWidth="110"/>
+            <Button fx:id="cvDeleteBtn" text="&#x1F5D1;"
+                    onAction="#handleCvDelete" styleClass="btn-danger" prefWidth="44"
+                    style="-fx-font-size: 14;"/>
+        </HBox>
+
+        <!-- No CV row (shown when no CV uploaded) -->
+        <HBox fx:id="noCvBox" spacing="12" alignment="CENTER_LEFT">
+            <Label text="No resume uploaded yet." styleClass="account-email"/>
+        </HBox>
+
+        <Separator styleClass="card-separator"/>
+
+        <!-- Upload button -->
+        <HBox spacing="12" alignment="CENTER_LEFT">
+            <Button fx:id="cvUploadBtn" text="&#x1F4E4;  Upload CV (PDF/DOC)"
+                    onAction="#handleCvUpload" styleClass="btn-primary" prefWidth="220"/>
+            <Label fx:id="cvUploadStatus" text="" styleClass="success-label"
+                   managed="false" visible="false"/>
+        </HBox>
+
+        <!-- Skills text extracted from CV -->
+        <VBox spacing="6" fx:id="cvSkillsBox" managed="false" visible="false">
+            <Label text="Extracted Skills Keywords:" styleClass="field-label"/>
+            <TextArea fx:id="cvSkillsArea" prefRowCount="4" wrapText="true"
+                      styleClass="text-field-primary" editable="false"/>
+        </VBox>
+    </VBox>
+
 </VBox>
 </ScrollPane>

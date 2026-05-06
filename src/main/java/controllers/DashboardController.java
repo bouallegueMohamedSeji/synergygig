@@ -36,6 +36,7 @@ import services.ServiceMessage;
 import utils.AnimatedWeatherIcons;
 import utils.AppThreadPool;
 import utils.AudioCallService;
+import utils.LanguageManager;
 import utils.SessionManager;
 import utils.SignalingService;
 import utils.SoundManager;
@@ -51,6 +52,7 @@ import javafx.animation.PauseTransition;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -237,6 +239,10 @@ public class DashboardController {
         // Set initial active button
         setActiveButton(btnDashboard);
 
+        // Apply i18n language to sidebar & welcome label
+        applyLanguage();
+        LanguageManager.getInstance().addChangeListener(() -> Platform.runLater(this::applyLanguage));
+
         // Load stats
         loadDashboardStats();
 
@@ -417,11 +423,11 @@ public class DashboardController {
                 int totalUsers = allUsers.size();
 
                 long employees = allUsers.stream()
-                        .filter(u -> u.getRole().equals("EMPLOYEE") || u.getRole().equals("PROJECT_OWNER"))
+                        .filter(u -> "EMPLOYEE".equals(u.getRole()) || "PROJECT_OWNER".equals(u.getRole()))
                         .count();
 
                 long gigWorkers = allUsers.stream()
-                        .filter(u -> u.getRole().equals("GIG_WORKER"))
+                        .filter(u -> "GIG_WORKER".equals(u.getRole()))
                         .count();
 
                 List<Interview> allInterviews = interviewsFuture.join();
@@ -549,22 +555,94 @@ public class DashboardController {
 
     private void addCollapsedTooltips() {
         if (btnTooltipMap.isEmpty()) {
-            btnTooltipMap.put(btnDashboard, "Dashboard");
-            btnTooltipMap.put(btnManageUsers, "Users");
-            btnTooltipMap.put(btnHrDashboard, "HR Dashboard");
-            btnTooltipMap.put(btnMessages, "Messages");
-            btnTooltipMap.put(btnRecruitment, "Interviews");
-            btnTooltipMap.put(btnProjects, "Projects");
-            btnTooltipMap.put(btnOffers, "Offers");
-            btnTooltipMap.put(btnTraining, "Training");
-            btnTooltipMap.put(btnJobScanner, "Job Scanner");
-            btnTooltipMap.put(btnCommunity, "Community");
+            LanguageManager lang = LanguageManager.getInstance();
+            btnTooltipMap.put(btnDashboard,   lang.get("sidebar.dashboard"));
+            btnTooltipMap.put(btnManageUsers,  lang.get("sidebar.users"));
+            btnTooltipMap.put(btnHrDashboard,  lang.get("sidebar.hrDashboard"));
+            btnTooltipMap.put(btnMessages,     lang.get("sidebar.messages"));
+            btnTooltipMap.put(btnRecruitment,  lang.get("sidebar.interviews"));
+            btnTooltipMap.put(btnProjects,     lang.get("sidebar.projects"));
+            btnTooltipMap.put(btnOffers,       lang.get("sidebar.offers"));
+            btnTooltipMap.put(btnTraining,     lang.get("sidebar.training"));
+            btnTooltipMap.put(btnJobScanner,   lang.get("sidebar.jobScanner"));
+            btnTooltipMap.put(btnCommunity,    lang.get("sidebar.community"));
         }
         btnTooltipMap.forEach((btn, tip) -> btn.setTooltip(new Tooltip(tip)));
     }
 
     private void removeCollapsedTooltips() {
         btnTooltipMap.forEach((btn, tip) -> btn.setTooltip(null));
+    }
+
+    // ========== i18n Language ==========
+
+    /**
+     * Apply the current LanguageManager language to the Dashboard sidebar,
+     * welcome label, and collapsed tooltips.
+     */
+    private void applyLanguage() {
+        LanguageManager lang = LanguageManager.getInstance();
+
+        // Welcome label
+        User currentUser = SessionManager.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            welcomeLabel.setText(lang.get("dashboard.welcome") + ", " + currentUser.getFirstName());
+        }
+
+        // ── Sidebar group labels ──
+        Map<String, String> groupMap = new LinkedHashMap<>();
+        groupMap.put("Overview", "sidebar.overview");
+        groupMap.put("Admin",    "sidebar.admin");
+        groupMap.put("HR",       "sidebar.hr");
+        groupMap.put("Modules",  "sidebar.modules");
+        groupMap.put("AI",       "sidebar.ai");
+        // also match already-translated text so re-apply works
+        for (String key : new ArrayList<>(groupMap.values())) {
+            groupMap.put(lang.get(key), key);
+        }
+        sidebar.lookupAll(".sidebar-group-label").forEach(n -> {
+            if (n instanceof Label lbl) {
+                String k = groupMap.get(lbl.getText());
+                if (k != null) lbl.setText(lang.get(k));
+            }
+        });
+
+        // ── Sidebar menu-text labels (inside button graphics) ──
+        Map<Button, String> btnKeyMap = new LinkedHashMap<>();
+        btnKeyMap.put(btnDashboard,    "sidebar.dashboard");
+        btnKeyMap.put(btnManageUsers,  "sidebar.users");
+        btnKeyMap.put(btnHrDashboard,  "sidebar.hrDashboard");
+        btnKeyMap.put(btnHRBacklog,    "sidebar.hrBacklog");
+        btnKeyMap.put(btnMessages,     "sidebar.messages");
+        btnKeyMap.put(btnRecruitment,  "sidebar.interviews");
+        btnKeyMap.put(btnProjects,     "sidebar.projects");
+        btnKeyMap.put(btnOffers,       "sidebar.offers");
+        btnKeyMap.put(btnTraining,     "sidebar.training");
+        btnKeyMap.put(btnJobScanner,   "sidebar.jobScanner");
+        btnKeyMap.put(btnCommunity,    "sidebar.community");
+        btnKeyMap.put(btnAiAssistant,  "sidebar.aiAssistant");
+
+        btnKeyMap.forEach((btn, key) -> {
+            if (btn == null) return;
+            // The button graphic is HBox > [icon Label, text Label]
+            if (btn.getGraphic() instanceof HBox hbox) {
+                for (javafx.scene.Node child : hbox.getChildren()) {
+                    if (child instanceof Label lbl && lbl.getStyleClass().contains("sidebar-menu-text")) {
+                        lbl.setText(lang.get(key));
+                    }
+                }
+            }
+        });
+
+        // Update collapsed-sidebar tooltips to translated text
+        btnTooltipMap.clear();
+        btnKeyMap.forEach((btn, key) -> {
+            if (btn != null) btnTooltipMap.put(btn, lang.get(key));
+        });
+        // Re-apply tooltips if sidebar is currently collapsed
+        if (sidebar.getStyleClass().contains("sidebar-collapsed")) {
+            btnTooltipMap.forEach((btn, tip) -> btn.setTooltip(new Tooltip(tip)));
+        }
     }
 
     // ========== User Popup Menu ==========

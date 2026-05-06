@@ -69,7 +69,7 @@ public class ServiceProjectMember {
              PreparedStatement ps = conn.prepareStatement(
                 "SELECT pm.id, pm.project_id, pm.user_id, pm.role, " +
                 "u.first_name, u.last_name, u.email, u.role as user_role, u.department_id " +
-                "FROM project_members pm JOIN users u ON pm.user_id = u.id " +
+                "FROM project_members pm JOIN user u ON pm.user_id = u.id " +
                 "WHERE pm.project_id = ? ORDER BY pm.joined_at")) {
             ps.setInt(1, projectId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -142,7 +142,7 @@ public class ServiceProjectMember {
         int added = 0;
         try (Connection conn = MyDatabase.getInstance().getConnection();
              PreparedStatement ps = conn.prepareStatement(
-                "SELECT id FROM users WHERE department_id = ?")) {
+                "SELECT id FROM user WHERE department_id = ?")) {
             ps.setInt(1, departmentId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {

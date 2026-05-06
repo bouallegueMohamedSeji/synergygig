@@ -34,6 +34,8 @@ import utils.AppConfig;
 import utils.AppThreadPool;
 import utils.SessionManager;
 import utils.SoundManager;
+import services.CvJobMatchService;
+import entities.User;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -69,6 +71,9 @@ public class JobScannerController implements Stoppable {
     // Skills bar (created programmatically)
     private HBox skillsBar;
     private FlowPane skillsPane;
+
+    // Collected training/cert skill labels used as CV fallback for matching
+    private volatile String loadedSkillsText = null;
 
     // States
     @FXML private VBox emptyState;
@@ -191,6 +196,13 @@ public class JobScannerController implements Stoppable {
                             }
                         }
                     }
+                }
+
+                // Store skill text for CV matching fallback
+                if (!pills.isEmpty()) {
+                    loadedSkillsText = pills.stream()
+                            .map(p -> p.label)
+                            .collect(java.util.stream.Collectors.joining(" "));
                 }
 
                 Platform.runLater(() -> {
@@ -340,6 +352,20 @@ public class JobScannerController implements Stoppable {
     private void buildResultCards(JsonArray results) {
         resultsContainer.getChildren().clear();
 
+        // CV scoring context
+        CvJobMatchService cvMatcher = new CvJobMatchService();
+        User currentUser = SessionManager.getInstance().getCurrentUser();
+        String cvText = (currentUser != null && currentUser.getCvSkillsText() != null)
+                ? currentUser.getCvSkillsText() : null;
+        // Reject hash-like references (e.g. "abc123 pdf") — not actual skill text
+        if (cvText != null && cvText.trim().split("\\s+").length < 5) {
+            cvText = null;
+        }
+        // Fallback: use training/cert skill labels collected from loadUserSkills()
+        if ((cvText == null || cvText.isBlank()) && loadedSkillsText != null) {
+            cvText = loadedSkillsText;
+        }
+
         for (JsonElement el : results) {
             JsonObject job = el.getAsJsonObject();
             String source = getStr(job, "source");
@@ -410,6 +436,40 @@ public class JobScannerController implements Stoppable {
             }
 
             card.getChildren().addAll(titleRow, metaRow);
+
+            // CV Match score badge (only when user has uploaded a CV)
+            if (cvText != null && !cvText.isBlank()) {
+                Map<String, Object> matchResult = cvMatcher.score(cvText, title, snippet);
+                int score = (int) matchResult.get("score");
+                String scoreLabel = (String) matchResult.get("label");
+                @SuppressWarnings("unchecked")
+                List<String> matched = (List<String>) matchResult.get("matched");
+
+                String scoreColor;
+                if (score >= 70)      scoreColor = "#8b5cf6"; // purple - Excellent
+                else if (score >= 50) scoreColor = "#22c55e"; // green  - Good
+                else if (score >= 30) scoreColor = "#f97316"; // orange - Fair
+                else                  scoreColor = "#ef4444"; // red    - Low
+
+                HBox matchRow = new HBox(8);
+                matchRow.setAlignment(Pos.CENTER_LEFT);
+
+                Label scoreBadge = new Label(score + "% Match — " + scoreLabel);
+                scoreBadge.setStyle("-fx-background-color:" + scoreColor + "20; -fx-text-fill:" + scoreColor
+                        + "; -fx-background-radius:4; -fx-padding:2 8 2 8; -fx-font-size:11; -fx-font-weight:bold;");
+
+                matchRow.getChildren().add(scoreBadge);
+
+                if (!matched.isEmpty()) {
+                    String skillList = String.join(", ", matched.subList(0, Math.min(5, matched.size())));
+                    Label skillsHint = new Label("Skills: " + skillList);
+                    skillsHint.setStyle("-fx-font-size:11; -fx-text-fill:#888;");
+                    skillsHint.setWrapText(true);
+                    matchRow.getChildren().add(skillsHint);
+                }
+
+                card.getChildren().add(matchRow);
+            }
 
             // Row 3: Snippet (if available)
             if (!snippet.isEmpty()) {

@@ -8,14 +8,15 @@ import java.sql.Timestamp;
  */
 public class UserFollow {
 
-    public static final String STATUS_ACCEPTED = "ACCEPTED";
-    public static final String STATUS_PENDING = "PENDING";
+    public static final String STATUS_ACCEPTED  = "friend_accepted";
+    public static final String STATUS_PENDING   = "friend_pending";
+    public static final String STATUS_FOLLOWING = "following";
 
     private int id;
     private int followerId;
     private int followedId;
     private Timestamp createdAt;
-    private String status = STATUS_ACCEPTED; // PENDING | ACCEPTED
+    private String status = STATUS_FOLLOWING; // friend_pending | friend_accepted | following
 
     public UserFollow() {}
 

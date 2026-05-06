@@ -124,7 +124,7 @@ public class ServiceDepartment implements IService<Department> {
         }
         // Clear department_id from users first
         try (Connection conn = MyDatabase.getInstance().getConnection()) {
-            try (PreparedStatement clearUsers = conn.prepareStatement("UPDATE users SET department_id=NULL WHERE department_id=?")) {
+            try (PreparedStatement clearUsers = conn.prepareStatement("UPDATE user SET department_id=NULL WHERE department_id=?")) {
                 clearUsers.setInt(1, id);
                 clearUsers.executeUpdate();
             }

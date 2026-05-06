@@ -233,7 +233,9 @@ public class ContractPdfGenerator {
                     : "Terms will be generated upon contract activation. Both parties agree to the standard "
                     + "SynergyGig Terms of Service, including confidentiality obligations, payment schedules, "
                     + "and dispute resolution procedures.";
-            y = drawWrappedText(cs, doc, terms, MARGIN, y, BODY_SIZE, PDType1Font.HELVETICA);
+            PDPageContentStream[] csHolder = {cs};
+            y = drawWrappedText(csHolder, doc, terms, MARGIN, y, BODY_SIZE, PDType1Font.HELVETICA);
+            cs = csHolder[0]; // recover potentially-new stream after page break
 
             // ══════════════════════════════════════════════════════
             //  BLOCKCHAIN VERIFICATION + QR CODE  (page 2 if needed)
@@ -447,8 +449,9 @@ public class ContractPdfGenerator {
         return y - LINE_HEIGHT - 6;
     }
 
-    private static float drawWrappedText(PDPageContentStream cs, PDDocument doc, String text,
+    private static float drawWrappedText(PDPageContentStream[] csHolder, PDDocument doc, String text,
                                           float x, float y, float fontSize, PDType1Font font) throws IOException {
+        PDPageContentStream cs = csHolder[0];
         String[] paragraphs = text.split("\n");
         for (String para : paragraphs) {
             if (para.trim().isEmpty()) {
@@ -503,6 +506,7 @@ public class ContractPdfGenerator {
                 y -= LINE_HEIGHT;
             }
         }
+        csHolder[0] = cs; // propagate potentially-new stream back to caller
         return y;
     }
 

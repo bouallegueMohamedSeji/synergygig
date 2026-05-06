@@ -59,7 +59,7 @@ public class ServiceChatRoom implements IService<ChatRoom> {
             Map<String, Object> body = new HashMap<>();
             body.put("name", room.getName());
             body.put("type", room.getType() != null ? room.getType() : "group");
-            body.put("created_by", room.getCreatedBy());
+            body.put("created_by", room.getCreatedBy() > 0 ? room.getCreatedBy() : null);
             JsonElement resp = ApiClient.post("/chatrooms", body);
             if (resp != null && resp.isJsonObject() && resp.getAsJsonObject().has("id")) {
                 room.setId(resp.getAsJsonObject().get("id").getAsInt());
@@ -71,7 +71,8 @@ public class ServiceChatRoom implements IService<ChatRoom> {
              PreparedStatement ps = conn.prepareStatement(req, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, room.getName());
             ps.setString(2, room.getType() != null ? room.getType() : "group");
-            ps.setInt(3, room.getCreatedBy());
+            if (room.getCreatedBy() > 0) ps.setInt(3, room.getCreatedBy());
+            else ps.setNull(3, java.sql.Types.INTEGER);
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) room.setId(keys.getInt(1));
@@ -150,7 +151,7 @@ public class ServiceChatRoom implements IService<ChatRoom> {
                 return jsonToChatRoom(resp.getAsJsonObject());
             }
             // Create new
-            ChatRoom newRoom = new ChatRoom(name, isPrivate ? "private" : "group", 0);
+            ChatRoom newRoom = new ChatRoom(name, isPrivate ? "DIRECT" : "group", 0);
             ajouter(newRoom);
             // Fetch again
             resp = ApiClient.get("/chatrooms/by-name/" + name);
@@ -176,7 +177,7 @@ public class ServiceChatRoom implements IService<ChatRoom> {
             }
         }
         // Create new if not found
-        ajouter(new ChatRoom(name, isPrivate ? "private" : "group", 0));
+        ajouter(new ChatRoom(name, isPrivate ? "DIRECT" : "group", 0));
         return getOrCreateRoom(name);
     }
 

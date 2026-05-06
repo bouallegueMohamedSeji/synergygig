@@ -697,7 +697,9 @@ public class LoginController {
 
     private void showAlert(String title, String content, String type) {
         boolean dark = SessionManager.getInstance().isDarkTheme();
+        if (emailField == null || emailField.getScene() == null) return;
         Stage owner = (Stage) emailField.getScene().getWindow();
+        if (owner == null) return;
         Stage dialog = new Stage();
         dialog.initOwner(owner);
         dialog.initModality(Modality.APPLICATION_MODAL);

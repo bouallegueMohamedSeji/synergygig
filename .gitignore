@@ -9,6 +9,15 @@ __pycache__/
 awesome-llm-apps/
 config.properties
 
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+
+# Deploy configs with secrets
+deploy/docker-compose.server.yml
+deploy/docker-compose.yml
+
 # Documentation / agent knowledge
 docs/
 AGENT_KNOWLEDGE.md

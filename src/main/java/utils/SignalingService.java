@@ -60,9 +60,9 @@ public class SignalingService {
     /** Callback when connection drops unexpectedly. */
     private Runnable onDisconnected;
 
-    private static final int RECONNECT_DELAY_MS = 3000;
-    private static final int MAX_RECONNECT_ATTEMPTS = 10;
-    private int reconnectAttempts = 0;
+    private static final int RECONNECT_DELAY_MS = 5000;
+    private static final int MAX_RECONNECT_ATTEMPTS = 3;
+    private final java.util.concurrent.atomic.AtomicInteger reconnectAttempts = new java.util.concurrent.atomic.AtomicInteger(0);
 
     private static final Gson GSON = new Gson();
 
@@ -84,7 +84,7 @@ public class SignalingService {
         disconnectQuietly();
 
         this.currentUserId = userId;
-        reconnectAttempts = 0;
+        if (!reconnecting.get()) reconnectAttempts.set(0);
 
         doConnect();
     }
@@ -107,7 +107,7 @@ public class SignalingService {
 
             connected.set(true);
             reconnecting.set(false);
-            reconnectAttempts = 0;
+            reconnectAttempts.set(0);
             System.out.println("[Signaling] Connected successfully for user " + currentUserId);
 
         } catch (Exception e) {
@@ -120,7 +120,7 @@ public class SignalingService {
     /** Disconnect gracefully. */
     public void disconnect() {
         reconnecting.set(false); // stop reconnect attempts
-        reconnectAttempts = MAX_RECONNECT_ATTEMPTS; // prevent further reconnects
+        reconnectAttempts.set(MAX_RECONNECT_ATTEMPTS); // prevent further reconnects
         disconnectQuietly();
     }
 
@@ -244,18 +244,17 @@ public class SignalingService {
 
     private void scheduleReconnect() {
         if (reconnecting.get()) return;
-        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-            System.err.println("[Signaling] Max reconnect attempts reached. Giving up.");
-            if (onDisconnected != null) {
-                Platform.runLater(onDisconnected);
-            }
+        int attempt = reconnectAttempts.incrementAndGet();
+        if (attempt > MAX_RECONNECT_ATTEMPTS) {
+            reconnectAttempts.set(MAX_RECONNECT_ATTEMPTS);
+            System.err.println("[Signaling] Max reconnect attempts (" + MAX_RECONNECT_ATTEMPTS + ") reached. Giving up.");
+            if (onDisconnected != null) Platform.runLater(onDisconnected);
             return;
         }
 
         reconnecting.set(true);
-        reconnectAttempts++;
         System.out.println("[Signaling] Reconnecting in " + RECONNECT_DELAY_MS + "ms (attempt " +
-                reconnectAttempts + "/" + MAX_RECONNECT_ATTEMPTS + ")");
+                attempt + "/" + MAX_RECONNECT_ATTEMPTS + ")");
 
         Thread reconnectThread = new Thread(() -> {
             try {
@@ -324,7 +323,7 @@ public class SignalingService {
             webSocket = null;
 
             // Attempt reconnect if not intentionally disconnected
-            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            if (reconnectAttempts.get() < MAX_RECONNECT_ATTEMPTS) {
                 scheduleReconnect();
             }
             return null;

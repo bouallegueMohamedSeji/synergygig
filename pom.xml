@@ -114,6 +114,13 @@
             <version>5.1.0</version>
         </dependency>
 
+        <!-- JSch (SSH tunnel for remote MySQL) -->
+        <dependency>
+            <groupId>com.github.mwiede</groupId>
+            <artifactId>jsch</artifactId>
+            <version>0.2.21</version>
+        </dependency>
+
         <!-- Apache POI (Excel text extraction) -->
         <dependency>
             <groupId>org.apache.poi</groupId>

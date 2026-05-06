@@ -32,6 +32,10 @@ public class Contract {
     private Date endDate;
     private Timestamp createdAt;
 
+    // ── Signature fields ──
+    private String signatureData;       // base64-encoded PNG of drawn signature
+    private int signedByUserId;         // userId of the person who signed
+
     // ── Negotiation fields ──
     private Double counterAmount;       // applicant's counter-proposed amount
     private String counterTerms;        // applicant's proposed term changes
@@ -126,6 +130,16 @@ public class Contract {
 
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+
+    // ── Signature getters/setters ──
+
+    public String getSignatureData() { return signatureData; }
+    public void setSignatureData(String signatureData) { this.signatureData = signatureData; }
+
+    public int getSignedByUserId() { return signedByUserId; }
+    public void setSignedByUserId(int signedByUserId) { this.signedByUserId = signedByUserId; }
+
+    public boolean isSigned() { return signatureData != null && !signatureData.isEmpty(); }
 
     // ── Negotiation getters/setters ──
 

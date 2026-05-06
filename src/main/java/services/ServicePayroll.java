@@ -202,10 +202,11 @@ public class ServicePayroll implements IService<Payroll> {
     private Payroll rowToPayroll(ResultSet rs) throws SQLException {
         Integer year = rs.getInt("year");
         if (rs.wasNull()) year = null;
+        java.sql.Date month = parseMonthColumn(rs, year);
         return new Payroll(
                 rs.getInt("id"),
                 rs.getInt("user_id"),
-                rs.getDate("month"),
+                month,
                 year,
                 rs.getDouble("amount"),
                 rs.getString("status"),
@@ -217,5 +218,20 @@ public class ServicePayroll implements IService<Payroll> {
                 rs.getDouble("hourly_rate"),
                 rs.getTimestamp("generated_at")
         );
+    }
+
+    /** Reads the 'month' column tolerating both DATE and INT column types. */
+    private java.sql.Date parseMonthColumn(ResultSet rs, Integer year) {
+        try {
+            return rs.getDate("month");
+        } catch (SQLException e) {
+            try {
+                int m = rs.getInt("month");
+                if (!rs.wasNull() && m > 0 && m <= 12 && year != null && year > 0) {
+                    return java.sql.Date.valueOf(java.time.LocalDate.of(year, m, 1));
+                }
+            } catch (SQLException ignored) {}
+        }
+        return null;
     }
 }

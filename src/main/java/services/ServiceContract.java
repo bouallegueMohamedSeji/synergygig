@@ -158,10 +158,13 @@ public class ServiceContract implements IService<Contract> {
             body.put("counter_terms", c.getCounterTerms());
             body.put("negotiation_notes", c.getNegotiationNotes());
             body.put("negotiation_round", c.getNegotiationRound());
+            body.put("signature_data", c.getSignatureData());
+            if (c.getSignedByUserId() > 0) body.put("signed_by_user_id", c.getSignedByUserId());
+            if (c.getSignedAt() != null) body.put("signed_at", c.getSignedAt().toString());
             ApiClient.put("/contracts/" + c.getId(), body);
             return;
         }
-        String sql = "UPDATE contracts SET offer_id=?, applicant_id=?, owner_id=?, terms=?, amount=?, currency=?, status=?, risk_score=?, risk_factors=?, blockchain_hash=?, qr_code_url=?, start_date=?, end_date=? WHERE id=?";
+        String sql = "UPDATE contracts SET offer_id=?, applicant_id=?, owner_id=?, terms=?, amount=?, currency=?, status=?, risk_score=?, risk_factors=?, blockchain_hash=?, qr_code_url=?, start_date=?, end_date=?, signature_data=?, signed_by_user_id=?, signed_at=? WHERE id=?";
         try (Connection conn = MyDatabase.getInstance().getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, c.getOfferId());
@@ -178,7 +181,11 @@ public class ServiceContract implements IService<Contract> {
             ps.setString(11, c.getQrCodeUrl());
             ps.setDate(12, c.getStartDate());
             ps.setDate(13, c.getEndDate());
-            ps.setInt(14, c.getId());
+            ps.setString(14, c.getSignatureData());
+            if (c.getSignedByUserId() > 0) ps.setInt(15, c.getSignedByUserId());
+            else ps.setNull(15, Types.INTEGER);
+            ps.setTimestamp(16, c.getSignedAt());
+            ps.setInt(17, c.getId());
             ps.executeUpdate();
         }
     }
@@ -274,6 +281,37 @@ public class ServiceContract implements IService<Contract> {
             c.setNegotiationNotes(rs.getString("negotiation_notes"));
             c.setNegotiationRound(rs.getInt("negotiation_round"));
         } catch (SQLException ignored) { /* columns may not exist in older schemas */ }
+        // Signature fields — backward-compatible
+        try {
+            c.setSignatureData(rs.getString("signature_data"));
+            int signedBy = rs.getInt("signed_by_user_id");
+            if (!rs.wasNull()) c.setSignedByUserId(signedBy);
+        } catch (SQLException ignored) { /* columns may not exist yet */ }
         return c;
+    }
+
+    /**
+     * Signs a contract: stores signature image, signer info, and sets status to ACTIVE.
+     */
+    public void signContract(int contractId, int signedByUserId, String signatureBase64) throws SQLException {
+        if (useApi) {
+            Map<String, Object> body = new HashMap<>();
+            body.put("signature_data", signatureBase64);
+            body.put("signed_by_user_id", signedByUserId);
+            body.put("signed_at", new Timestamp(System.currentTimeMillis()).toString());
+            body.put("status", Contract.STATUS_ACTIVE);
+            ApiClient.put("/contracts/" + contractId, body);
+            return;
+        }
+        String sql = "UPDATE contracts SET signature_data=?, signed_by_user_id=?, signed_at=?, status=? WHERE id=?";
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, signatureBase64);
+            ps.setInt(2, signedByUserId);
+            ps.setTimestamp(3, new Timestamp(System.currentTimeMillis()));
+            ps.setString(4, Contract.STATUS_ACTIVE);
+            ps.setInt(5, contractId);
+            ps.executeUpdate();
+        }
     }
 }

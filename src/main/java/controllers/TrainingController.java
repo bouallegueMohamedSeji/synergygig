@@ -1657,8 +1657,11 @@ public class TrainingController {
             JsonObject q = questions.get(i).getAsJsonObject();
             int correctIdx = q.get("answer").getAsInt();
             int selectedIdx = (int) toggleGroups.get(i).getSelectedToggle().getUserData();
-            boolean isCorrect = selectedIdx == correctIdx;
             JsonArray options = q.getAsJsonArray("options");
+
+            // Handle unanswered questions (selectedIdx == -1 when time expired)
+            boolean answered = selectedIdx >= 0 && selectedIdx < options.size();
+            boolean isCorrect = answered && selectedIdx == correctIdx;
 
             VBox reviewCard = new VBox(6);
             reviewCard.setPadding(new Insets(12));
@@ -1670,7 +1673,12 @@ public class TrainingController {
             qText.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #e0e0ff;");
             qText.setWrapText(true);
 
-            Label yourAnswer = new Label("Your answer: " + letters[selectedIdx] + ") " + options.get(selectedIdx).getAsString());
+            Label yourAnswer;
+            if (answered) {
+                yourAnswer = new Label("Your answer: " + letters[selectedIdx] + ") " + options.get(selectedIdx).getAsString());
+            } else {
+                yourAnswer = new Label("Your answer: ⏰ Not answered (time expired)");
+            }
             yourAnswer.setStyle("-fx-font-size: 12px; -fx-text-fill: " + (isCorrect ? "#4CAF50;" : "#FF6B6B;"));
 
             reviewCard.getChildren().addAll(qText, yourAnswer);

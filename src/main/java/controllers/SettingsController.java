@@ -10,6 +10,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import utils.AppConfig;
 import utils.AudioDeviceManager;
+import utils.LanguageManager;
 import utils.ScreenShareService;
 import utils.SessionManager;
 import utils.SoundManager;
@@ -29,6 +30,7 @@ public class SettingsController {
     @FXML private Button btnVoiceVideo;
     @FXML private Button btnNotifications;
     @FXML private Button btnApiKeys;
+    @FXML private Button btnLanguage;
 
     // ── Content panels ──
     @FXML private StackPane settingsContent;
@@ -36,6 +38,15 @@ public class SettingsController {
     @FXML private VBox notificationsPanel;
     @FXML private VBox apiKeysPanel;
     @FXML private VBox themeSchedulePanel;
+    @FXML private VBox languagePanel;
+
+    // ── Language ──
+    @FXML private Label lblLangTitle;
+    @FXML private Label lblLangDesc;
+    @FXML private Label lblLangCurrent;
+    @FXML private Label lblLangCurrentValue;
+    @FXML private VBox languageOptionsContainer;
+    @FXML private Label lblLangStatus;
 
     // ── API Keys ──
     @FXML private VBox apiFieldsContainer;
@@ -160,6 +171,9 @@ public class SettingsController {
             qualityLabel.setText(String.format("%.0f%%", n.doubleValue() * 100));
         });
 
+        // ── Language panel setup ──
+        buildLanguageOptions();
+
         // Default: show Voice & Video
         showVoiceVideo();
 
@@ -211,11 +225,21 @@ public class SettingsController {
         loadSchedulePrefs();
     }
 
+    @FXML
+    private void showLanguage() {
+        hideAllPanels();
+        languagePanel.setVisible(true);
+        languagePanel.setManaged(true);
+        setActiveNav(btnLanguage);
+        refreshLanguageLabels();
+    }
+
     private void hideAllPanels() {
         voiceVideoPanel.setVisible(false);  voiceVideoPanel.setManaged(false);
         notificationsPanel.setVisible(false); notificationsPanel.setManaged(false);
         apiKeysPanel.setVisible(false);      apiKeysPanel.setManaged(false);
         themeSchedulePanel.setVisible(false); themeSchedulePanel.setManaged(false);
+        languagePanel.setVisible(false);     languagePanel.setManaged(false);
     }
 
     private void setActiveNav(Button active) {
@@ -223,6 +247,7 @@ public class SettingsController {
         btnNotifications.getStyleClass().remove("settings-nav-active");
         btnApiKeys.getStyleClass().remove("settings-nav-active");
         btnThemeSchedule.getStyleClass().remove("settings-nav-active");
+        btnLanguage.getStyleClass().remove("settings-nav-active");
         if (active != null && !active.getStyleClass().contains("settings-nav-active")) {
             active.getStyleClass().add("settings-nav-active");
         }
@@ -581,6 +606,94 @@ public class SettingsController {
             lblApiKeyStatus.setStyle("-fx-text-fill: #ef4444;");
             System.err.println("Failed to save API keys: " + ex.getMessage());
         }
+    }
+
+    // ═══════════════════════════════════════════
+    //  LANGUAGE
+    // ═══════════════════════════════════════════
+
+    private final LanguageManager lang = LanguageManager.getInstance();
+    private ToggleGroup langToggleGroup;
+
+    private void buildLanguageOptions() {
+        lblLangCurrentValue.setText(lang.getCurrentDisplayName());
+        languageOptionsContainer.getChildren().clear();
+        langToggleGroup = new ToggleGroup();
+
+        boolean dark = SessionManager.getInstance().isDarkTheme();
+
+        for (int i = 0; i < LanguageManager.SUPPORTED_CODES.length; i++) {
+            String code = LanguageManager.SUPPORTED_CODES[i];
+            String label = LanguageManager.DISPLAY_NAMES[i];
+
+            RadioButton rb = new RadioButton(label);
+            rb.setToggleGroup(langToggleGroup);
+            rb.setUserData(code);
+            rb.setStyle("-fx-font-size: 15; -fx-text-fill: " + (dark ? "#EAEAF0" : "#23232B") + ";");
+            rb.setPadding(new Insets(8, 16, 8, 16));
+
+            if (code.equals(lang.getCode())) {
+                rb.setSelected(true);
+            }
+
+            rb.selectedProperty().addListener((obs, o, n) -> {
+                if (n) {
+                    lang.setLanguage(code);
+                    refreshLanguageLabels();
+                    applyLanguageToSettingsSidebar();
+                    lblLangStatus.setText(lang.get("settings.language.changed"));
+                    lblLangStatus.setStyle("-fx-text-fill: #4ade80;");
+                    javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.seconds(3));
+                    pause.setOnFinished(ev -> lblLangStatus.setText(""));
+                    pause.play();
+                }
+            });
+
+            // ── Card-like wrapper ──
+            HBox card = new HBox(12);
+            card.setAlignment(Pos.CENTER_LEFT);
+            card.setPadding(new Insets(12, 16, 12, 16));
+            card.setStyle("-fx-background-color: " + (dark ? "#1E1E2E" : "#F4F4F8")
+                    + "; -fx-background-radius: 10; -fx-cursor: hand;");
+
+            // Direction indicator for Arabic
+            String dirLabel = "ar".equals(code) ? "  (RTL)" : "";
+            Label dirHint = new Label(dirLabel);
+            dirHint.setStyle("-fx-font-size: 11; -fx-text-fill: #9E9EA8;");
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            card.getChildren().addAll(rb, spacer, dirHint);
+            card.setOnMouseClicked(e -> rb.setSelected(true));
+
+            languageOptionsContainer.getChildren().add(card);
+        }
+    }
+
+    /** Update the labels on the Language panel itself to the current language. */
+    private void refreshLanguageLabels() {
+        lblLangTitle.setText(lang.get("settings.language.title"));
+        lblLangDesc.setText(lang.get("settings.language.desc"));
+        lblLangCurrent.setText(lang.get("settings.language.current"));
+        lblLangCurrentValue.setText(lang.getCurrentDisplayName());
+
+        // Apply RTL alignment if Arabic
+        if (lang.isRTL()) {
+            languagePanel.setStyle("-fx-alignment: center-right;");
+            lblLangTitle.setStyle(lblLangTitle.getStyle() + "; -fx-alignment: center-right;");
+        } else {
+            languagePanel.setStyle("");
+        }
+    }
+
+    /** Update sidebar button labels to the current language. */
+    private void applyLanguageToSettingsSidebar() {
+        btnVoiceVideo.setText(lang.get("settings.voiceVideo"));
+        btnNotifications.setText(lang.get("settings.notifications"));
+        btnApiKeys.setText(lang.get("settings.apiKeys"));
+        btnThemeSchedule.setText(lang.get("settings.themeSchedule"));
+        btnLanguage.setText(lang.get("settings.language"));
     }
 
     /** Call when dialog closes to clean up mic test. */

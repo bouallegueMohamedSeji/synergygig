@@ -1635,13 +1635,20 @@ public class OfferContractController {
                                 finalOffer.getCurrency(), finalOffer.getAmount(),
                                 hash, pdf
                         );
+                        System.out.println("[OfferContract] ✅ Contract email sent to " + applicant.getEmail());
+                    } else {
+                        System.err.println("[OfferContract] ⚠ Cannot send contract email: applicant or email is null (userId=" + a.getApplicantId() + ")");
+                        Platform.runLater(() -> showError(
+                                "Contract #" + finalContract.getId() + " was created, but the applicant has no email address.\n"
+                                + "The contract is available in the Contracts tab."));
                     }
                     serviceNotification.notifyContractReady(
                             a.getApplicantId(), applicantName, finalOffer.getTitle(), finalContract.getId());
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     Platform.runLater(() -> showError(
-                            "Contract was created but post-processing failed:\n" + ex.getMessage()));
+                            "Contract was created but email/PDF failed:\n" + ex.getMessage()
+                            + "\n\nThe contract is still available in the Contracts tab."));
                 }
             });
         } catch (Exception contractEx) {
@@ -2128,6 +2135,24 @@ public class OfferContractController {
                     }
                 }
 
+                // ── Sign button — available to BOTH owner and applicant when PENDING_SIGNATURE ──
+                if (Contract.STATUS_PENDING_SIGNATURE.equals(st) && !c.isSigned()) {
+                    Button btnSign = new Button("✍ Sign");
+                    btnSign.getStyleClass().add("oc-btn-primary");
+                    btnSign.setStyle("-fx-background-color: linear-gradient(to right, #07393C, #2C666E); -fx-text-fill: #F0EDEE; "
+                            + "-fx-font-weight: bold; -fx-padding: 6 16; -fx-background-radius: 6; -fx-cursor: hand;");
+                    btnSign.setTooltip(new Tooltip("Verify blockchain hash & draw your signature"));
+                    btnSign.setOnAction(e -> showContractSignatureDialog(c));
+                    box.getChildren().add(0, btnSign);
+                }
+                // Show signed badge if already signed
+                if (c.isSigned()) {
+                    Label signedBadge = new Label("✅ Signed");
+                    signedBadge.setStyle("-fx-background-color: #166534; -fx-text-fill: #86efac; -fx-padding: 3 8; "
+                            + "-fx-background-radius: 4; -fx-font-size: 10px; -fx-font-weight: bold;");
+                    box.getChildren().add(0, signedBadge);
+                }
+
                 // ── Applicant actions ──
                 if (!isOwnerOrAdmin) {
                     if (Contract.STATUS_PENDING_REVIEW.equals(st)) {
@@ -2181,7 +2206,11 @@ public class OfferContractController {
     private void refreshContracts() {
         try {
             List<Contract> contracts;
-            if (isOwnerOrAdmin) {
+            String role = currentUser != null ? currentUser.getRole() : "";
+            if ("ADMIN".equals(role) || "HR_MANAGER".equals(role)) {
+                // Admins & HR managers see ALL contracts
+                contracts = serviceContract.recuperer();
+            } else if (isOwnerOrAdmin) {
                 contracts = serviceContract.getByOwner(currentUser.getId());
             } else {
                 contracts = serviceContract.getByApplicant(currentUser.getId());
@@ -2539,6 +2568,279 @@ public class OfferContractController {
         scroll.setStyle("-fx-background: #0A090C; -fx-background-color: #0A090C;");
         dialog.getDialogPane().setContent(scroll);
         dialog.getDialogPane().setStyle("-fx-background-color: #0A090C;");
+        dialog.showAndWait();
+    }
+
+    // ================================================================
+    // CONTRACT SIGNATURE DIALOG (Blockchain verify → Draw signature)
+    // ================================================================
+
+    private void showContractSignatureDialog(Contract contract) {
+        javafx.stage.Stage dialog = new javafx.stage.Stage();
+        dialog.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+        dialog.initOwner(rootPane.getScene().getWindow());
+
+        Offer offer = offerMap.get(contract.getOfferId());
+        String offerTitle = offer != null ? offer.getTitle() : "Contract #" + contract.getId();
+        dialog.setTitle("Sign Contract — " + offerTitle);
+
+        VBox root = new VBox(14);
+        root.setAlignment(Pos.TOP_CENTER);
+        root.setPadding(new Insets(24));
+        root.setStyle("-fx-background-color: #1a1a2e;");
+
+        // ── Header ──
+        Label header = new Label("🔐 Blockchain Verified Signing");
+        header.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #90DDF0;");
+
+        Label subtitle = new Label("Contract #" + contract.getId() + "  •  " + offerTitle);
+        subtitle.setStyle("-fx-font-size: 12px; -fx-text-fill: #6B6B80;");
+        subtitle.setWrapText(true);
+
+        // ── Status Timeline ──
+        HBox timeline = createContractTimeline(contract);
+
+        // ══════════════════════════════════════════════════════
+        //  STEP 1: BLOCKCHAIN VERIFICATION
+        // ══════════════════════════════════════════════════════
+        VBox step1Box = new VBox(10);
+        step1Box.setStyle("-fx-background-color: #14131A; -fx-background-radius: 12; -fx-padding: 16; "
+                + "-fx-border-color: #1E1E3A; -fx-border-radius: 12; -fx-border-width: 1;");
+
+        Label step1Title = new Label("STEP 1 — VERIFY BLOCKCHAIN HASH");
+        step1Title.setStyle("-fx-font-size: 11px; -fx-text-fill: #90DDF0; -fx-font-weight: bold;");
+
+        Label hashDisplay = new Label("Hash: " + (contract.getBlockchainHash() != null
+                ? contract.getBlockchainHash().substring(0, Math.min(50, contract.getBlockchainHash().length())) + "..."
+                : "No hash"));
+        hashDisplay.setStyle("-fx-font-family: 'Courier New'; -fx-font-size: 10px; -fx-text-fill: #6B6B80;");
+
+        TextField verifyInput = new TextField();
+        verifyInput.setPromptText("Paste blockchain hash to verify...");
+        verifyInput.setStyle("-fx-font-family: 'Courier New'; -fx-font-size: 11px; -fx-background-color: #0F0E11; "
+                + "-fx-text-fill: #F0EDEE; -fx-border-color: #2A2A4A; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8;");
+
+        Label verifyResult = new Label();
+        verifyResult.setWrapText(true);
+
+        Button btnVerify = new Button("🔍 Verify Hash");
+        btnVerify.setStyle("-fx-background-color: linear-gradient(to right, #07393C, #2C666E); -fx-text-fill: #F0EDEE; "
+                + "-fx-font-weight: bold; -fx-padding: 8 20; -fx-background-radius: 8; -fx-cursor: hand;");
+
+        step1Box.getChildren().addAll(step1Title, hashDisplay, verifyInput, btnVerify, verifyResult);
+
+        // ══════════════════════════════════════════════════════
+        //  STEP 2: DRAW SIGNATURE (hidden until verified)
+        // ══════════════════════════════════════════════════════
+        VBox step2Box = new VBox(12);
+        step2Box.setStyle("-fx-background-color: #14131A; -fx-background-radius: 12; -fx-padding: 16; "
+                + "-fx-border-color: #1E1E3A; -fx-border-radius: 12; -fx-border-width: 1;");
+        step2Box.setVisible(false);
+        step2Box.setManaged(false);
+
+        Label step2Title = new Label("STEP 2 — DRAW YOUR SIGNATURE");
+        step2Title.setStyle("-fx-font-size: 11px; -fx-text-fill: #22c55e; -fx-font-weight: bold;");
+
+        Label signAs = new Label("Signing as: " + currentUser.getFullName());
+        signAs.setStyle("-fx-font-size: 12px; -fx-text-fill: #90DDF0;");
+
+        // ── Canvas ──
+        double canvasW = 480, canvasH = 180;
+        StackPane canvasWrapper = new StackPane();
+        canvasWrapper.setMaxSize(canvasW + 4, canvasH + 4);
+        canvasWrapper.setStyle("-fx-background-color: #2C666E; -fx-background-radius: 10; -fx-padding: 2;");
+
+        javafx.scene.canvas.Canvas sigCanvas = new javafx.scene.canvas.Canvas(canvasW, canvasH);
+        javafx.scene.canvas.GraphicsContext gc = sigCanvas.getGraphicsContext2D();
+
+        // White background
+        gc.setFill(javafx.scene.paint.Color.WHITE);
+        gc.fillRect(0, 0, canvasW, canvasH);
+
+        // Guide line
+        gc.setStroke(javafx.scene.paint.Color.rgb(200, 200, 210));
+        gc.setLineWidth(0.8);
+        gc.strokeLine(40, canvasH * 0.72, canvasW - 40, canvasH * 0.72);
+
+        // "Sign here" hint
+        gc.setFill(javafx.scene.paint.Color.rgb(180, 180, 195));
+        gc.setFont(javafx.scene.text.Font.font("Arial", 10));
+        gc.fillText("Sign here", canvasW / 2 - 22, canvasH * 0.72 + 14);
+
+        // Drawing state
+        final boolean[] drawing = {false};
+        final double[] lastX = {0}, lastY = {0};
+
+        gc.setStroke(javafx.scene.paint.Color.rgb(25, 25, 60));
+        gc.setLineCap(javafx.scene.shape.StrokeLineCap.ROUND);
+        gc.setLineWidth(2.5);
+
+        sigCanvas.setOnMousePressed(e -> {
+            drawing[0] = true;
+            lastX[0] = e.getX();
+            lastY[0] = e.getY();
+        });
+        sigCanvas.setOnMouseDragged(e -> {
+            if (!drawing[0]) return;
+            gc.strokeLine(lastX[0], lastY[0], e.getX(), e.getY());
+            lastX[0] = e.getX();
+            lastY[0] = e.getY();
+        });
+        sigCanvas.setOnMouseReleased(e -> drawing[0] = false);
+
+        canvasWrapper.getChildren().add(sigCanvas);
+
+        // ── Pen controls ──
+        HBox penControls = new HBox(12);
+        penControls.setAlignment(Pos.CENTER);
+
+        String pcBtnStyle = "-fx-background-color: #333; -fx-text-fill: #ccc; -fx-font-size: 11px; "
+                + "-fx-padding: 4 10; -fx-background-radius: 5; -fx-cursor: hand;";
+
+        Label penLabel = new Label("Pen:");
+        penLabel.setStyle("-fx-text-fill: #9696A5; -fx-font-size: 11px;");
+
+        Button thinBtn = new Button("Thin");
+        thinBtn.setStyle(pcBtnStyle);
+        thinBtn.setOnAction(e -> gc.setLineWidth(1.5));
+
+        Button medBtn = new Button("Medium");
+        medBtn.setStyle(pcBtnStyle);
+        medBtn.setOnAction(e -> gc.setLineWidth(2.5));
+
+        Button boldBtn = new Button("Bold");
+        boldBtn.setStyle(pcBtnStyle);
+        boldBtn.setOnAction(e -> gc.setLineWidth(4.0));
+
+        Label colorLabel = new Label("Color:");
+        colorLabel.setStyle("-fx-text-fill: #9696A5; -fx-font-size: 11px;");
+
+        Button blackPen = new Button("⬛");
+        blackPen.setStyle(pcBtnStyle);
+        blackPen.setOnAction(e -> gc.setStroke(javafx.scene.paint.Color.rgb(25, 25, 60)));
+
+        Button bluePen = new Button("🔵");
+        bluePen.setStyle(pcBtnStyle);
+        bluePen.setOnAction(e -> gc.setStroke(javafx.scene.paint.Color.rgb(20, 50, 140)));
+
+        penControls.getChildren().addAll(penLabel, thinBtn, medBtn, boldBtn,
+                new Region() {{ setPrefWidth(12); }},
+                colorLabel, blackPen, bluePen);
+
+        // ── Action buttons ──
+        HBox actionBar = new HBox(12);
+        actionBar.setAlignment(Pos.CENTER);
+
+        Button clearBtn = new Button("🗑 Clear");
+        clearBtn.setStyle("-fx-background-color: #444; -fx-text-fill: #F0EDEE; -fx-font-size: 13px; "
+                + "-fx-padding: 8 20; -fx-background-radius: 6; -fx-cursor: hand;");
+        clearBtn.setOnAction(e -> {
+            gc.setFill(javafx.scene.paint.Color.WHITE);
+            gc.fillRect(0, 0, canvasW, canvasH);
+            gc.setStroke(javafx.scene.paint.Color.rgb(200, 200, 210));
+            gc.setLineWidth(0.8);
+            gc.strokeLine(40, canvasH * 0.72, canvasW - 40, canvasH * 0.72);
+            gc.setFill(javafx.scene.paint.Color.rgb(180, 180, 195));
+            gc.setFont(javafx.scene.text.Font.font("Arial", 10));
+            gc.fillText("Sign here", canvasW / 2 - 22, canvasH * 0.72 + 14);
+            gc.setStroke(javafx.scene.paint.Color.rgb(25, 25, 60));
+            gc.setLineWidth(2.5);
+        });
+
+        Button confirmBtn = new Button("✅ Confirm & Sign Contract");
+        confirmBtn.setStyle("-fx-background-color: linear-gradient(to right, #166534, #22c55e); -fx-text-fill: white; "
+                + "-fx-font-size: 13px; -fx-padding: 8 24; -fx-background-radius: 6; -fx-cursor: hand; -fx-font-weight: bold;");
+        confirmBtn.setOnAction(e -> {
+            try {
+                // Snapshot canvas to base64 PNG
+                javafx.scene.SnapshotParameters params = new javafx.scene.SnapshotParameters();
+                params.setFill(javafx.scene.paint.Color.WHITE);
+                javafx.scene.image.WritableImage snapshot = sigCanvas.snapshot(params, null);
+
+                java.awt.image.BufferedImage bImg = javafx.embed.swing.SwingFXUtils.fromFXImage(snapshot, null);
+                java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+                javax.imageio.ImageIO.write(bImg, "png", baos);
+                String base64 = java.util.Base64.getEncoder().encodeToString(baos.toByteArray());
+
+                // Persist signature
+                serviceContract.signContract(contract.getId(), currentUser.getId(), base64);
+
+                // Update in-memory object
+                contract.setSignedByUserId(currentUser.getId());
+                contract.setSignatureData(base64);
+                contract.setSignedAt(new Timestamp(System.currentTimeMillis()));
+                contract.setStatus(Contract.STATUS_ACTIVE);
+
+                SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
+                dialog.close();
+                refreshContracts();
+
+                // Notify the other party
+                int notifyUserId = (currentUser.getId() == contract.getOwnerId())
+                        ? contract.getApplicantId() : contract.getOwnerId();
+                serviceNotification.create(notifyUserId, "CONTRACT",
+                        "✍ Contract Signed",
+                        "Contract #" + contract.getId() + " for \"" + offerTitle + "\" has been signed by "
+                                + currentUser.getFullName() + " and is now ACTIVE.",
+                        contract.getId(), "CONTRACT");
+
+                showInfo("Contract signed and activated!\n\nContract #" + contract.getId()
+                        + " is now ACTIVE.\nSigned by: " + currentUser.getFullName());
+            } catch (Exception ex) {
+                showError("Failed to sign contract: " + ex.getMessage());
+            }
+        });
+
+        Button cancelBtn = new Button("Cancel");
+        cancelBtn.setStyle("-fx-background-color: #333; -fx-text-fill: #ccc; -fx-font-size: 13px; "
+                + "-fx-padding: 8 20; -fx-background-radius: 6; -fx-cursor: hand;");
+        cancelBtn.setOnAction(e -> dialog.close());
+
+        actionBar.getChildren().addAll(clearBtn, confirmBtn, cancelBtn);
+
+        step2Box.getChildren().addAll(step2Title, signAs, canvasWrapper, penControls, actionBar);
+
+        // ── Step 1 verify logic ──
+        btnVerify.setOnAction(e -> {
+            String inputHash = verifyInput.getText().trim();
+            if (inputHash.isEmpty()) {
+                verifyResult.setText("⚠ Please paste the blockchain hash to verify.");
+                verifyResult.setStyle("-fx-font-size: 13px; -fx-text-fill: #f59e0b;");
+                return;
+            }
+
+            BlockchainVerifier.VerificationResult vr = BlockchainVerifier.verifyContract(
+                    contract.getId(), inputHash, contract.getBlockchainHash());
+
+            if (vr.matches) {
+                verifyResult.setText("✅ " + vr.message.split("\n")[0] + "\nBlockchain integrity confirmed — you may now sign.");
+                verifyResult.setStyle("-fx-font-size: 13px; -fx-text-fill: #22c55e; -fx-font-weight: bold;");
+                SoundManager.getInstance().play(SoundManager.MESSAGE_SENT);
+
+                // Reveal Step 2
+                step2Box.setVisible(true);
+                step2Box.setManaged(true);
+            } else {
+                verifyResult.setText("❌ " + vr.message);
+                verifyResult.setStyle("-fx-font-size: 13px; -fx-text-fill: #ef4444; -fx-font-weight: bold;");
+                SoundManager.getInstance().play(SoundManager.ERROR);
+                step2Box.setVisible(false);
+                step2Box.setManaged(false);
+            }
+        });
+
+        root.getChildren().addAll(header, subtitle, timeline, step1Box, step2Box);
+
+        ScrollPane scroll = new ScrollPane(root);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: #1a1a2e; -fx-background-color: #1a1a2e;");
+
+        javafx.scene.Scene scene = new javafx.scene.Scene(scroll, 580, 700);
+        // Apply stylesheets from parent if available
+        try {
+            scene.getStylesheets().addAll(rootPane.getScene().getStylesheets());
+        } catch (Exception ignored) {}
+        dialog.setScene(scene);
         dialog.showAndWait();
     }
 

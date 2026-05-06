@@ -94,22 +94,13 @@ public class ServiceUserFollow {
             InMemoryCache.evictByPrefix("follows:");
             return;
         }
-        String sql = "INSERT IGNORE INTO user_follows (follower_id, followed_id, status) VALUES (?, ?, ?)";
-        try (Connection conn = MyDatabase.getInstance().getConnection()) {
-            // Forward direction
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setInt(1, followerId);
-                ps.setInt(2, followedId);
-                ps.setString(3, UserFollow.STATUS_ACCEPTED);
-                ps.executeUpdate();
-            }
-            // Reverse direction (auto-friend)
-            try (PreparedStatement ps = conn.prepareStatement(sql)) {
-                ps.setInt(1, followedId);
-                ps.setInt(2, followerId);
-                ps.setString(3, UserFollow.STATUS_ACCEPTED);
-                ps.executeUpdate();
-            }
+        String sql = "INSERT IGNORE INTO user_follows (follower_id, followed_id, status, created_at) VALUES (?, ?, ?, NOW())";
+        try (Connection conn = MyDatabase.getInstance().getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, followerId);
+            ps.setInt(2, followedId);
+            ps.setString(3, UserFollow.STATUS_FOLLOWING);
+            ps.executeUpdate();
         }
         InMemoryCache.evictByPrefix("follows:");
     }
@@ -152,7 +143,7 @@ public class ServiceUserFollow {
             } else {
                 try (Connection conn = MyDatabase.getInstance().getConnection();
                      PreparedStatement ps = conn.prepareStatement(
-                             "SELECT followed_id FROM user_follows WHERE follower_id = ? AND status = 'ACCEPTED'")) {
+                             "SELECT followed_id FROM user_follows WHERE follower_id = ? AND status IN ('following','friend_accepted')")) {
                     ps.setInt(1, followerId);
                     ResultSet rs = ps.executeQuery();
                     while (rs.next()) ids.add(rs.getInt(1));
@@ -177,7 +168,7 @@ public class ServiceUserFollow {
             } else {
                 try (Connection conn = MyDatabase.getInstance().getConnection();
                      PreparedStatement ps = conn.prepareStatement(
-                             "SELECT follower_id FROM user_follows WHERE followed_id = ? AND status = 'ACCEPTED'")) {
+                             "SELECT follower_id FROM user_follows WHERE followed_id = ? AND status IN ('following','friend_accepted')")) {
                     ps.setInt(1, followedId);
                     ResultSet rs = ps.executeQuery();
                     while (rs.next()) ids.add(rs.getInt(1));
@@ -207,7 +198,7 @@ public class ServiceUserFollow {
             InMemoryCache.evictByPrefix("follows:");
             return;
         }
-        String sql = "INSERT IGNORE INTO user_follows (follower_id, followed_id, status) VALUES (?, ?, ?)";
+        String sql = "INSERT IGNORE INTO user_follows (follower_id, followed_id, status, created_at) VALUES (?, ?, ?, NOW())";
         try (Connection conn = MyDatabase.getInstance().getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, fromUserId);
@@ -228,13 +219,23 @@ public class ServiceUserFollow {
             InMemoryCache.evictByPrefix("follows:");
             return;
         }
-        String sql = "UPDATE user_follows SET status = ? WHERE follower_id = ? AND followed_id = ?";
-        try (Connection conn = MyDatabase.getInstance().getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, UserFollow.STATUS_ACCEPTED);
-            ps.setInt(2, fromUserId);
-            ps.setInt(3, toUserId);
-            ps.executeUpdate();
+        try (Connection conn = MyDatabase.getInstance().getConnection()) {
+            // Mark the original request as ACCEPTED
+            String update = "UPDATE user_follows SET status = ? WHERE follower_id = ? AND followed_id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(update)) {
+                ps.setString(1, UserFollow.STATUS_ACCEPTED);
+                ps.setInt(2, fromUserId);
+                ps.setInt(3, toUserId);
+                ps.executeUpdate();
+            }
+            // Insert the reverse direction so getFriendIds() (intersection check) sees both sides
+            String reverse = "INSERT IGNORE INTO user_follows (follower_id, followed_id, status, created_at) VALUES (?, ?, ?, NOW())";
+            try (PreparedStatement ps2 = conn.prepareStatement(reverse)) {
+                ps2.setInt(1, toUserId);
+                ps2.setInt(2, fromUserId);
+                ps2.setString(3, UserFollow.STATUS_ACCEPTED);
+                ps2.executeUpdate();
+            }
         }
         InMemoryCache.evictByPrefix("follows:");
     }
@@ -257,7 +258,7 @@ public class ServiceUserFollow {
             } else {
                 try (Connection conn = MyDatabase.getInstance().getConnection();
                      PreparedStatement ps = conn.prepareStatement(
-                             "SELECT * FROM user_follows WHERE followed_id = ? AND status = 'PENDING' ORDER BY created_at DESC")) {
+                             "SELECT * FROM user_follows WHERE followed_id = ? AND status = 'friend_pending' ORDER BY created_at DESC")) {
                     ps.setInt(1, userId);
                     ResultSet rs = ps.executeQuery();
                     while (rs.next()) {
@@ -302,13 +303,30 @@ public class ServiceUserFollow {
         });
     }
 
-    /** Get set of user IDs that userId is friends with (mutual ACCEPTED follows). */
+    /** Get set of user IDs that userId is friends with (mutual friend_accepted rows). */
     public Set<Integer> getFriendIds(int userId) {
-        Set<Integer> following = getFollowedIds(userId);
-        Set<Integer> followers = getFollowerIds(userId);
-        Set<Integer> friends = new HashSet<>(following);
-        friends.retainAll(followers);
-        return friends;
+        String key = "follows:friends:" + userId;
+        return InMemoryCache.getOrLoad(key, 60, () -> {
+            Set<Integer> ids = new HashSet<>();
+            if (useApi()) {
+                // Fall back to intersection approach for API mode
+                Set<Integer> following = getFollowedIds(userId);
+                Set<Integer> followers = getFollowerIds(userId);
+                ids.addAll(following);
+                ids.retainAll(followers);
+            } else {
+                try (Connection conn = MyDatabase.getInstance().getConnection();
+                     PreparedStatement ps = conn.prepareStatement(
+                         "SELECT a.followed_id FROM user_follows a " +
+                         "JOIN user_follows b ON a.followed_id = b.follower_id AND a.follower_id = b.followed_id " +
+                         "WHERE a.follower_id = ? AND a.status = 'friend_accepted' AND b.status = 'friend_accepted'")) {
+                    ps.setInt(1, userId);
+                    ResultSet rs = ps.executeQuery();
+                    while (rs.next()) ids.add(rs.getInt(1));
+                } catch (SQLException ignored) {}
+            }
+            return ids;
+        });
     }
 
     /** Get friend count. */

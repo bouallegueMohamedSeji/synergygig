@@ -26,6 +26,12 @@ public class User {
     private String bio;
     private String coverBase64;
 
+    // CV / resume fields (synced with web app)
+    private String cvPath;
+    private String cvOriginalName;
+    private Timestamp cvUploadedAt;
+    private String cvSkillsText;
+
     // Default constructor
     public User() {
     }
@@ -205,6 +211,20 @@ public class User {
 
     public String getCoverBase64() { return coverBase64; }
     public void setCoverBase64(String coverBase64) { this.coverBase64 = coverBase64; }
+
+    public String getCvPath() { return cvPath; }
+    public void setCvPath(String cvPath) { this.cvPath = cvPath; }
+
+    public String getCvOriginalName() { return cvOriginalName; }
+    public void setCvOriginalName(String cvOriginalName) { this.cvOriginalName = cvOriginalName; }
+
+    public Timestamp getCvUploadedAt() { return cvUploadedAt; }
+    public void setCvUploadedAt(Timestamp cvUploadedAt) { this.cvUploadedAt = cvUploadedAt; }
+
+    public String getCvSkillsText() { return cvSkillsText; }
+    public void setCvSkillsText(String cvSkillsText) { this.cvSkillsText = cvSkillsText; }
+
+    public boolean hasCv() { return cvPath != null && !cvPath.isEmpty(); }
 
     public String getFullName() {
         return firstName + " " + lastName;

@@ -31,6 +31,10 @@
         <Button fx:id="btnThemeSchedule" text="🌗  Theme Schedule"
                 onAction="#showThemeSchedule"
                 styleClass="settings-nav-btn" maxWidth="1.7976931348623157E308"/>
+
+        <Button fx:id="btnLanguage" text="🌐  Language"
+                onAction="#showLanguage"
+                styleClass="settings-nav-btn" maxWidth="1.7976931348623157E308"/>
     </VBox>
 
     <!-- ═══ Right Content ═══ -->
@@ -215,6 +219,28 @@
                         styleClass="settings-btn,settings-api-save-btn"/>
                 <Label fx:id="lblScheduleStatus" text="" styleClass="settings-api-status"/>
             </HBox>
+        </VBox>
+
+        <!-- ── Language Panel ── -->
+        <VBox fx:id="languagePanel" spacing="14" visible="false" managed="false">
+
+            <Label fx:id="lblLangTitle" text="Language" styleClass="settings-panel-title"/>
+            <Separator styleClass="settings-separator"/>
+            <Label fx:id="lblLangDesc" text="Choose your preferred language. The interface will switch immediately."
+                   styleClass="settings-api-desc" wrapText="true"/>
+
+            <VBox spacing="8">
+                <Label fx:id="lblLangCurrent" text="Current language:" styleClass="settings-section-label"/>
+                <Label fx:id="lblLangCurrentValue" text="" style="-fx-font-size: 15; -fx-font-weight: bold; -fx-text-fill: #4ade80;"/>
+            </VBox>
+
+            <Separator styleClass="settings-separator"/>
+
+            <VBox fx:id="languageOptionsContainer" spacing="10">
+                <padding><Insets top="4" right="4" bottom="4" left="0"/></padding>
+            </VBox>
+
+            <Label fx:id="lblLangStatus" text="" styleClass="settings-api-status"/>
         </VBox>
 
     </StackPane>

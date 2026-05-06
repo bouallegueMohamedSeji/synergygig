@@ -399,6 +399,23 @@ public class InterviewController {
                 Interview newInterview = new Interview(organizerId, candId, ts, link);
                 newInterview.setStatus(status);
 
+                // Try to auto-link to an existing SHORTLISTED application for this candidate
+                try {
+                    ServiceJobApplication svcApp = new ServiceJobApplication();
+                    List<entities.JobApplication> candidateApps = svcApp.recuperer().stream()
+                            .filter(a -> a.getApplicantId() == candId && "SHORTLISTED".equals(a.getStatus()))
+                            .collect(java.util.stream.Collectors.toList());
+                    if (candidateApps.size() == 1) {
+                        newInterview.setApplicationId(candidateApps.get(0).getId());
+                        newInterview.setOfferId(candidateApps.get(0).getOfferId());
+                        System.out.println("[Interview] Auto-linked to application #" + candidateApps.get(0).getId());
+                    } else if (candidateApps.size() > 1) {
+                        System.out.println("[Interview] ⚠ Multiple SHORTLISTED applications for candidate #" + candId + " — not auto-linking (count=" + candidateApps.size() + ")");
+                    }
+                } catch (Exception linkEx) {
+                    System.err.println("[Interview] Auto-link check failed: " + linkEx.getMessage());
+                }
+
                 // Notify the candidate
                 String candName = idToName.getOrDefault(candId, "User #" + candId);
                 String dateStr = date.format(DateTimeFormatter.ofPattern("MMM d, yyyy")) + " at " + time;
@@ -682,83 +699,170 @@ public class InterviewController {
                     interview.getId());
 
             // ── Pipeline link: update the linked JobApplication ──
-            if (interview.getApplicationId() > 0) {
+            System.out.println("[Interview] updateStatus called: interview #" + interview.getId()
+                    + " -> " + newStatus + " | applicationId=" + interview.getApplicationId()
+                    + " | offerId=" + interview.getOfferId() + " | candidateId=" + interview.getCandidateId());
+
+            if (interview.getApplicationId() > 0 || "ACCEPTED".equals(newStatus)) {
                 try {
                     ServiceJobApplication serviceApp = new ServiceJobApplication();
                     List<entities.JobApplication> apps = serviceApp.recuperer();
-                    entities.JobApplication linkedApp = apps.stream()
-                            .filter(a -> a.getId() == interview.getApplicationId())
-                            .findFirst().orElse(null);
 
-                    if (linkedApp != null) {
+                    // Try direct link first, then fallback to candidate+offer lookup
+                    entities.JobApplication linkedApp = null;
+                    if (interview.getApplicationId() > 0) {
+                        linkedApp = apps.stream()
+                                .filter(a -> a.getId() == interview.getApplicationId())
+                                .findFirst().orElse(null);
+                    }
+                    // Fallback: if applicationId was 0 (interview created from InterviewController form),
+                    // find the SHORTLISTED application for this candidate
+                    if (linkedApp == null && "ACCEPTED".equals(newStatus)) {
+                        System.out.println("[Interview] ⚠ No applicationId linked — searching by candidateId=" + interview.getCandidateId());
+                        linkedApp = apps.stream()
+                                .filter(a -> a.getApplicantId() == interview.getCandidateId()
+                                        && "SHORTLISTED".equals(a.getStatus()))
+                                .findFirst().orElse(null);
+                        if (linkedApp == null) {
+                            // Also try PENDING/REVIEWED
+                            linkedApp = apps.stream()
+                                    .filter(a -> a.getApplicantId() == interview.getCandidateId()
+                                            && !"REJECTED".equals(a.getStatus())
+                                            && !"WITHDRAWN".equals(a.getStatus())
+                                            && !"ACCEPTED".equals(a.getStatus()))
+                                    .findFirst().orElse(null);
+                        }
+                        if (linkedApp != null) {
+                            System.out.println("[Interview] Found application #" + linkedApp.getId() + " via fallback lookup (status=" + linkedApp.getStatus() + ")");
+                            // Update the interview with the found applicationId for future reference
+                            interview.setApplicationId(linkedApp.getId());
+                            interview.setOfferId(linkedApp.getOfferId());
+                            try { serviceInterview.modifier(interview); } catch (Exception ignored) {}
+                        } else {
+                            System.err.println("[Interview] ⚠ No matching application found for candidate #" + interview.getCandidateId());
+                            showAlert(javafx.scene.control.Alert.AlertType.WARNING,
+                                    "No Application Found",
+                                    "Interview accepted, but no linked job application was found for this candidate.\n"
+                                    + "No contract was created. Please create one manually from the Offers panel.");
+                        }
+                    }
+
+                    final entities.JobApplication finalLinkedApp = linkedApp;
+                    if (finalLinkedApp != null) {
                         if ("ACCEPTED".equals(newStatus)) {
-                            linkedApp.setStatus("ACCEPTED");
-                            serviceApp.modifier(linkedApp);
-                            System.out.println("[Interview] Application #" + linkedApp.getId() + " auto-ACCEPTED via interview pipeline.");
+                            finalLinkedApp.setStatus("ACCEPTED");
+                            serviceApp.modifier(finalLinkedApp);
+                            System.out.println("[Interview] Application #" + finalLinkedApp.getId() + " auto-ACCEPTED via interview pipeline.");
 
-                            // Trigger contract creation via OfferContractController
+                            // Trigger contract creation
                             Platform.runLater(() -> {
                                 try {
                                     ServiceContract serviceContract = new ServiceContract();
                                     ServiceOffer serviceOffer = new ServiceOffer();
                                     ServiceUser svcUser = new ServiceUser();
+                                    services.ZAIService zaiService = new services.ZAIService();
                                     entities.Offer offer = serviceOffer.recuperer().stream()
-                                            .filter(o -> o.getId() == linkedApp.getOfferId())
+                                            .filter(o -> o.getId() == finalLinkedApp.getOfferId())
                                             .findFirst().orElse(null);
 
-                                    if (offer != null) {
-                                        // Generate contract terms
-                                        String terms = "Employment contract for " + offer.getTitle()
+                                    if (offer == null) {
+                                        System.err.println("[Interview] ⚠ Offer not found for application #" + finalLinkedApp.getId() + " (offerId=" + finalLinkedApp.getOfferId() + ")");
+                                        showAlert(javafx.scene.control.Alert.AlertType.WARNING,
+                                                "Contract Not Created",
+                                                "The offer for application #" + finalLinkedApp.getId() + " was not found.\nThe application was accepted but no contract was generated.\nPlease create the contract manually from the Offers panel.");
+                                        return;
+                                    }
+
+                                    // Generate AI contract terms (with fallback)
+                                    String terms;
+                                    try {
+                                        terms = zaiService.generateContract(
+                                                offer.getTitle(),
+                                                offer.getDescription() != null ? offer.getDescription() : offer.getTitle(),
+                                                offer.getAmount(),
+                                                getUserDisplayName(finalLinkedApp.getApplicantId()),
+                                                java.time.LocalDate.now().toString(),
+                                                java.time.LocalDate.now().plusMonths(6).toString());
+                                    } catch (Exception aiEx) {
+                                        System.err.println("[Interview] AI contract gen failed, using template: " + aiEx.getMessage());
+                                        terms = "Employment contract for " + offer.getTitle()
                                                 + "\nParties: " + getUserDisplayName(offer.getOwnerId()) + " (Employer) and "
-                                                + getUserDisplayName(linkedApp.getApplicantId()) + " (Employee)"
+                                                + getUserDisplayName(finalLinkedApp.getApplicantId()) + " (Employee)"
                                                 + "\nCompensation: " + offer.getCurrency() + " " + offer.getAmount()
                                                 + "\n\n[Terms to be finalized]";
-
-                                        entities.Contract c = new entities.Contract(
-                                                offer.getId(), linkedApp.getApplicantId(), offer.getOwnerId(),
-                                                terms, offer.getAmount(), offer.getCurrency(),
-                                                "DRAFT", offer.getStartDate(), offer.getEndDate()
-                                        );
-                                        String hash = utils.BlockchainVerifier.generateHash(0, "Contract from hiring pipeline", offer.getAmount());
-                                        c.setBlockchainHash(hash);
-                                        serviceContract.ajouter(c);
-                                        System.out.println("[Interview] Contract #" + c.getId() + " created for application #" + linkedApp.getId());
-
-                                        // Notify applicant about contract
-                                        serviceNotification.notifyContractReady(
-                                                linkedApp.getApplicantId(),
-                                                getUserDisplayName(linkedApp.getApplicantId()),
-                                                offer.getTitle(), c.getId());
-
-                                        // Generate PDF + email in background
-                                        String applicantName = getUserDisplayName(linkedApp.getApplicantId());
-                                        String ownerName = getUserDisplayName(offer.getOwnerId());
-                                        AppThreadPool.io(() -> {
-                                            try {
-                                                File pdf = utils.ContractPdfGenerator.generatePdf(c, offer.getTitle(), ownerName, applicantName);
-                                                entities.User applicant = svcUser.getById(linkedApp.getApplicantId());
-                                                if (applicant != null && applicant.getEmail() != null) {
-                                                    utils.EmailService.sendContractEmail(
-                                                            applicant.getEmail(), applicant.getFirstName(),
-                                                            ownerName, offer.getTitle(),
-                                                            offer.getCurrency(), offer.getAmount(), hash, pdf);
-                                                }
-                                            } catch (Exception ex) {
-                                                System.err.println("[Interview] Contract post-processing failed: " + ex.getMessage());
-                                            }
-                                        });
                                     }
+
+                                    entities.Contract c = new entities.Contract(
+                                            offer.getId(), finalLinkedApp.getApplicantId(), offer.getOwnerId(),
+                                            terms, offer.getAmount(), offer.getCurrency(),
+                                            "DRAFT", offer.getStartDate(), offer.getEndDate()
+                                    );
+                                    String hash = utils.BlockchainVerifier.generateHash(0, "Contract from hiring pipeline", offer.getAmount());
+                                    c.setBlockchainHash(hash);
+                                    serviceContract.ajouter(c);
+                                    System.out.println("[Interview] ✅ Contract #" + c.getId() + " created for application #" + finalLinkedApp.getId());
+
+                                    // Notify applicant about contract
+                                    serviceNotification.notifyContractReady(
+                                            finalLinkedApp.getApplicantId(),
+                                            getUserDisplayName(finalLinkedApp.getApplicantId()),
+                                            offer.getTitle(), c.getId());
+
+                                    // Show immediate feedback
+                                    showAlert(javafx.scene.control.Alert.AlertType.INFORMATION,
+                                            "✅ Contract Created",
+                                            "Contract #" + c.getId() + " created (DRAFT).\n"
+                                            + "Blockchain: " + utils.BlockchainVerifier.shortHash(hash) + "\n\n"
+                                            + "PDF generation & email sending in progress...");
+
+                                    // Generate PDF + email in background
+                                    String applicantName = getUserDisplayName(finalLinkedApp.getApplicantId());
+                                    String ownerName = getUserDisplayName(offer.getOwnerId());
+                                    final entities.Offer finalOffer = offer;
+                                    AppThreadPool.io(() -> {
+                                        try {
+                                            File pdf = utils.ContractPdfGenerator.generatePdf(c, finalOffer.getTitle(), ownerName, applicantName);
+                                            entities.User applicant = svcUser.getById(finalLinkedApp.getApplicantId());
+                                            if (applicant == null || applicant.getEmail() == null) {
+                                                System.err.println("[Interview] ⚠ Cannot send contract email: applicant or email is null (userId=" + finalLinkedApp.getApplicantId() + ")");
+                                                Platform.runLater(() -> showAlert(javafx.scene.control.Alert.AlertType.WARNING,
+                                                        "Email Not Sent",
+                                                        "Contract #" + c.getId() + " was created, but the applicant has no email address on file.\n"
+                                                        + "The contract is available in the Contracts tab."));
+                                                return;
+                                            }
+                                            utils.EmailService.sendContractEmail(
+                                                    applicant.getEmail(), applicant.getFirstName(),
+                                                    ownerName, finalOffer.getTitle(),
+                                                    finalOffer.getCurrency(), finalOffer.getAmount(), hash, pdf);
+                                            System.out.println("[Interview] ✅ Contract email sent to " + applicant.getEmail());
+                                        } catch (Exception ex) {
+                                            System.err.println("[Interview] ❌ Contract email/PDF failed: " + ex.getMessage());
+                                            ex.printStackTrace();
+                                            Platform.runLater(() -> showAlert(javafx.scene.control.Alert.AlertType.ERROR,
+                                                    "Contract Email Failed",
+                                                    "Contract #" + c.getId() + " was created, but the email could not be sent.\n\n"
+                                                    + "Error: " + ex.getMessage() + "\n\n"
+                                                    + "The contract is still available in the Contracts tab."));
+                                        }
+                                    });
                                 } catch (Exception ex) {
-                                    System.err.println("[Interview] Contract creation failed: " + ex.getMessage());
+                                    System.err.println("[Interview] ❌ Contract creation failed: " + ex.getMessage());
+                                    ex.printStackTrace();
+                                    showAlert(javafx.scene.control.Alert.AlertType.ERROR,
+                                            "Contract Creation Failed",
+                                            "The interview was accepted but the contract could not be created.\n\n"
+                                            + "Error: " + ex.getMessage() + "\n\n"
+                                            + "Please create the contract manually from the Offers panel.");
                                 }
                             });
                         } else if ("REJECTED".equals(newStatus)) {
-                            linkedApp.setStatus("REJECTED");
-                            serviceApp.modifier(linkedApp);
-                            System.out.println("[Interview] Application #" + linkedApp.getId() + " auto-REJECTED via interview pipeline.");
+                            finalLinkedApp.setStatus("REJECTED");
+                            serviceApp.modifier(finalLinkedApp);
+                            System.out.println("[Interview] Application #" + finalLinkedApp.getId() + " auto-REJECTED via interview pipeline.");
 
                             // Notify applicant
-                            serviceNotification.notifyInterview(linkedApp.getApplicantId(), "Rejected",
+                            serviceNotification.notifyInterview(finalLinkedApp.getApplicantId(), "Rejected",
                                     "Your application has been rejected following the interview.", 0);
                         }
                     }
@@ -782,6 +886,17 @@ public class InterviewController {
             if (u != null) return u.getFirstName() + " " + u.getLastName();
         } catch (Exception ignored) {}
         return "User #" + userId;
+    }
+
+    // ========== Alerts ==========
+
+    private void showAlert(javafx.scene.control.Alert.AlertType type, String title, String content) {
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(type);
+        utils.DialogHelper.theme(alert);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        alert.showAndWait();
     }
 
     // ========== Form Status ==========

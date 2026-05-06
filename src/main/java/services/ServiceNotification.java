@@ -158,7 +158,7 @@ public class ServiceNotification {
         } else {
             try (Connection conn = utils.MyDatabase.getInstance().getConnection();
                  PreparedStatement ps = conn.prepareStatement(
-                         "INSERT INTO notifications (user_id, type, title, body, reference_id, reference_type) VALUES (?,?,?,?,?,?)")) {
+                         "INSERT INTO notifications (user_id, type, title, body, reference_id, reference_type, created_at) VALUES (?,?,?,?,?,?,NOW())")) {
                 ps.setInt(1, userId);
                 ps.setString(2, type);
                 ps.setString(3, title);

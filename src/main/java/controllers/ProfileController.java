@@ -88,6 +88,18 @@ public class ProfileController {
     @FXML private Button removeFaceBtn;
     @FXML private Label faceStatusMsg;
 
+    // CV / Resume
+    @FXML private HBox cvInfoBox;
+    @FXML private HBox noCvBox;
+    @FXML private Label cvFileName;
+    @FXML private Label cvUploadDate;
+    @FXML private Button cvDownloadBtn;
+    @FXML private Button cvDeleteBtn;
+    @FXML private Button cvUploadBtn;
+    @FXML private Label cvUploadStatus;
+    @FXML private VBox cvSkillsBox;
+    @FXML private TextArea cvSkillsArea;
+
     private boolean isEditMode = false;
     private ServiceUser serviceUser = new ServiceUser();
 
@@ -196,6 +208,9 @@ public class ProfileController {
 
         // Update face ID status
         updateFaceIdStatus(user);
+
+        // Update CV panel
+        populateCvPanel(user);
     }
 
     private void updateFaceIdStatus(User user) {
@@ -782,5 +797,166 @@ public class ProfileController {
         faceStatusMsg.setManaged(true);
         faceStatusMsg.getStyleClass().removeAll("error-label", "success-label");
         faceStatusMsg.getStyleClass().add(isError ? "error-label" : "success-label");
+    }
+
+    // ═══════════════════════════════════════════
+    //  CV / RESUME PANEL
+    // ═══════════════════════════════════════════
+
+    private void populateCvPanel(User user) {
+        if (cvInfoBox == null) return;
+        boolean hasCv = user.hasCv();
+        cvInfoBox.setVisible(hasCv);
+        cvInfoBox.setManaged(hasCv);
+        noCvBox.setVisible(!hasCv);
+        noCvBox.setManaged(!hasCv);
+
+        if (hasCv) {
+            cvFileName.setText(user.getCvOriginalName() != null ? user.getCvOriginalName() : "cv_file");
+            if (user.getCvUploadedAt() != null) {
+                cvUploadDate.setText("Uploaded: " + new SimpleDateFormat("MMM dd, yyyy").format(user.getCvUploadedAt()));
+            }
+        }
+
+        String skills = user.getCvSkillsText();
+        boolean hasSkills = skills != null && !skills.trim().isEmpty();
+        if (cvSkillsBox != null) {
+            cvSkillsBox.setVisible(hasSkills);
+            cvSkillsBox.setManaged(hasSkills);
+            if (hasSkills) cvSkillsArea.setText(skills);
+        }
+    }
+
+    @FXML
+    private void handleCvUpload() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Select CV / Resume");
+        chooser.getExtensionFilters().addAll(
+            new FileChooser.ExtensionFilter("Resume Files", "*.pdf", "*.doc", "*.docx")
+        );
+        File file = chooser.showOpenDialog(cvUploadBtn.getScene().getWindow());
+        if (file == null) return;
+
+        if (file.length() > 10 * 1024 * 1024) {
+            showCvStatus("File too large (max 10 MB).", true);
+            return;
+        }
+
+        User user = SessionManager.getInstance().getCurrentUser();
+        if (user == null) return;
+
+        showCvStatus("Uploading...", false);
+        cvUploadBtn.setDisable(true);
+
+        AppThreadPool.io(() -> {
+            try {
+                // Copy file to local CVs directory
+                java.io.File cvsDir = new java.io.File(AVATARS_DIR).getParentFile();
+                cvsDir = new java.io.File(cvsDir, ".synergygig_cvs");
+                cvsDir.mkdirs();
+                String storedName = "cv_" + user.getId() + "_" + file.getName();
+                java.io.File dest = new java.io.File(cvsDir, storedName);
+                java.nio.file.Files.copy(file.toPath(), dest.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+                // Extract text (simple: read file bytes for text files; PDF → basic extraction)
+                String skills = extractTextFromFile(file);
+
+                // Persist to DB
+                serviceUser.updateCv(user.getId(), dest.getAbsolutePath(), file.getName(), skills);
+
+                // Refresh current user in session
+                user.setCvPath(dest.getAbsolutePath());
+                user.setCvOriginalName(file.getName());
+                user.setCvUploadedAt(new java.sql.Timestamp(System.currentTimeMillis()));
+                user.setCvSkillsText(skills);
+
+                javafx.application.Platform.runLater(() -> {
+                    populateCvPanel(user);
+                    showCvStatus("CV uploaded successfully.", false);
+                    cvUploadBtn.setDisable(false);
+                });
+            } catch (Exception e) {
+                javafx.application.Platform.runLater(() -> {
+                    showCvStatus("Upload failed: " + e.getMessage(), true);
+                    cvUploadBtn.setDisable(false);
+                });
+            }
+        });
+    }
+
+    @FXML
+    private void handleCvDownload() {
+        User user = SessionManager.getInstance().getCurrentUser();
+        if (user == null || !user.hasCv()) return;
+
+        java.io.File cvFile = new java.io.File(user.getCvPath());
+        if (!cvFile.exists()) {
+            showCvStatus("File not found locally.", true);
+            return;
+        }
+
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Save CV");
+        chooser.setInitialFileName(user.getCvOriginalName() != null ? user.getCvOriginalName() : cvFile.getName());
+        java.io.File dest = chooser.showSaveDialog(cvDownloadBtn.getScene().getWindow());
+        if (dest == null) return;
+        try {
+            java.nio.file.Files.copy(cvFile.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            showCvStatus("CV saved to " + dest.getName(), false);
+        } catch (java.io.IOException e) {
+            showCvStatus("Save failed: " + e.getMessage(), true);
+        }
+    }
+
+    @FXML
+    private void handleCvDelete() {
+        User user = SessionManager.getInstance().getCurrentUser();
+        if (user == null) return;
+
+        javafx.scene.control.Alert confirm = new javafx.scene.control.Alert(
+            javafx.scene.control.Alert.AlertType.CONFIRMATION,
+            "Remove your uploaded CV?", javafx.scene.control.ButtonType.YES, javafx.scene.control.ButtonType.NO);
+        confirm.setTitle("Remove CV");
+        confirm.setHeaderText(null);
+        confirm.showAndWait().ifPresent(btn -> {
+            if (btn == javafx.scene.control.ButtonType.YES) {
+                AppThreadPool.io(() -> {
+                    try {
+                        serviceUser.clearCv(user.getId());
+                        user.setCvPath(null);
+                        user.setCvOriginalName(null);
+                        user.setCvUploadedAt(null);
+                        user.setCvSkillsText(null);
+                        javafx.application.Platform.runLater(() -> populateCvPanel(user));
+                    } catch (java.sql.SQLException e) {
+                        javafx.application.Platform.runLater(() -> showCvStatus("Delete failed: " + e.getMessage(), true));
+                    }
+                });
+            }
+        });
+    }
+
+    /** Basic text extraction: reads text from .txt or .doc; for PDF returns filename as fallback. */
+    private String extractTextFromFile(java.io.File file) {
+        String name = file.getName().toLowerCase();
+        try {
+            if (name.endsWith(".txt")) {
+                return new String(java.nio.file.Files.readAllBytes(file.toPath())).substring(0, Math.min(5000, (int)file.length()));
+            }
+            // For PDF/DOC: return filename keywords as fallback (full extraction needs external lib)
+            return file.getName().replaceAll("[._-]", " ");
+        } catch (Exception e) {
+            return file.getName();
+        }
+    }
+
+    private void showCvStatus(String msg, boolean isError) {
+        if (cvUploadStatus == null) return;
+        cvUploadStatus.setText(msg);
+        cvUploadStatus.setVisible(true);
+        cvUploadStatus.setManaged(true);
+        cvUploadStatus.getStyleClass().removeAll("error-label", "success-label");
+        cvUploadStatus.getStyleClass().add(isError ? "error-label" : "success-label");
     }
 }
